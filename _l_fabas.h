@@ -84,11 +84,11 @@ public:
 		}
 		if ( _r.m_psrRelated )
 		{
-			m_psrRelated.__STL_TEMPLATE construct1< _TySetActionIds const & >( *_r.m_psrRelated );
+			m_psrRelated._STLP_TEMPLATE construct1< _TySetActionIds const & >( *_r.m_psrRelated );
 		}
 		if ( _r.m_psrTriggers )
 		{
-			m_psrTriggers.__STL_TEMPLATE construct1< _TySetActionIds const & >( *_r.m_psrTriggers );
+			m_psrTriggers._STLP_TEMPLATE construct1< _TySetActionIds const & >( *_r.m_psrTriggers );
 		}
 	}
 
@@ -97,12 +97,12 @@ public:
 		return m_eaatType == e_aatLookahead ? m_aiAction : m_aiRelated;
 	}
 
-	t_TyAllocator	get_allocator() const __STL_NOTHROW
+	t_TyAllocator	get_allocator() const _STLP_NOTHROW
 	{
 		return m_psrRelated.get_allocator();
 	}
 
-	bool	operator < ( const _TyThis & _r ) const __STL_NOTHROW
+	bool	operator < ( const _TyThis & _r ) const _STLP_NOTHROW
 	{
 		if ( m_eaatType == _r.m_eaatType )
 		{
@@ -202,7 +202,7 @@ public:
   }
 #endif _DEBUG
 
-	t_TyAllocator	get_allocator() const __STL_NOTHROW	{ return m_setAlphabet.get_allocator(); }
+	t_TyAllocator	get_allocator() const _STLP_NOTHROW	{ return m_setAlphabet.get_allocator(); }
 
 	void	DumpStates( ostream & _ros, _TySetStates const & _r ) const
 	{
@@ -232,7 +232,7 @@ public:
 	{
 		// Dump the alphabet and the graph:
 		_ros << "Alphabet : {";
-		for (	typename _TyAlphabet::iterator it = m_setAlphabet.begin();
+		for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
 					it != m_setAlphabet.end();
 					( ++it == m_setAlphabet.end() ) || ( _ros << "," ) )
 		{

@@ -27,15 +27,11 @@ private:
 	typedef _alloc_base< char, t_TyAllocator >					_TyCharAllocBase;
 public:
 
-#ifdef __GNUC__
   typedef typename _TyCharAllocBase::size_type size_type;
-#else __GNUC__
-  using _TyCharAllocBase::size_type;
-#endif __GNUC__
 
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
-	friend class _create_dfa;
+	friend struct _create_dfa;
 	friend class _nfa_context< t_TyChar, t_TyAllocator >;
 
 	typedef _nfa_context_base< t_TyChar >						_TyNfaCtxtBase;
@@ -52,7 +48,7 @@ public:
 	typedef __DGRAPH_NAMESPACE _gr_select_value_modifiable< _TyGraphLink, 
 								_fa_char_range_intersect< _TyRange > >	_TyLinkSelect;
 	typedef typename _TyGraph::_TyGraphTraits:: 
-		__STL_TEMPLATE _get_link_select_iter< _TyLinkSelect >::
+		template _get_link_select_iter< _TyLinkSelect >::
                              _TyGraphFwdIterSelectConst	_TySelectIterConst;
 
 	// We cache the selection iterator to keep from allocating/deallocating all the time:
@@ -70,12 +66,12 @@ public:
 	typedef less< _TyState >														_TyCompareStates;
 	typedef map<	_TyState, _TyAcceptAction, 
 								_TyCompareStates, t_TyAllocator >			_TySetAcceptStates;
-	typedef _TySetAcceptStates::iterator								_TySetAcceptIT;
-	typedef _TySetAcceptStates::value_type							_TySetAcceptVT;
+	typedef typename _TySetAcceptStates::iterator								_TySetAcceptIT;
+	typedef typename _TySetAcceptStates::value_type							_TySetAcceptVT;
 
 	// Sometimes need to order the accept actions by action identifier:
 	typedef less< _TyActionIdent >											_TyCompareAI;
-	typedef map<	_TyActionIdent, _TySetAcceptStates::value_type *,
+	typedef map<	_TyActionIdent, typename _TySetAcceptStates::value_type *,
 								_TyCompareAI, t_TyAllocator >					_TySetASByActionID;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator >			m_pSetAcceptStates;
@@ -102,7 +98,7 @@ public:
 			m_fHasFreeActions( false ),
 			m_nUnsatisfiableTransitions( 0 )
 	{
-		m_pSetAcceptStates.__STL_TEMPLATE construct2< const _TyCompareStates &, const t_TyAllocator & >
+		m_pSetAcceptStates._STLP_TEMPLATE construct2< const _TyCompareStates &, const t_TyAllocator & >
 																	( _TyCompareStates(), get_allocator() );
 	}
 
@@ -111,7 +107,7 @@ public:
 		DeallocClosureCache();
 	}
 
-	t_TyAllocator	get_allocator() const __STL_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
+	t_TyAllocator	get_allocator() const _STLP_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
 
 	void	AllocClosureCache()
 	{
@@ -142,7 +138,7 @@ public:
 		return m_cpClosureCache + m_ssClosureComputed.size_bytes() * _st;
 	}
 
-	_TyGraphNode *	PGNGetNode( int _iState )
+	_TyGraphNode *	PGNGetNode( _TyState _iState )
 	{
 		return static_cast< _TyGraphNode * >( m_nodeLookup[ _iState ] );
 	}
@@ -414,8 +410,8 @@ protected:	// accessed by _nfa_context:
 	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_t _nUnsatisfiable )
 	{
 		CreateRangeNFA( _rctxt, 
-			_TyRange( ms_kreUnsatisfiableStart + _nUnsatisfiable, 
-								ms_kreUnsatisfiableStart + _nUnsatisfiable ) );
+			_TyRange( (_TyRangeEl)( ms_kreUnsatisfiableStart + _nUnsatisfiable ),
+								(_TyRangeEl)( ms_kreUnsatisfiableStart + _nUnsatisfiable ) ) );
 		m_nUnsatisfiableTransitions = max( int( _nUnsatisfiable+1 ), m_nUnsatisfiableTransitions );
 	}
 
@@ -537,7 +533,7 @@ protected:	// accessed by _nfa_context:
 	{
 		if ( !m_pLookupActionID )
 		{
-			m_pLookupActionID.__STL_TEMPLATE construct2< const _TyCompareAI &, const t_TyAllocator & >
+			m_pLookupActionID._STLP_TEMPLATE construct2< const _TyCompareAI &, const t_TyAllocator & >
 												( _TyCompareAI(), get_allocator() );
 			_TySetAcceptIT itEnd = m_pSetAcceptStates->end();
 			for ( _TySetAcceptIT it = m_pSetAcceptStates->begin();
@@ -567,33 +563,33 @@ protected:	// accessed by _nfa_context:
 			releaseSS( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssCur ) );
 
 		// Find a state in <_rsetStart>:
-		_TySetStates::size_type stState;
-		for ( stState = _rsetStart.getclearfirstset();
-					_rsetStart.size() != stState;
-					stState = _rsetStart.getclearfirstset( stState ) )
+		_TyState nState;
+		for ( nState = (_TyState)_rsetStart.getclearfirstset();
+					_rsetStart.size() != nState;
+					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
 		{
-			assert( stState < m_nodeLookup.size() );
+			assert( nState < (_TyState)m_nodeLookup.size() );
 
 			// We may have already computed the closure for this state:
-			if ( m_ssClosureComputed.isbitset( stState ) )
+			if ( m_ssClosureComputed.isbitset( nState ) )
 			{
-				_rsetResult.or_equals( (_TySetStates::_TyEl*)PCGetClosureCache( stState ) );
+				_rsetResult.or_equals( (_TySetStates::_TyEl*)PCGetClosureCache( nState ) );
 			}
 			else
 			{
 				// Then we are going to compute the closure cache for this state:
-				m_ssClosureComputed.setbit( stState );
-				_TySetStates::_TyEl *	pssVector = (_TySetStates::_TyEl*)PCGetClosureCache( stState );
+				m_ssClosureComputed.setbit( nState );
+				_TySetStates::_TyEl *	pssVector = (_TySetStates::_TyEl*)PCGetClosureCache( nState );
 				pssCur->swap_vector( pssVector );
 				CMFDtor1_void< _TySetStates, _TySetStates::_TyEl *& >
 					swapBack( pssCur, &_TySetStates::swap_vector, pssVector );
 							
 				pssCur->clear();
 
-				m_selit.SetPGNBCur( const_cast< _TyGraphNode * >( PGNGetNode( stState ) ) );
+				m_selit.SetPGNBCur( const_cast< _TyGraphNode * >( PGNGetNode( nState ) ) );
 				m_selit.Reset();
 
-				pssCur->setbit( stState );	// add initial state.
+				pssCur->setbit( nState );	// add initial state.
 
 				++m_selit;
 				while( !m_selit.FAtEnd() )
@@ -638,14 +634,14 @@ protected:	// accessed by _nfa_context:
 			releaseSS( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssCur ) );
 
 		// Find a state in <_rsetStart>:
-		_TySetStates::size_type stState;
-		for ( stState = _rsetStart.getclearfirstset();
-					_rsetStart.size() != stState;
-					stState = _rsetStart.getclearfirstset( stState ) )
+		_TyState nState;
+		for ( nState = (_TyState)_rsetStart.getclearfirstset();
+					_rsetStart.size() != nState;
+					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
 		{
-			assert( stState < m_nodeLookup.size() );
+			assert( nState < (_TyState)m_nodeLookup.size() );
 			pssCur->clear();
-			ComputeMoveStates( PGNGetNode( stState ), _rInput, *pssCur );
+			ComputeMoveStates( PGNGetNode( nState ), _rInput, *pssCur );
 			_rsetResult |= *pssCur;
 		}
 
@@ -716,7 +712,7 @@ protected:	// accessed by _nfa_context:
 	{
 		_UpdateAlphabet( _r );
 
-		_TyGraphLink * pgl = m_gNfa.__STL_TEMPLATE create_link1
+		_TyGraphLink * pgl = m_gNfa._STLP_TEMPLATE create_link1
       < _TyRange const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
@@ -749,7 +745,7 @@ protected:	// accessed by _nfa_context:
 		_UpdateAlphabet( _r );
 
 		_TyGraphLink *	pgl = m_gNfa.
-      __STL_TEMPLATE create_link1< _TyRange const & >( _r );
+      _STLP_TEMPLATE create_link1< _TyRange const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
 			endLink( &m_gNfa, &_TyGraph::destroy_link, pgl );
@@ -941,7 +937,7 @@ public:
 		pAllocate.transfer();
 	}
 
-	void	DestroyOther( _TyBase * _pb ) __STL_NOTHROW
+	void	DestroyOther( _TyBase * _pb ) _STLP_NOTHROW
 	{
 		_sdp< _TyThis, _TyAllocThis >	 pDeallocate(	static_cast< _TyThis * >( _pb ), 
 																								RNfa().get_allocator() );
@@ -1025,7 +1021,7 @@ public:
 
 	void	_CreateAcceptingNodeSet()
 	{
-		m_pssAccept.__STL_TEMPLATE construct2< _TyState, const t_TyAllocator & >
+		m_pssAccept._STLP_TEMPLATE construct2< _TyState, const t_TyAllocator & >
 			( RNfa().NStates(), RNfa().get_allocator() );
 		m_pssAccept->clear();
 
@@ -1081,7 +1077,7 @@ __REGEXP_END_NAMESPACE
 
 		typedef _select_minus_closure	_TyMinusSelect;
 		typedef typename _TyGraph::_TyGraphTraits:: 
-			__STL_TEMPLATE _get_link_select_iter< _TyMinusSelect >::_TyGraphFwdIterSelectConst	_TyMinusSelectIter;
+			_STLP_TEMPLATE _get_link_select_iter< _TyMinusSelect >::_TyGraphFwdIterSelectConst	_TyMinusSelectIter;
 
 		// We cache the selection iterator to keep from allocating/deallocating all the time:
 		_TyMinusSelectIter	selitMinus(	_pgnStart, 0, true, false, 
@@ -1136,7 +1132,7 @@ __REGEXP_END_NAMESPACE
 
 		typedef _select_not_state	_TyForwardSelect;
 		typedef typename _TyGraph::_TyGraphTraits:: 
-			__STL_TEMPLATE _get_link_select_iter< _TyForwardSelect >::_TyGraphFwdIterSelectConst	_TyForwardSelectIter;
+			_STLP_TEMPLATE _get_link_select_iter< _TyForwardSelect >::_TyGraphFwdIterSelectConst	_TyForwardSelectIter;
 
 		// We cache the selection iterator to keep from allocating/deallocating all the time:
 		_TyForwardSelectIter	selitForward(	_rctxt2.m_pgnStart, 0, true, true, 
@@ -1156,10 +1152,10 @@ __REGEXP_END_NAMESPACE
 
 		// Then for each node found create an epsilon transition to the start state
 		//	of _rctxt1_Result:
-		size_t	stState = size_t( -1 );
-		while( ssForward.size() != ( stState = ssForward.getclearfirstset( stState ) ) )
+		_TyState nState = -1;
+		while( ssForward.size() != ( nState = (_TyState)ssForward.getclearfirstset( stState ) ) )
 		{
-			_NewTransition( PGNGetNode( stState ), _TyRange( 0, 0 ), _rctxt1_Result.m_pgnStart );
+			_NewTransition( PGNGetNode( nState ), _TyRange( 0, 0 ), _rctxt1_Result.m_pgnStart );
 		}
 
 		_rctxt1_Result.m_pgnStart = _rctxt2.m_pgnStart; 

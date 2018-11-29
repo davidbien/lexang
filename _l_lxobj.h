@@ -3,10 +3,11 @@
 
 // _l_lxobj.h
 
+#include <memory>
 #include <stddef.h>
 #include <assert.h>
 #include <wchar.h>
-#include <alloc.h>
+#include <_alloc.h>
 #include <typeinfo>
 #include <hash_set>
 #include "bienutil/bienutil.h"
@@ -14,7 +15,6 @@
 #include "lexang/_l_ns.h"
 #include "lexang/_l_chrtr.h"
 #include "bienutil/_ticont.h"
-#include <pair.h>
 #include <functional>
 #include <algorithm>
 
@@ -447,7 +447,9 @@ private:
 	typedef _l_an_lookaheadbase< t_TyChar, t_fSupportLookahead >	_TyBase;
 	typedef _l_analyzer<	t_TyChar, t_fSupportLookahead, 
 												t_fSupportTriggers >										_TyThis;
+public:
 	typedef typename _TyBase::_TyStateProto         _TyStateProto;
+private:
 	_TyStateProto *		m_pspLastAccept;	// The last encountered accept state;
 public:
 
@@ -907,6 +909,8 @@ struct _l_analyzer_unique_onematch
 private:
 	typedef _l_analyzer< t_TyChar, false, t_fSupportTriggers >	_TyBase;
 public:
+
+	typedef typename _TyBase::_TyStateProto _TyStateProto;
 
 	_l_analyzer_unique_onematch( _TyStateProto * _pspStart )
 		: _TyBase( _pspStart )

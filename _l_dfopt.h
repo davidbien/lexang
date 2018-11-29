@@ -14,11 +14,11 @@ private:
 	typedef _partition_el< t_TySwapSS >	_TyThis;
 public:
 
-	int					first;
+	ptrdiff_t		first;
 	t_TySwapSS	second;
 
-	_partition_el( int _i, t_TySwapSS const & _rss )
-		: first( _i ),
+	_partition_el(ptrdiff_t _first, t_TySwapSS const & _rss )
+		: first( _first ),
 			second( _rss )
 	{
 	}
@@ -51,29 +51,29 @@ struct _compare_partition_classes
 	}
 
 	bool	operator ()(	t_TyPartitionClass * const & _rpl, 
-											t_TyPartitionClass * const & _rpr ) const __STL_NOTHROW
+											t_TyPartitionClass * const & _rpr ) const _STLP_NOTHROW
 	{
 		return (*_rpl).lessthan( (*_rpr), m_stAlphabet );
 	}
 };
 
-template < class t_TyPartitionEl, class t_TySetStates >
+template < class t_TyState, class t_TyPartitionEl, class t_TySetStates >
 struct _partition_class
 {
 private:
-	typedef _partition_class< t_TyPartitionEl, t_TySetStates >	_TyThis;
+	typedef _partition_class< t_TyState, t_TyPartitionEl, t_TySetStates >	_TyThis;
 public:
 
+	typedef t_TyState _TyState;
 	typedef typename t_TySetStates::_TyAllocator	_TyAllocator;
 
-	int									m_nSingleState;
+	_TyState						m_nSingleState;
 	t_TySetStates				m_ssMembers;	// The bit vector for members of this partition class.
 
 	t_TyPartitionEl **	m_pppelTransitions;
 
-	_partition_class( size_t _stStates, 
-										_TyAllocator const & _rA )
-		: m_ssMembers( _stStates, _rA ),
+	_partition_class(_TyState _nStates, _TyAllocator const & _rA )
+		: m_ssMembers(_nStates, _rA ),
 			m_nSingleState( -1 )
 	{
 		m_ssMembers.clear();
@@ -100,19 +100,19 @@ public:
 		return ( -1 == m_nSingleState ) && m_ssMembers.empty();
 	}
 
-	int	NSingleState()
+	_TyState	NSingleState()
 	{
 		return m_nSingleState;
 	}
 
-	void	AddState( int _iState )
+	void	AddState( _TyState _iState )
 	{
 		m_nSingleState = ( -1 == m_nSingleState ) ? _iState : -2;
 		m_ssMembers.setbit( _iState );
 	}
 
 	bool	lessthan(	_TyThis const & _r,
-									size_t _stAlphabet ) const __STL_NOTHROW
+									size_t _stAlphabet ) const _STLP_NOTHROW
 	{
 		// Move through the transition arrays until we find a difference:
 		t_TyPartitionEl ** pppeCurThis = m_pppelTransitions;
@@ -141,14 +141,14 @@ public:
 template < class t_TyDfa, bool t_fPartDeadImmed >
 struct _optimize_dfa
 	: public _alloc_base< void *,	typename t_TyDfa::_TyAllocator >,
-		public _alloc_base< _partition_class< _partition_el< _swap_object< typename t_TyDfa::_TySetStates > >,
+		public _alloc_base< _partition_class< typename t_TyDfa::_TyState, _partition_el< _swap_object< typename t_TyDfa::_TySetStates > >,
 																					typename t_TyDfa::_TySetStates >,
 												typename t_TyDfa::_TyAllocator >
 {
 private:
 	typedef _optimize_dfa< t_TyDfa, t_fPartDeadImmed >	_TyThis;
 	typedef _alloc_base< void *, typename t_TyDfa::_TyAllocator >	_TyAllocVPBase;
-	typedef _alloc_base< _partition_class< _partition_el< _swap_object< typename t_TyDfa::_TySetStates > >,
+	typedef _alloc_base< _partition_class< typename t_TyDfa::_TyState, _partition_el< _swap_object< typename t_TyDfa::_TySetStates > >,
 																					typename t_TyDfa::_TySetStates >,
 												typename t_TyDfa::_TyAllocator >				_TyAllocPartClass;
 protected:
@@ -197,7 +197,7 @@ protected:
 	// As we compute the partition we need to accumulate the new sets ( relative to the current
 	//	sets ). The number of unique sets in the partition could be as high as the number of states 
 	//	the original DFA.
-	typedef _partition_class< _TyPartitionEl, _TySetStates >	_TyPartitionClass;
+	typedef _partition_class< _TyState, _TyPartitionEl, _TySetStates >	_TyPartitionClass;
 
 	_TyPartitionClass **	m_cachePartClasses;
 	size_t								m_stUsedClassCache;
@@ -230,7 +230,7 @@ public:
 			m_rgLookupRep( m_rDfa.get_allocator() )
 	{
 		_TyPartitionEl	peSingleton( INT_MAX, _TySetStates( 0, m_rDfa.get_allocator() ) );
-		m_gcppeSingleton.__STL_TEMPLATE Create1< _TyPartitionEl const & >( peSingleton, m_rDfa.get_allocator() );
+		m_gcppeSingleton._STLP_TEMPLATE Create1< _TyPartitionEl const & >( peSingleton, m_rDfa.get_allocator() );
 
 		_sdp< void *, _TyAllocator >	pvAllocMap( _TyAllocVPBase::get_allocator() );
 		_TyAllocVPBase::allocate_n( pvAllocMap.PtrRef(), m_stDfaStatesOrig );
@@ -347,19 +347,23 @@ public:
 				iUpdates++;
 			}
 			assert( iUpdates );		
-			_pel->first = ( 1 == iUpdates ) ? static_cast< _TyState >( stFirstUpdate ) : -1;
+			if (1 == iUpdates)
+				_pel->first = (_TyState)stFirstUpdate;
+			else
+				_pel->first = -1;
+			//_pel->first = ( 1 == iUpdates ) ? stFirstUpdate : size_t( -1 );
 		}
 		assert( _rss.empty() );
 	}
 
 	void
 	_InsertNewSS( _TySetStates & _rssInsert,
-								int _iSingleStateHint = -1 )
+								_TyState _iSingleStateHint = -1 )
 	{
 		_TyPartitionEl	peInsert( _iSingleStateHint, _TySetStates( _rssInsert ) );
 
 		_TyGcpPE	gcpPeInsert;
-		gcpPeInsert.__STL_TEMPLATE Create1< _TyPartitionEl const & >( peInsert, m_rDfa.get_allocator() );
+		gcpPeInsert._STLP_TEMPLATE Create1< _TyPartitionEl const & >( peInsert, m_rDfa.get_allocator() );
 
 		// Now set the state->state set map pointers:
 		_UpdateStateMap( gcpPeInsert, _rssInsert );
@@ -427,7 +431,7 @@ public:
 		// Apply partitioning algorithm:
 		_Partition(	ssUtil );
 
-		typename _TyPartition::const_iterator itUpper;
+		typename _TyPartition::iterator itUpper;
 		itUpper = m_partition.upper_bound( m_gcppeSingleton );
 
 		// No longer need the partition class cache:
@@ -475,8 +479,8 @@ protected:
 
 			_TyPartitionClass **	pppc = _GetPartClass();	// Get a partition class from the cache.
 
-			int	iStateTest;
-			for ( iStateTest = _rssUtil.getclearfirstset();
+			_TyState	iStateTest;
+			for ( iStateTest = (_TyState)_rssUtil.getclearfirstset();
 						_rssUtil.size() != iStateTest;
 						iStateTest = _rssUtil.getclearfirstset( iStateTest ) )
 			{
@@ -498,8 +502,7 @@ protected:
 
 				// Now attempt to insert this new transition container into the set of unique
 				//	transition sets of the current group of the partition:
-				pair < typename _TySetPartClasses::iterator, bool >	pib = 
-					m_setPartClasses.insert( *pppc );
+				pair < typename _TySetPartClasses::iterator, bool >	pib = m_setPartClasses.insert( *pppc );
 				if ( pib.second )
 				{
 					// Then a new partition of this group - get a new working cache:
@@ -568,27 +571,27 @@ protected:
 	{
 		// See if we are entering a representative - if not move to the representative:
 		_TyState	iTransState;
-		if ( !m_rgLookupRep[ iTransState = _pgl->PGNChild()->RElConst() ] )
+		if ( !m_rgLookupRep[ (size_type)( iTransState = _pgl->PGNChild()->RElConst() ) ] )
 		{
 			// Then determine the representative for this node:
 			if ( m_rgsmeMap[ iTransState ]->first >= 0 )
 			{
 				// singleton:
-				m_rgLookupRep[ iTransState ] = _pgl->PGNChild();
+				m_rgLookupRep[ (size_type)iTransState ] = _pgl->PGNChild();
 			}
 			else
 			{
-				m_rgLookupRep[ iTransState ] = m_rDfa.PGNGetNode( 
+				m_rgLookupRep[ (size_type)iTransState ] = m_rDfa.PGNGetNode( 
 					m_rgsmeMap[ iTransState ]->second.RObject().getfirstset() );
 			}
 		}
 
-		if ( m_rgLookupRep[ iTransState ] != _pgl->PGNChild() )
+		if ( m_rgLookupRep[ (size_type)iTransState ] != _pgl->PGNChild() )
 		{
 			// Then need to move the link:
 			_pgl->RemoveParent();
-			_pgl->InsertParent( m_rgLookupRep[ iTransState ]->PPGLParentHead() );
-			_pgl->SetChildNode( m_rgLookupRep[ iTransState ] );
+			_pgl->InsertParent( m_rgLookupRep[ (size_type)iTransState ]->PPGLParentHead() );
+			_pgl->SetChildNode( m_rgLookupRep[(size_type)iTransState ] );
 		}
 	}
 
@@ -687,7 +690,7 @@ protected:
 		}
 		while( m_partition.end() != ++itCur );
 
-		// (Pass 2): Move all parents of non-reps to rep:
+		// (Pass 2): Move all parents of non-kreps to rep:
 		itCur = _rcitUpper;
 
 		do
@@ -710,8 +713,8 @@ protected:
 				{
 					// This should from a representative ( we aren't checking but it should be a singleton ).
 					_TyGraphLink *	pgl = lpi.PGLCur();
-					assert( !( m_rgLookupRep[ pgl->PGNParent()->RElConst() ] ) ||
-									( m_rgLookupRep[ pgl->PGNParent()->RElConst() ] == pgl->PGNParent() ) );
+					assert( !( m_rgLookupRep[ (size_t)pgl->PGNParent()->RElConst() ] ) ||
+									( m_rgLookupRep[(size_t)pgl->PGNParent()->RElConst() ] == pgl->PGNParent() ) );
 					pgl->RemoveParent();
 					pgl->InsertParent( pgnRep->PPGLParentHead() );
 					pgl->SetChildNode( pgnRep );

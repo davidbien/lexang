@@ -21,6 +21,7 @@ private:
 public:
 
 	typedef t_TyChar	_TyChar;
+	typedef basic_ostream< t_TyChar, char_traits<t_TyChar> > _TyOstream;
 	typedef _nfa_context_base< t_TyChar >		_TyCtxtBase;
 	typedef typename _TyCtxtBase::_TyRange	_TyRange;
 	
@@ -34,14 +35,14 @@ public:
 
 	virtual void	ConstructNFA( _TyCtxtBase & _rNfa, size_t _stLevel = 0 ) const = 0;
 
-	virtual bool	FIsLiteral() const __STL_NOTHROW		{ return false; }
-	virtual bool	FMatchesEmpty() const __STL_NOTHROW	{ return false; }
+	virtual bool	FIsLiteral() const _STLP_NOTHROW		{ return false; }
+	virtual bool	FMatchesEmpty() const _STLP_NOTHROW	{ return false; }
 
 	// Allocation - this is overridden by the element receiving
 	//	the final regular expression
 	virtual void	Clone( _TyThis * _prbCopier, _TyThis ** _pprbStorage ) const = 0;
 
-	virtual void	Dump( ostream & _ros ) const = 0;
+	virtual void	Dump( _TyOstream & _ros ) const = 0;
 
 	// no assignment supported.
 	void	operator = ( _TyThis const & _r )
@@ -49,8 +50,7 @@ public:
 		___semantic_error_object	error;
 	}
 
-	friend ostream & operator << (	ostream & _ros, 
-																	_TyThis const & _r )
+	friend _TyOstream & operator << ( _TyOstream & _ros, _TyThis const & _r )
 	{
 		_r.Dump( _ros );
 		return _ros;
@@ -64,7 +64,7 @@ protected:
 		return 0;
 	}
 
-	void						_Deallocate( char * ) __STL_NOTHROW
+	void						_Deallocate( char * ) _STLP_NOTHROW
 	{
 		assert( 0 );
 	}
@@ -77,11 +77,11 @@ protected:
 								_TyThis ** _pprbStorage )
 	{
 		char * cp = _prbCopier->_CPAllocate( sizeof( t_TyMostDerived ) );
-		__STL_TRY
+		_STLP_TRY
 		{
 			*_pprbStorage = new ( cp ) t_TyMostDerived( *_pmdCopy );
 		}
-		__STL_UNWIND( _prbCopier->_Deallocate( cp ) );
+		_STLP_UNWIND( _prbCopier->_Deallocate( cp ) );
 	}
 
 	// Partial clone:
@@ -93,11 +93,11 @@ protected:
 								__false_type )
 	{
 		char * cp = _prbCopier->_CPAllocate( sizeof( t_TyMostDerived ) );
-		__STL_TRY
+		_STLP_TRY
 		{
 			*_pprbStorage = new ( cp ) t_TyMostDerived( *_pmdCopy, __false_type() );
 		}
-		__STL_UNWIND( _prbCopier->_Deallocate( cp ) );
+		_STLP_UNWIND( _prbCopier->_Deallocate( cp ) );
 	}
 };
 
@@ -122,15 +122,15 @@ public:
 		_rNfaCtxt.CreateEmptyNFA();
 	}
 
-	bool	FIsLiteral() const __STL_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const __STL_NOTHROW	{ return true; }
+	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
+	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "{Ø}";
 	}
@@ -170,14 +170,14 @@ public:
 		_rNfaCtxt.CreateLiteralNFA( m_c );
 	}
 
-	bool	FIsLiteral() const __STL_NOTHROW		{ return true; }
+	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "\'" << m_c << "\'";
 	}
@@ -200,6 +200,7 @@ private:
 public:
 
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, t_TyAllocator > _TyString;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	_TyString	m_s;
 
@@ -218,15 +219,15 @@ public:
 		_rNfaCtxt.CreateStringNFA( m_s.begin() );
 	}
 
-	bool	FIsLiteral() const __STL_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const __STL_NOTHROW	{ return m_s.empty(); }
+	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
+	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return m_s.empty(); }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 #ifndef __GNUC__ // This needs some work when we have wide chars:
 		_ros << "\"" << m_s << "\"";
@@ -275,14 +276,14 @@ public:
 		_rNfaCtxt.CreateRangeNFA( m_r );
 	}
 
-	bool	FIsLiteral() const __STL_NOTHROW		{ return true; }
+	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "['" << m_r.first << "'-'" << m_r.second << "']";
 	}
@@ -299,10 +300,12 @@ template < class t_TyRegExp1, class t_TyRegExp2 >
 class _regexp_follows : public _regexp_base< typename t_TyRegExp1::_TyChar >
 {
 private:
-	typedef _regexp_base< _TyChar >											_TyBase;
+	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
 	typedef _regexp_follows< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
 public:
 
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -321,7 +324,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{ 
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
@@ -346,7 +349,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "( " << m_re1 << " ) *\n ( " << m_re2 << " )";
 	}
@@ -363,10 +366,12 @@ template < class t_TyRegExp1, class t_TyRegExp2 >
 class _regexp_or : public _regexp_base< typename t_TyRegExp1::_TyChar >
 {
 private:
-	typedef _regexp_base< _TyChar >											_TyBase;
-	typedef _regexp_or< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
+	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
+	typedef _regexp_or< t_TyRegExp1, t_TyRegExp2 > _TyThis;
 public:
 
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -385,7 +390,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{ 
 		return m_re1.FMatchesEmpty() || m_re2.FMatchesEmpty();
 	}
@@ -410,7 +415,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "( " << m_re1 << " ) |\n ( " << m_re2 << " )";
 	}
@@ -427,10 +432,12 @@ template < class t_TyRegExp >
 class _regexp_zeroormore : public _regexp_base< typename t_TyRegExp::_TyChar >
 {
 private:
-	typedef _regexp_base< _TyChar >						_TyBase;
-	typedef _regexp_zeroormore< t_TyRegExp >	_TyThis;
+	typedef _regexp_base< typename t_TyRegExp::_TyChar > _TyBase;
+	typedef _regexp_zeroormore< t_TyRegExp > _TyThis;
 public:
 
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef t_TyRegExp	_TyRegExp;
 
 	t_TyRegExp	m_re;
@@ -445,7 +452,7 @@ public:
 	{
 	}
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{ 
 		return true;
 	}
@@ -461,7 +468,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "~( " << m_re << " )";
 	}
@@ -495,10 +502,11 @@ template < class t_TyRegExp1, class t_TyRegExp2 >
 class _regexp_excludes : public _regexp_base< typename t_TyRegExp1::_TyChar >
 {
 private:
-	typedef _regexp_base< _TyChar >											_TyBase;
-	typedef _regexp_excludes< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
+	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
+	typedef _regexp_excludes< t_TyRegExp1, t_TyRegExp2 > _TyThis;
 public:
-
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -518,7 +526,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{
     // REVIEW: <dbien>: Is this correct ?
 		return m_re1.FMatchesEmpty() && !m_re2.FMatchesEmpty();
@@ -544,7 +552,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "( " << m_re1 << " ) -\n ( " << m_re2 << " )";
 	}
@@ -563,10 +571,11 @@ template < class t_TyRegExp1, class t_TyRegExp2 >
 class _regexp_completes : public _regexp_base< typename t_TyRegExp1::_TyChar >
 {
 private:
-	typedef _regexp_base< _TyChar >											_TyBase;
-	typedef _regexp_completes< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
+	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
+	typedef _regexp_completes< t_TyRegExp1, t_TyRegExp2 > _TyThis;
 public:
-
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -586,13 +595,12 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, 
-                      size_t _stLevel = 0 ) const
+	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const
 	{
 		// Create a new context to pass to expression two:
 		// Nfa1 is used to create and destroy Nfa2:
@@ -612,7 +620,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "( " << m_re1 << " ) +\n ( " << m_re2 << " )";
 	}
@@ -629,10 +637,11 @@ template < class t_TyRegExp1, class t_TyRegExp2 >
 class _regexp_lookahead : public _regexp_base< typename t_TyRegExp1::_TyChar >
 {
 private:
-	typedef _regexp_base< _TyChar >											_TyBase;
+	typedef _regexp_base< typename t_TyRegExp1::_TyChar >											_TyBase;
 	typedef _regexp_lookahead< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
 public:
-
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -652,7 +661,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{ 
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
@@ -685,7 +694,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( ostream & _ros ) const
+	void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "( " << m_re1 << " ) /\n ( " << m_re2 << " )";
 	}
@@ -725,7 +734,7 @@ public:
 		: _TyAllocBase( _rAlloc )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::__STL_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
+		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
 #ifndef __GNUC__ 
 		(*m_pSdpAction)->m_pmfnRenderChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );
@@ -749,7 +758,7 @@ public:
 		}
 	}
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{ 
 		return true;
 	}
@@ -767,7 +776,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( ostream & _ros ) const
+	void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "action";
 	}
@@ -807,18 +816,7 @@ public:
 		: _TyAllocBase( _rAlloc )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::__STL_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
-#ifndef __GNUC__ 
-		(*m_pSdpAction)->m_pmfnRenderChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );
-		(*m_pSdpAction)->m_pmfnRenderWideChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::Render );
-#else !__GNUC__
-		(*m_pSdpAction)->m_pmfnRenderChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::RenderChar );
-		(*m_pSdpAction)->m_pmfnRenderWideChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::RenderWChar );
-#endif !__GNUC__
+		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
 	}
 
 	// We always clone the trigger actions.
@@ -831,7 +829,7 @@ public:
 		}
 	}
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{
 		// triggers report that they match empty since they consume no input.
 		return true;
@@ -850,7 +848,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( ostream & _ros ) const
+	void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "trigger";
 	}
@@ -891,7 +889,7 @@ public:
 	{
 	}
 
-	bool	FMatchesEmpty() const __STL_NOTHROW	
+	bool	FMatchesEmpty() const _STLP_NOTHROW	
 	{
 		// not really sure what to return here - these get removed from the graph.
 		return false;
@@ -907,7 +905,7 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( ostream & _ros ) const
+	void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "unsatisfiable(" << m_nUnsatisfiable << ")";
 	}
@@ -984,18 +982,7 @@ public:
 	void	SetAction( t_TyActionObject _ao )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::__STL_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
-#ifndef __GNUC__ 
-		(*m_pSdpAction)->m_pmfnRenderChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );
-		(*m_pSdpAction)->m_pmfnRenderWideChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::Render );
-#else !__GNUC__
-		(*m_pSdpAction)->m_pmfnRenderChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::RenderChar );
-		(*m_pSdpAction)->m_pmfnRenderWideChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::RenderWChar );
-#endif !__GNUC__
+		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
 	}
 
 	// We have an associated list(and sublists) of final rules - these implement the 
@@ -1037,10 +1024,10 @@ public:
 		}
 	}
 
-	bool	FIsLiteral() const __STL_NOTHROW		{ return m_pbre->FIsLiteral(); }
-	bool	FMatchesEmpty() const __STL_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
+	bool	FIsLiteral() const _STLP_NOTHROW		{ return m_pbre->FIsLiteral(); }
+	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
 
-	virtual void	Dump( ostream & _ros ) const
+	virtual void	Dump( _TyOstream & _ros ) const
 	{
 		_ros << "Final : " << *m_pbre;
 	}
@@ -1064,7 +1051,7 @@ protected:
 		return cpAllocated;
 	}
 
-	void						_Deallocate( char * _cp, size_t _st ) __STL_NOTHROW
+	void						_Deallocate( char * _cp, size_t _st ) _STLP_NOTHROW
 	{
 		_TyAllocBase::deallocate_n( _cp, _st );
 	}

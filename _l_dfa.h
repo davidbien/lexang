@@ -7,6 +7,13 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
+class alpha_index_overflow : public _t__Named_exception< __L_DEFAULT_ALLOCATOR >
+{
+	typedef _t__Named_exception< __L_DEFAULT_ALLOCATOR > _TyBase;
+public:
+	alpha_index_overflow( const string_type & __s ) : _TyBase(__s) {}
+};
+
 template < class t_TyChar, class t_TyAllocator >
 class _dfa_context;
 
@@ -15,13 +22,13 @@ struct _sort_dfa_link
 	: public binary_function< const t_TyGraphLink *, const t_TyGraphLink *, bool >
 {
 	bool	operator()( const t_TyGraphLink * const & _rpglL, 
-										const t_TyGraphLink * const & _rpglR ) const __STL_NOTHROW
+										const t_TyGraphLink * const & _rpglR ) const _STLP_NOTHROW
 	{
 		return _rpglL->RElConst() < _rpglR->RElConst();
 	}
 };
 
-template < class t_TyChar, class t_TyAllocator = allocator< char > >
+template < class t_TyChar, class t_TyAllocator = allocator< t_TyChar > >
 class _dfa : public _fa_alloc_base< t_TyChar, t_TyAllocator >
 {
 private:
@@ -31,7 +38,7 @@ public:
 
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
-	friend class _create_dfa;
+	friend struct _create_dfa;
 	template < class t_TyDfa, bool f_tPartDeadImmed >
 	friend struct _optimize_dfa;
 	friend class _dfa_context< t_TyChar, t_TyAllocator >;
@@ -55,8 +62,8 @@ public:
 
 	// Compressed character range map - we allow multiple entries that compare equal -
 	//	we check before inserting a new entry that it is not present in the equal range:
-	typedef multimap< _TyRange, int, less< _TyRange >, t_TyAllocator >	_TySetCompCharRange;
-	typedef deque< _TySetCompCharRange::iterator, t_TyAllocator >				_TyDequeCCRIndex;
+	typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, t_TyAllocator >	_TySetCompCharRange;
+	typedef deque< typename _TySetCompCharRange::iterator, t_TyAllocator >				_TyDequeCCRIndex;
 	
 	_sdpd< _TySetCompCharRange, t_TyAllocator >	m_pSetCompCharRange;
 	_sdpd< _TyDequeCCRIndex, t_TyAllocator >		m_pCCRIndex;
@@ -64,7 +71,7 @@ public:
 	bool																				m_fHasLookaheads;	// any lookaheads in the rules ?
 	bool																				m_fHasTriggers;		// triggers ?
 	size_t																			m_nUnsatisfiableTransitions; // # of unsatisfiable.
-	int																					m_iMaxActions;
+	_TyActionIdent															m_iMaxActions;
 
 	// Triggers - we need an extra copy since ambiguity may have occurred:
 	typedef less< _TyActionIdent >	_TyCompareAI;
@@ -93,7 +100,7 @@ public:
 
 	size_type	AlphabetSize() const	{ return m_setAlphabet.size(); }
 
-	_TyGraphNode *	PGNGetNode( int _iState )
+	_TyGraphNode *	PGNGetNode( _TyState _iState )
 	{
 		return static_cast< _TyGraphNode * >( m_nodeLookup[ _iState ] );
 	}
@@ -120,8 +127,8 @@ public:
 		typedef _sort_dfa_link< _TyGraphLink >	_TySortDfaLinks;
 
 		bool	fCheckUnsat = ( m_fHasTriggers + m_nUnsatisfiableTransitions );
-		_TyAlphaIndex	aiLimit = stAlphabet - 1 -
-			( m_fHasTriggers + m_nUnsatisfiableTransitions );
+		_TyAlphaIndex	aiLimit = (_TyAlphaIndex)( stAlphabet - 1 -
+			( m_fHasTriggers + m_nUnsatisfiableTransitions ) );
 
     _TyGraph::_TyLinkPosIterNonConst	lpi;
 		_TyNodeLookup::iterator itnlEnd = m_nodeLookup.end();
@@ -179,11 +186,11 @@ public:
 		assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
 		if ( !m_pSetCompCharRange )
 		{
-			m_pSetCompCharRange.__STL_TEMPLATE construct2< _TySetCompCharRange::key_compare const &,
+			m_pSetCompCharRange._STLP_TEMPLATE construct2< _TySetCompCharRange::key_compare const &,
 																			t_TyAllocator const & >
 																		( _TySetCompCharRange::key_compare(),
 																			get_allocator() );
-			m_pCCRIndex.__STL_TEMPLATE construct1< t_TyAllocator const & >( get_allocator() );
+			m_pCCRIndex._STLP_TEMPLATE construct1< t_TyAllocator const & >( get_allocator() );
 
 			_CreateRangeLookup();	// Create if not already.
 
@@ -224,7 +231,7 @@ public:
 															_TySetCompCharRange::value_type() ) ) ) == pit.second )
 						{
 							// Then a new range:
-							_TySetCompCharRange::value_type	vt( r, (int)m_pCCRIndex->size() );
+							_TySetCompCharRange::value_type	vt( r, (_TyAlphaIndex)m_pCCRIndex->size() );
 							itFound = m_pSetCompCharRange->insert( vt );
 							m_pCCRIndex->push_back( itFound );
 						}
@@ -250,7 +257,7 @@ public:
 		}
 	}
 
-	int	_LookupAlphaSetNum( _TyRangeEl const & _rc )
+	_TyAlphaIndex	_LookupAlphaSetNum( _TyRangeEl const & _rc )
 	{
 		_TyRange *	prngFound;
 		prngFound = lower_bound(	m_rgrngLookup.begin(), m_rgrngLookup.end(), 
@@ -258,6 +265,9 @@ public:
 		if (	( prngFound != m_rgrngLookup.end() ) &&
 					prngFound->contains( _rc ) )
 		{
+			size_type st = prngFound - m_rgrngLookup.begin();
+			if (st > numeric_limits< _tyAlphaIndex >::(max)())
+				throw alpha_index_overflow("_LookupAlphaSetNum(): Alpha index overflowed.");
 			return prngFound - m_rgrngLookup.begin();
 		}
 		else
@@ -371,7 +381,7 @@ protected:
 															_TyGraphNode ** _ppgnAccept,
 															_TyGraphLink ** _ppglAdded )
 	{
-		_TyGraphLink *	pgl = m_gDfa.__STL_TEMPLATE create_link1
+		_TyGraphLink *	pgl = m_gDfa._STLP_TEMPLATE create_link1
       < _TyAlphaIndex const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
@@ -408,7 +418,7 @@ protected:
 													_TyGraphNode * _pgnSink,
 													_TyGraphLink ** _ppglAdded )
 	{
-		_TyGraphLink *	pgl = m_gDfa.__STL_TEMPLATE create_link1
+		_TyGraphLink *	pgl = m_gDfa._STLP_TEMPLATE create_link1
       < _TyAlphaIndex const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
@@ -432,7 +442,7 @@ protected:
 
 };
 
-template < class t_TyChar, class t_TyAllocator = allocator< char > >
+template < class t_TyChar, class t_TyAllocator = allocator< t_TyChar > >
 class _dfa_context
 	: public _context_base< t_TyChar >
 {
@@ -453,7 +463,7 @@ public:
 	typedef less< _TySwapSS >														_TyCompareStates;
 	typedef map<	_TySwapSS, _TyAcceptAction, 
 								_TyCompareStates, t_TyAllocator >			_TyPartAcceptStates;
-	typedef hash_map< _TyState, _TyPartAcceptStates::value_type *,
+	typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
 										hash< _TyState >, equal_to< _TyState >,
 										t_TyAllocator >										_TyAcceptPartLookup;
 
@@ -485,7 +495,7 @@ public:
 
 	void	CreateAcceptingNodeSet()
 	{
-		m_pssAccept.__STL_TEMPLATE construct2< _TyState, const t_TyAllocator & >
+		m_pssAccept._STLP_TEMPLATE construct2< _TyState, const t_TyAllocator & >
 			( RDfa().NStates(), RDfa().get_allocator() );
 		m_pssAccept->clear();
 	}
@@ -499,7 +509,7 @@ public:
 	void
 	CreateAcceptPartLookup()
 	{
-		m_pPartLookup.__STL_TEMPLATE construct4< _TyAcceptPartLookup::size_type,
+		m_pPartLookup._STLP_TEMPLATE construct4< _TyAcceptPartLookup::size_type,
 															const _TyAcceptPartLookup::hasher &,
 															const _TyAcceptPartLookup::key_equal &,
 															const t_TyAllocator & >
@@ -539,10 +549,10 @@ public:
 		}
 	}
 
-	_TyPartAcceptStates::value_type *
+	typename _TyPartAcceptStates::value_type *
 	PVTGetAcceptPart( _TyState _iState )
 	{
-		_TyAcceptPartLookup::iterator it = m_pPartLookup->find( _iState );
+		typename _TyAcceptPartLookup::iterator it = m_pPartLookup->find( _iState );
 		return it == m_pPartLookup->end() ? 0 : ( it->second );
 	}
 
@@ -578,8 +588,7 @@ public:
 		// 4) Disconnect the child of (1) and destroy the subgraph at the parent.
 		// 5) search for more trailing contexts (1).
 
-		_TyDfa::_TyAlphaIndex	aiLimit = 
-			RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions;
+		_TyDfa::_TyAlphaIndex	aiLimit = (_TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
 
 		size_t	stRemoved = 0;
 
@@ -587,7 +596,7 @@ public:
 		ssFoundNodes.clear();
 
 		// If we have trigger transitions then they are first.
-		for ( int nState = 0; nState < RDfa().NStates(); ++nState )
+		for (_TyState nState = 0; nState < RDfa().NStates(); ++nState )
 		{
 			_TyGraphNode *	pgn = RDfa().PGNGetNode( nState );
 			if ( pgn )
@@ -724,11 +733,11 @@ public:
 			}
 		}
 		
-		int	iStartSpace = -1;
-		int	iStartNS = -1;
-		int	iProcessedEmpty = 0;
-		int	iEmptyNodes = 0;
-		int iState;
+		_TyState	iStartSpace = -1;
+		_TyState	iStartNS = -1;
+		_TyState	iProcessedEmpty = 0;
+		_TyState	iEmptyNodes = 0;
+		_TyState iState;
 		for ( iState = 0; iState < RDfa().NStates(); iState++ )
 		{
 			if ( RDfa().m_nodeLookup[ iState - iProcessedEmpty ] )

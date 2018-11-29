@@ -36,7 +36,7 @@ public:
 	static const _TyRangeEl	ms_kreTrigger;
 	static const _TyRangeEl	ms_kreUnsatisfiableStart;
 
-	typedef int	_TyState;
+	typedef ptrdiff_t	_TyState;
 
 	typedef _l_action_object_base< t_TyChar, true >									_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >												_TySdpActionBase;
@@ -48,12 +48,12 @@ public:
 	{
 	}
 
-	_TyState	NStates() const __STL_NOTHROW
+	_TyState	NStates() const _STLP_NOTHROW
 	{
 		return m_iCurState;
 	}
 
-	void			SetNumStates( int _iStates ) __STL_NOTHROW
+	void			SetNumStates(_TyState _iStates ) _STLP_NOTHROW
 	{
 		m_iCurState = _iStates;
 	}
@@ -124,7 +124,7 @@ public:
 
 // The most derived nfa_context will define these virtuals:
 	virtual void	Clone( _TyThis ** _pp ) const = 0;
-	virtual void	DestroyOther( _TyThis * _pThis ) __STL_NOTHROW = 0;
+	virtual void	DestroyOther( _TyThis * _pThis ) _STLP_NOTHROW = 0;
 	virtual void	Dump( ostream & _ros ) const = 0;
 
 	// NFA construction virtuals:

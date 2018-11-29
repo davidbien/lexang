@@ -6,7 +6,7 @@
 // Action objects.
 
 #include <set>
-class ostream;
+#include <iostream>
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -21,19 +21,6 @@ private:
 public:
 
 	typedef t_TyChar	_TyChar;
-
-	// We don't want any virtuals when in the DFA since we will be instantiating 
-	//	most derived objects in the eventual DFA - i.e. we don't need any eventually.
-	// We can have virtuals inside the LexGen since we don't care about performance as
-	//	much here - but for some things it still might be nice not to use virtuals -
-	//	like rendering to a stream - we can use member function pointers for these situations.
-
-	// Must have the ability to render itself to either a char or wchar_t stream:
-	typedef void ( _TyThis:: * _TyPMFnRenderChar )( ostream & _ros, const char * _pcCharName ) const;
-	_TyPMFnRenderChar m_pmfnRenderChar;
-
-	typedef void ( _TyThis:: * _TyPMFnRenderWideChar )( ostream & _ros, const wchar_t * _pcCharName ) const;
-	_TyPMFnRenderWideChar m_pmfnRenderWideChar;
 
 	// We have a static set of trigger action disambiguating objects.
 	typedef pair< _type_info_wrap, _type_info_wrap >		_TyPairTI;
@@ -52,13 +39,6 @@ static set<	pair< _type_info_wrap, _type_info_wrap >,
 	_l_action_object_base()
 	{
 	}
-
-	_l_action_object_base( _TyThis const & _r )
-		: m_pmfnRenderChar( _r.m_pmfnRenderChar ),
-			m_pmfnRenderWideChar( _r.m_pmfnRenderWideChar )
-	{
-	}
-
 	virtual ~_l_action_object_base()
 	{
 	}
@@ -118,17 +98,8 @@ static set<	pair< _type_info_wrap, _type_info_wrap >,
 		return false;
 	}
 
-	template < class t_TyCharRender >
-	void	CallRender( ostream & _ros, const char * t_TyCharRender ) const;
-
-	void	CallRender( ostream & _ros, const char * _pcCharName ) const
-	{
-		(this->*m_pmfnRenderChar)( _ros, _pcCharName );
-	}
-	void	CallRender( ostream & _ros, const wchar_t * _pcCharName ) const
-	{
-		(this->*m_pmfnRenderWideChar)( _ros, _pcCharName );
-	}
+	virtual void Render(ostream & _ros, const char * _pcCharName) const = 0;
+	virtual void RenderW(wostream & _ros, const wchar_t * _pcCharName) const = 0;
 };
 
 template < class t_TyChar, bool t_fInLexGen >
@@ -140,9 +111,10 @@ typename _l_action_object_base< t_TyChar, t_fInLexGen >::_TySetSameTriggers
 #ifdef __GNUC__
 _l_action_object_base< t_TyChar, t_fInLexGen >::m_setSameTriggers;
 #else __GNUC__
-_l_action_object_base< t_TyChar, t_fInLexGen >::m_setSameTriggers( 
-	typename _l_action_object_base< t_TyChar, t_fInLexGen >::_TyCompareTriggers(),
-	__L_DEFAULT_ALLOCATOR() );
+_l_action_object_base< t_TyChar, t_fInLexGen >::m_setSameTriggers;
+//( 
+//	typename _l_action_object_base< t_TyChar, t_fInLexGen >::_TyCompareTriggers(),
+//	__L_DEFAULT_ALLOCATOR() );
 #endif __GNUC__
 
 // When in the DFA the base class is trivial ( thus generating no virtuals ):
@@ -172,30 +144,14 @@ public:
 	{
 	}
 
-#ifndef __GNUC__
-
-#ifndef __GNUC__
-	template < class t_TyCharRender >
-	void	Render( ostream & _ros, const t_TyCharRender * _pcCharName ) const;
-#endif !__GNUC__
-	void	Render( ostream & _ros, const char * _pcCharName ) const
+	void Render(ostream & _ros, const char * _pcCharName) const
 	{
 		_ros << "_l_action_token< " << _pcCharName << ", " << t_iToken << ", false >";
 	}
-	void	Render( ostream & _ros, const wchar_t * _pcCharName ) const
+	void RenderW(wostream & _ros, const wchar_t * _pcCharName) const
 	{
 		_ros << L"_l_action_token< " << _pcCharName << L", " << t_iToken << L", false >";
 	}
-#else !__GNUC__
-	void	RenderChar( ostream & _ros, const char * _pcCharName ) const
-	{
-		_ros << "_l_action_token< " << _pcCharName << ", " << t_iToken << ", false >";
-	}
-	void	RenderWChar( ostream & _ros, const wchar_t * _pcCharName ) const
-	{
-		_ros << L"_l_action_token< " << _pcCharName << L", " << t_iToken << L", false >";
-	}
-#endif !__GNUC__
 
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
@@ -225,30 +181,14 @@ public:
 	{
 	}
 
-#ifndef __GNUC__
-#ifndef __GNUC__
-	template < class t_TyCharRender >
-	void	Render( ostream & _ros, const t_TyCharRender * _pcCharName ) const;
-#endif !__GNUC__
-
-	void	Render( ostream & _ros, const char * _pcCharName ) const
+	void Render(ostream & _ros, const char * _pcCharName) const
 	{
 		_ros << "_l_action_print< " << _pcCharName << ", " << t_iToken << ", false >";
 	}
-	void	Render( ostream & _ros, const wchar_t * _pcCharName ) const
+	void RenderW(wostream & _ros, const wchar_t * _pcCharName) const
 	{
 		_ros << L"_l_action_print< " << _pcCharName << L", " << t_iToken << L", false >";
 	}
-#else !__GNUC__
-	void	RenderChar( ostream & _ros, const char * _pcCharName ) const
-	{
-		_ros << "_l_action_print< " << _pcCharName << ", " << t_iToken << ", false >";
-	}
-	void	RenderWChar( ostream & _ros, const wchar_t * _pcCharName ) const
-	{
-		_ros << L"_l_action_print< " << _pcCharName << L", " << t_iToken << L", false >";
-	}
-#endif !__GNUC__
 
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >

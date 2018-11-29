@@ -182,7 +182,13 @@ public:
 
 		_TyGraphNodeDfa *	pgnCurDfa = m_rDfaCtxt.m_pgnStart;
 
-		typename _TyDfa::_TyAlphaIndex	aiStart = m_rDfa.m_setAlphabet.size()-1;
+		typedef _TyDfa::_TyAlphaIndex _TyAlphaIndex;
+#if 0 // <dbien>: can't get this to compile on VC14.
+		const _TyDfa::_TyAlphaIndex iaMax = numeric_limits< _TyAlphaIndex >::(max)();
+		if ( m_rDfa.m_setAlphabet.size() > iaMax )
+			throw alpha_index_overflow("_create(): Alphabet size overflowed maximum alphabet index (__TyDfa::_TyAlphaIndex).");
+#endif 0
+		typename _TyDfa::_TyAlphaIndex	aiStart = (_TyDfa::_TyAlphaIndex)(m_rDfa.m_setAlphabet.size()-1);
 		typename _TyAlphabetDfa::iterator itAlphaBegin = m_rDfa.m_setAlphabet.begin();
 		
 		while ( m_sCur != m_rDfa.NStates() )
@@ -294,7 +300,7 @@ public:
 		// If the dead state has any in transitions then we need to add out transitions:
 		if ( m_fCreateDeadState && pgnDead->FParents() )
 		{			
-			typename _TyDfa::_TyAlphaIndex	aiCur = m_rDfa.m_setAlphabet.size();
+			typename _TyDfa::_TyAlphaIndex	aiCur = (_TyDfa::_TyAlphaIndex)m_rDfa.m_setAlphabet.size();
 			aiCur -= m_rNfa.m_fHasTriggers + m_rNfa.m_nUnsatisfiableTransitions;
 
 			while (	aiCur )
@@ -306,15 +312,13 @@ public:
 						stUnsat++ < m_rNfa.m_nUnsatisfiableTransitions;
 					)
 			{
-				m_rDfa._NewTransition( pgnDead, 
-					m_rDfa.m_setAlphabet.size()-stUnsat, pgnDead, 0 );
+				m_rDfa._NewTransition( pgnDead, (_TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-stUnsat ), pgnDead, 0 );
 			}
 
 			if ( m_rNfa.m_fHasTriggers )
 			{
 				// First transition should be trigger transition:
-				m_rDfa._NewTransition( pgnDead, 
-					m_rDfa.m_setAlphabet.size()-1-m_rNfa.m_nUnsatisfiableTransitions, pgnDead, 0 );
+				m_rDfa._NewTransition( pgnDead, (_TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-1-m_rNfa.m_nUnsatisfiableTransitions ), pgnDead, 0 );
 			}
 		}
 
@@ -394,10 +398,10 @@ public:
 
 				// The first accepting or lookahead state found:
 				typename _TyNfa::_TySetAcceptStates::value_type * pvtFirstAccept = 0;
-				_TyActionIdent	aiActionMin = srAction.getclearfirstset();
+				_TyActionIdent	aiActionMin = (_TyActionIdent)srAction.getclearfirstset();
 				for ( _TyActionIdent aiAction = aiActionMin;
 							srAction.size() != aiAction;
-							aiAction = srAction.getclearfirstset( aiAction )
+							aiAction = (_TyActionIdent)srAction.getclearfirstset( aiAction )
 						)
 				{
 					assert( srAction.size() != aiAction );
@@ -465,7 +469,7 @@ public:
 					//	action - coalesce unique trigger actions at each state:
 					if ( fFoundTrigger )
 					{
-						_TyActionIdent aiFirst = srFoundTriggers.getfirstset();
+						_TyActionIdent aiFirst = (_TyActionIdent)srFoundTriggers.getfirstset();
 						bool	fMultiTrigger = false;
 						if ( srFoundTriggers.getnextset( aiFirst ) != srFoundTriggers.size() )
 						{
@@ -477,7 +481,7 @@ public:
 									*m_rNfa.m_pLookupActionID->find( aiFirst );
 									
 								for ( _TyActionIdent aiNext = aiFirst; 
-											srTriggers.size() != ( aiNext = srTriggers.getnextset( aiNext ) ); )
+											srTriggers.size() != ( aiNext = (_TyActionIdent)srTriggers.getnextset( aiNext ) ); )
 								{
 									if ( m_rNfa.m_pLookupActionID->
 												find( aiNext )->second->second.m_pSdpAction->GetBaseP()->FIsSameAs(
@@ -494,14 +498,14 @@ public:
 								}
 							}
 							while( srTriggers.size() != 
-											( aiFirst = srTriggers.getclearfirstset( aiFirst ) ) );
+											( aiFirst = (_TyActionIdent)srTriggers.getclearfirstset( aiFirst ) ) );
 						}
 						// Now if we coalesced a number of the same triggers into one trigger
 						//	and we have no associated (lookahead)/accepting states then we can 
 						//	just use the first state:
 						if ( !fFoundLookaheadAccept && !fMultiTrigger && !pvtFirstAccept )
 						{
-							_TyActionIdent aiMin = srFoundTriggers.getfirstset();
+							_TyActionIdent aiMin = (_TyActionIdent)srFoundTriggers.getfirstset();
 							typename _TyNfa::_TySetASByActionID::value_type & rvtMin = 
 								*m_rNfa.m_pLookupActionID->find( aiMin );
 							m_lDfaAccepting.push_front(
@@ -574,14 +578,14 @@ public:
 						//	triggers then allocate the respective objects:
 						if ( fFoundLookaheadAccept )
 						{
-							itAmbig->second.second.m_psrRelated.__STL_TEMPLATE construct2
+							itAmbig->second.second.m_psrRelated._STLP_TEMPLATE construct2
 								< typename _TyAcceptAction::_TySetActionIds::size_type,
 									typename _TyAcceptAction::_TySetActionIds::_TyAllocator const & >
 								( 0, srFoundLARelations.get_allocator() );
 						}
 						if ( fFoundTrigger )
 						{
-							itAmbig->second.second.m_psrTriggers.__STL_TEMPLATE construct2
+							itAmbig->second.second.m_psrTriggers._STLP_TEMPLATE construct2
 								< typename _TyAcceptAction::_TySetActionIds::size_type,
 									typename _TyAcceptAction::_TySetActionIds::_TyAllocator const & >
 								( 0, srFoundLARelations.get_allocator() );
@@ -804,7 +808,7 @@ public:
 		{
 			// Copy the trigger actions to a separate data structure - this ensures creation
 			//	even when ambiguity occurs:
-			m_rDfa.m_pMapTriggers.__STL_TEMPLATE construct2
+			m_rDfa.m_pMapTriggers._STLP_TEMPLATE construct2
 				< typename _TyDfa::_TyCompareAI const &, typename _TyDfa::_TyAllocator const & >
 				( typename _TyDfa::_TyCompareAI(), m_rDfa.get_allocator() );
 																	

@@ -5,7 +5,7 @@
 
 // Lexical analyzer generator.
 
-#include <fstream.h>
+#include <fstream>
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -58,7 +58,7 @@ struct _l_generator
 	typedef _l_gen_dfa< _TyDfa, t_TyCharOut >		_TyGenDfa;
 	typedef list< _TyGenDfa, _TyAllocator >			_TyDfaList;
 	_TyDfaList								m_lDfaGen;
-	_TyDfaList::value_type *	m_pvtDfaCur;
+	typename _TyDfaList::value_type *	m_pvtDfaCur;
 
 	_TyString			m_sfnHeader;			// The header file we are generating.
 	_TyString			m_sfnImp;					// The implementation file we are generating.
@@ -703,7 +703,7 @@ struct _l_generator
 						)
 				{
 					typename _TyDfa::_TyMapTriggers::iterator itTrigger = 
-						m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( stTrigger );
+						m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (_TyActionIdent)stTrigger );
 					
 					_PrintActionMFnP( _ros, **( itTrigger->second.m_pSdpAction ) );
 
@@ -754,7 +754,7 @@ struct _l_generator
 			typename _TyMapActions::value_type & rvt = *itMA;
 			if ( rvt.second.second )
 			{
-					rvt.first->CallRender( _rosImp, m_sCharTypeName.begin() );
+					rvt.first->Render( _rosImp, m_sCharTypeName.begin() );
 					_rosImp << "\t" << m_sBaseActionName << rvt.second.first << ";\n";
 					_rosImp << "bool\t_TyAnalyzer::Action" << rvt.second.first << "()\n";
 					_rosImp << "{\n";
