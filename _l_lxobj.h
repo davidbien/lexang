@@ -20,6 +20,8 @@
 
 #include "lexang/_l_axion.h"
 
+#define _STLP_ZERO_SIZE_ARRAYS // This isn't part of the current STLport but we still have it here.
+
 __LEXOBJ_BEGIN_NAMESPACE
 
 __REGEXP_USING_NAMESPACE
@@ -131,7 +133,7 @@ struct _l_state< t_TyChar, t_iTransitions, false, false, 0, t_iTriggers >
 	_l_transition< t_TyChar >		m_rgt[ t_iTransitions ];
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template <	class t_TyChar, int t_iTransitions >
 struct _l_state< t_TyChar, t_iTransitions, false, false, 0, 0 >
 {
@@ -145,7 +147,7 @@ struct _l_state< t_TyChar, t_iTransitions, false, false, 0, 0 >
 	unsigned short							m_usOffsetTriggers;
 	_l_transition< t_TyChar >		m_rgt[ t_iTransitions ];
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTransitions, int t_iTriggers >
 struct _l_state< t_TyChar, t_iTransitions, true, false, 0, t_iTriggers >
@@ -162,7 +164,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, false, 0, t_iTriggers >
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar, int t_iTransitions >
 struct _l_state< t_TyChar, t_iTransitions, true, false, 0, 0 >
 {
@@ -177,7 +179,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, false, 0, 0 >
 	_l_transition< t_TyChar >		m_rgt[ t_iTransitions ];
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTransitions, int t_iTriggers >
 struct _l_state< t_TyChar, t_iTransitions, true, true, 0, t_iTriggers >
@@ -195,7 +197,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, true, 0, t_iTriggers >
 	_TyActionIdent							m_aiLookahead;
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar, int t_iTransitions >
 struct _l_state< t_TyChar, t_iTransitions, true, true, 0, 0 >
 {
@@ -211,7 +213,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, true, 0, 0 >
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 	_TyActionIdent							m_aiLookahead;
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTransitions, int t_iLookaheadVectorEls, int t_iTriggers >
 struct _l_state< t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_iTriggers >
@@ -230,7 +232,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_
 	_TyLookaheadVector					m_rgValidLookahead[ t_iLookaheadVectorEls ];
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar, int t_iTransitions, int t_iLookaheadVectorEls >
 struct _l_state< t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0 >
 {
@@ -247,7 +249,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0 
 	_TyActionIdent							m_aiLookahead;
 	_TyLookaheadVector					m_rgValidLookahead[ t_iLookaheadVectorEls ];
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTriggers >
 struct _l_state< t_TyChar, 0, false, false, 0, t_iTriggers >
@@ -262,7 +264,7 @@ struct _l_state< t_TyChar, 0, false, false, 0, t_iTriggers >
 	unsigned short							m_usOffsetTriggers;
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar >
 struct _l_state< t_TyChar, 0, false, false, 0, 0 >
 {
@@ -275,7 +277,7 @@ struct _l_state< t_TyChar, 0, false, false, 0, 0 >
 	unsigned short							m_usOffsetAccept;
 	unsigned short							m_usOffsetTriggers;
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTriggers >
 struct _l_state< t_TyChar, 0, true, false, 0, t_iTriggers >
@@ -291,7 +293,7 @@ struct _l_state< t_TyChar, 0, true, false, 0, t_iTriggers >
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar >
 struct _l_state< t_TyChar, 0, true, false, 0, 0 >
 {
@@ -305,7 +307,7 @@ struct _l_state< t_TyChar, 0, true, false, 0, 0 >
 	unsigned short							m_usOffsetTriggers;
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTriggers >
 struct _l_state< t_TyChar, 0, true, true, 0, t_iTriggers >
@@ -322,7 +324,7 @@ struct _l_state< t_TyChar, 0, true, true, 0, t_iTriggers >
 	_TyActionIdent							m_aiLookahead;
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar >
 struct _l_state< t_TyChar, 0, true, true, 0, 0 >
 {
@@ -337,7 +339,7 @@ struct _l_state< t_TyChar, 0, true, true, 0, 0 >
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 	_TyActionIdent							m_aiLookahead;
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iLookaheadVectorEls, int t_iTriggers >
 struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers >
@@ -355,7 +357,7 @@ struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers >
 	_TyLookaheadVector					m_rgValidLookahead[ t_iLookaheadVectorEls ];
 	typename _TyAnalyzer::_TyPMFnAccept	m_rgpmfnTriggers[ t_iTriggers ];
 };
-#ifndef __STL_ZERO_SIZE_ARRAYS
+#ifndef _STLP_ZERO_SIZE_ARRAYS
 template < class t_TyChar, int t_iLookaheadVectorEls >
 struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0 >
 {
@@ -371,7 +373,7 @@ struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0 >
 	_TyActionIdent							m_aiLookahead;
 	_TyLookaheadVector					m_rgValidLookahead[ t_iLookaheadVectorEls ];
 };
-#endif !__STL_ZERO_SIZE_ARRAYS
+#endif !_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar >
 struct _l_compare_input_with_range 

@@ -8,7 +8,7 @@
 #include "bienutil/bienutil.h"
 
 // Choose namespace:
-#if !defined( __STL_USE_NAMESPACES ) && !defined( __REGEXP_USE_NAMESPACE )
+#if !defined( _STLP_USE_NAMESPACES ) && !defined( __REGEXP_USE_NAMESPACE )
 #define __REGEXP_GLOBALNAMESPACE
 #endif
 
@@ -28,11 +28,11 @@
 #endif __REGEXP_GLOBALNAMESPACE
 
 #if 0  // always put the regexp ops in a namespace
-#if !defined( __STL_USE_NAMESPACES ) && !defined( __REGEXP_OP_USE_NAMESPACE )
+#if !defined( _STLP_USE_NAMESPACES ) && !defined( __REGEXP_OP_USE_NAMESPACE )
 #error here
 //#error Can't put the regular expression operators in the global namespace.
-#endif !__STL_USE_NAMESPACES
-#endif 0
+#endif !_STLP_USE_NAMESPACES
+#endif //0
 
 #ifndef __REGEXP_OP_USE_NAMESPACE
 #define __REGEXP_OP_USE_NAMESPACE ns_re_op
@@ -42,7 +42,7 @@
 #define __REGEXP_OP_USING_NAMESPACE using namespace __REGEXP_OP_USE_NAMESPACE;
 #define __REGEXP_OP_NAMESPACE __REGEXP_OP_USE_NAMESPACE::
 
-#if !defined( __STL_USE_NAMESPACES ) && !defined( __LEXOBJ_USE_NAMESPACE )
+#if !defined( _STLP_USE_NAMESPACES ) && !defined( __LEXOBJ_USE_NAMESPACE )
 #define __REGEXP_GLOBALNAMESPACE
 #endif
 
