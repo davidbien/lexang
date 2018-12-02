@@ -441,8 +441,11 @@ struct _l_analyzer : public _l_an_lookaheadbase< t_TyChar, t_fSupportLookahead >
 {
 private:
 	typedef _l_an_lookaheadbase< t_TyChar, t_fSupportLookahead >	_TyBase;
-	typedef _l_analyzer<	t_TyChar, t_fSupportLookahead, 
-												t_fSupportTriggers >										_TyThis;
+	typedef _l_analyzer< t_TyChar, t_fSupportLookahead, t_fSupportTriggers > _TyThis;
+protected:
+	using _TyBase::m_pcLookaheadAccept;
+	using _TyBase::m_pspLookaheadAccept;
+	using _TyBase::m_pspLookahead;
 public:
 	typedef typename _TyBase::_TyStateProto         _TyStateProto;
 private:
@@ -592,7 +595,7 @@ public:
 				m_pcCur = m_pcLastAccept;
 
 				_TyPMFnAccept	pmfnAccept;
-				if ( pmfnAccept = m_pspLastAccept->PMFnGetAction() )
+				if ( !!( pmfnAccept = m_pspLastAccept->PMFnGetAction() ) )
 				{
 					m_pspLastAccept = 0;
 					if ( (this->*pmfnAccept)() )

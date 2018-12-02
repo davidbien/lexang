@@ -275,7 +275,7 @@ struct _l_generator
 			_ros << "__" << m_sPpBase << "_END_NAMESPACE\n";
 			_ros << "\n";
 		}
-		_ros << "#endif __" << m_sPpBase << "_H\n";
+		_ros << "#endif //__" << m_sPpBase << "_H\n";
 	}
 
 	void	_ImpHeader( ostream & _ros )

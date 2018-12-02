@@ -177,7 +177,7 @@ public:
 	typedef deque< _TyLexanGraphNodeBase *, t_TyAllocator >	_TyNodeLookup;
 
 	// Type for set of states:
-	typedef _simple_bitvec< unsigned long, t_TyAllocator >		_TySetStates;
+	typedef _simple_bitvec< unsigned int, t_TyAllocator >		_TySetStates;
 
 	// Type for state set cache:
 	typedef deque< _swap_object< _TySetStates >, t_TyAllocator >	_TySSCache;
