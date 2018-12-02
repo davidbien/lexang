@@ -370,11 +370,11 @@ public:
 
 #ifndef NDEBUG
 		pair< typename _TyPartition::iterator, bool >	pibDebug = 
-#endif !NDEBUG
+#endif //!NDEBUG
 		m_partition.insert( gcpPeInsert );
 #ifndef NDEBUG
 		assert( pibDebug.second );
-#endif !NDEBUG
+#endif //!NDEBUG
 	}
 
 	// Return true if created a new DFA.
@@ -765,4 +765,4 @@ protected:
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_DFOPT_H
+#endif //__L_DFOPT_H

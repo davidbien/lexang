@@ -108,6 +108,8 @@ private:
 public:
 
 	typedef _fa_base< t_TyChar >						_TyNfaBase;
+	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
+	typedef typename _TyBase::_TyRange _TyRange;
 
 	_nfa_context_base( _TyNfaBase & _rNfaBase )
 		: _TyBase( _rNfaBase )
@@ -146,4 +148,4 @@ public:
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_BASE_H__
+#endif //__L_BASE_H__

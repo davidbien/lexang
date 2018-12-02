@@ -7,7 +7,7 @@
 // This used for some function default arguments.
 #ifndef _L_REGEXP_DEFAULTCHAR
 #define _L_REGEXP_DEFAULTCHAR char
-#endif _L_REGEXP_DEFAULTCHAR
+#endif //_L_REGEXP_DEFAULTCHAR
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -19,13 +19,11 @@ class _regexp_base
 private:
 	typedef _regexp_base< t_TyChar >	_TyThis;
 public:
-
 	typedef t_TyChar	_TyChar;
 	typedef basic_ostream< t_TyChar, char_traits<t_TyChar> > _TyOstream;
 	typedef _nfa_context_base< t_TyChar >		_TyCtxtBase;
 	typedef typename _TyCtxtBase::_TyRange	_TyRange;
 	
-
 	_regexp_base()
 	{
 	}
@@ -105,9 +103,13 @@ template < class t_TyChar >
 class _regexp_empty : public _regexp_base< t_TyChar >
 {
 private:
-	typedef _regexp_base< t_TyChar >		_TyBase;
-	typedef _regexp_empty< t_TyChar >	_TyThis;
+	typedef _regexp_base< t_TyChar > _TyBase;
+	typedef _regexp_empty< t_TyChar > _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 
 	_regexp_empty()
 	{
@@ -116,13 +118,13 @@ public:
 	{
 	}  
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
 	{
 		// We call a helper function that knows how to construct an empty NFA:
 		_rNfaCtxt.CreateEmptyNFA();
 	}
 
-	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
+	bool	FIsLiteral() const _STLP_NOTHROW { return true; }
 	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
@@ -132,7 +134,8 @@ public:
 
 	virtual void	Dump( _TyOstream & _ros ) const
 	{
-		_ros << "{Ø}";
+		char rgc[4] = {'{', '0', '}', '\0'}; // clang didn't like this as a string: warning: illegal character encoding in string literal _ros << "{<D8>}";
+		_ros << rgc;
 	}
 };
 
@@ -152,7 +155,11 @@ class _regexp_literal : public _regexp_base< t_TyChar >
 private:
 	typedef _regexp_base< t_TyChar >		_TyBase;
 	typedef _regexp_literal< t_TyChar >	_TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 
 	t_TyChar	m_c;
 
@@ -197,7 +204,10 @@ class _regexp_litstr
 private:
 	typedef _regexp_base< t_TyChar >									_TyBase;
 	typedef _regexp_litstr< t_TyChar, t_TyAllocator >	_TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
 
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, t_TyAllocator > _TyString;
 	typedef typename _TyBase::_TyOstream _TyOstream;
@@ -229,11 +239,7 @@ public:
 
 	virtual void	Dump( _TyOstream & _ros ) const
 	{
-#ifndef __GNUC__ // This needs some work when we have wide chars:
 		_ros << "\"" << m_s << "\"";
-#else __GNUC__
-		_ros << "_regexp_litstr::Dump(): Need to make this work.\n";
-#endif __GNUC__
 	}
 };
 
@@ -258,7 +264,12 @@ class _regexp_litrange
 private:
 	typedef _regexp_base< t_TyChar >			_TyBase;
 	typedef _regexp_litrange< t_TyChar >	_TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
+	typedef typename _TyBase::_TyRange _TyRange;
 
 	_TyRange	m_r;
 
@@ -302,6 +313,8 @@ class _regexp_follows : public _regexp_base< typename t_TyRegExp1::_TyChar >
 private:
 	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
 	typedef _regexp_follows< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
 
 	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
@@ -368,6 +381,8 @@ class _regexp_or : public _regexp_base< typename t_TyRegExp1::_TyChar >
 private:
 	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
 	typedef _regexp_or< t_TyRegExp1, t_TyRegExp2 > _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
 
 	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
@@ -423,7 +438,7 @@ public:
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
 __INLINE _regexp_or< t_TyRegExp1, t_TyRegExp2 >
-or( t_TyRegExp1 const & _re1, t_TyRegExp2 const & _re2 )
+Or( t_TyRegExp1 const & _re1, t_TyRegExp2 const & _re2 )
 {
 	return _regexp_or< t_TyRegExp1, t_TyRegExp2 >( _re1, _re2 );
 }
@@ -434,6 +449,8 @@ class _regexp_zeroormore : public _regexp_base< typename t_TyRegExp::_TyChar >
 private:
 	typedef _regexp_base< typename t_TyRegExp::_TyChar > _TyBase;
 	typedef _regexp_zeroormore< t_TyRegExp > _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
 
 	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
@@ -493,7 +510,7 @@ __INLINE _regexp_or< t_TyRegExp, _regexp_empty< typename t_TyRegExp::_TyChar > >
 zeroorone( t_TyRegExp const & _re )
 {
 	typedef _regexp_empty< typename t_TyRegExp::_TyChar >	_TyEmpty;
-	return or( _re, _TyEmpty() );
+	return Or( _re, _TyEmpty() );
 }
 
 // excludes - excludes patterns in <t_TyRegExp2> explicitly from matching.
@@ -504,6 +521,8 @@ class _regexp_excludes : public _regexp_base< typename t_TyRegExp1::_TyChar >
 private:
 	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
 	typedef _regexp_excludes< t_TyRegExp1, t_TyRegExp2 > _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
 public:
 	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
 	typedef typename _TyBase::_TyOstream _TyOstream;
@@ -617,7 +636,7 @@ public:
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
-		_CloneHelper( this, _prbCopier, _pprbStorage );
+		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
 	virtual void	Dump( _TyOstream & _ros ) const
@@ -691,7 +710,7 @@ public:
 
 	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
-		_CloneHelper( this, _prbCopier, _pprbStorage );
+		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
 	void	Dump( _TyOstream & _ros ) const
@@ -722,6 +741,8 @@ private:
 	typedef _alloc_base< char, t_TyAllocator >				_TyAllocBase;
 public:
 
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
 
@@ -735,17 +756,17 @@ public:
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
 		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
-#ifndef __GNUC__ 
+#if 1 //ndef __GNUC__ 
 		(*m_pSdpAction)->m_pmfnRenderChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );
 		(*m_pSdpAction)->m_pmfnRenderWideChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::Render );
-#else !__GNUC__
+#else //!__GNUC__
 		(*m_pSdpAction)->m_pmfnRenderChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::RenderChar );
 		(*m_pSdpAction)->m_pmfnRenderWideChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::RenderWChar );
-#endif !__GNUC__
+#endif //!__GNUC__
 	}
 
 	// We always clone the action actions.
@@ -804,6 +825,10 @@ private:
 	typedef _alloc_base< char, t_TyAllocator >				_TyAllocBase;
 public:
 
+	using _TyAllocBase::get_allocator;
+
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
 
@@ -845,7 +870,7 @@ public:
 
 	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
-		_CloneHelper( this, _prbCopier, _pprbStorage );
+		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
 	void	Dump( _TyOstream & _ros ) const
@@ -874,6 +899,8 @@ private:
 	typedef _regexp_base< t_TyChar >					_TyBase;
 	typedef _regexp_unsatisfiable< t_TyChar >	_TyThis;
 public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	size_t m_nUnsatisfiable;
 
@@ -902,7 +929,7 @@ public:
 
 	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
-		_CloneHelper( this, _prbCopier, _pprbStorage );
+		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
 	void	Dump( _TyOstream & _ros ) const
@@ -930,7 +957,10 @@ private:
 	typedef _regexp_final< t_TyChar, t_TyAllocator >	_TyThis;
 	typedef _alloc_base< char, t_TyAllocator >				_TyAllocBase;
 public:
+	using _TyAllocBase::get_allocator;
 
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
 
@@ -1039,7 +1069,7 @@ protected:
 	{
 		// We will clone this - since we know ( cuz were in this method ) that
 		//	this final is not at the top level - use the partial copy:
-		_CloneHelper( this, _prbCopier, _pprbStorage, __false_type() );
+		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage, __false_type() );
 	}
 
 // Allocation virtuals:
@@ -1061,8 +1091,8 @@ protected:
 	{
 		// The rule directly inside <_pAdd> has been added -
 		//	add each rule in the list inside <_pAdd> recursively:
-		_TyFinalList::const_iterator it = _pAdd->m_lAlternatives.begin();
-		_TyFinalList::const_iterator itEnd = _pAdd->m_lAlternatives.end();
+		typename _TyFinalList::const_iterator it = _pAdd->m_lAlternatives.begin();
+		typename _TyFinalList::const_iterator itEnd = _pAdd->m_lAlternatives.end();
 		for ( ; it != itEnd; ++it )
 		{
 			{ // SCOPE
@@ -1147,4 +1177,4 @@ operator / ( t_TyRegExp1 const & _re1, t_TyRegExp2 const & _re2 )
 
 __REGEXP_OP_END_NAMESPACE
 
-#endif __L_RGEXP_H
+#endif //__L_RGEXP_H

@@ -34,7 +34,14 @@ class _dfa : public _fa_alloc_base< t_TyChar, t_TyAllocator >
 private:
 	typedef _fa_alloc_base< t_TyChar, t_TyAllocator >		_TyBase;
 	typedef _dfa< t_TyChar, t_TyAllocator >							_TyThis;
+protected:
+	using _TyBase::m_iCurState;
+	using _TyBase::m_setAlphabet;
+	using _TyBase::_UpdateNodeLookup;
 public:
+	using _TyBase::m_nodeLookup;
+	using _TyBase::get_allocator;
+	using _TyBase::NStates;
 
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
@@ -42,39 +49,47 @@ public:
 	template < class t_TyDfa, bool f_tPartDeadImmed >
 	friend struct _optimize_dfa;
 	friend class _dfa_context< t_TyChar, t_TyAllocator >;
+	
+	typedef t_TyAllocator _TyAllocator;
 
+	typedef size_t size_type;
 	typedef _dfa_context< t_TyChar, t_TyAllocator >	_TyDfaCtxt;
-	typedef _TyDfaCtxt															_TyContext;
+	typedef _TyDfaCtxt _TyContext;
+	typedef typename _TyBase::_TyState _TyState;
+	typedef typename _TyBase::_TyRange _TyRange;
+	typedef typename _TyBase::_TyRangeEl _TyRangeEl;
+	typedef typename _TyBase::_TyAcceptAction _TyAcceptAction;
+	typedef typename _TyBase::_TyNodeLookup _TyNodeLookup;
+	typedef typename _TyBase::_TyAlphabet _TyAlphabet;
 
 	typedef int	_TyAlphaIndex;	// We use an index into a range lookup table as the link element.
 															// If the index is negative then it is an index into the CCRIndex.
 
-	typedef __DGRAPH_NAMESPACE dgraph<  _TyState, _TyAlphaIndex, 
-                                      false, t_TyAllocator >		_TyGraph;
-	typedef typename _TyGraph::_TyGraphNode														_TyGraphNode;
-	typedef typename _TyGraph::_TyGraphLink														_TyGraphLink;
-	_TyGraph			m_gDfa;
+	typedef __DGRAPH_NAMESPACE dgraph< _TyState, _TyAlphaIndex, false, t_TyAllocator > _TyGraph;
+	typedef typename _TyGraph::_TyGraphNode _TyGraphNode;
+	typedef typename _TyGraph::_TyGraphLink _TyGraphLink;
+	_TyGraph m_gDfa;
 
-	bool					m_fHasDeadState;
+	bool m_fHasDeadState;
 
 	// Char range lookup stuff:
 	_sdpn< _TyRange, t_TyAllocator > m_rgrngLookup;
 
 	// Compressed character range map - we allow multiple entries that compare equal -
 	//	we check before inserting a new entry that it is not present in the equal range:
-	typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, t_TyAllocator >	_TySetCompCharRange;
-	typedef deque< typename _TySetCompCharRange::iterator, t_TyAllocator >				_TyDequeCCRIndex;
+	typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, t_TyAllocator > _TySetCompCharRange;
+	typedef deque< typename _TySetCompCharRange::iterator, t_TyAllocator > _TyDequeCCRIndex;
 	
 	_sdpd< _TySetCompCharRange, t_TyAllocator >	m_pSetCompCharRange;
-	_sdpd< _TyDequeCCRIndex, t_TyAllocator >		m_pCCRIndex;
+	_sdpd< _TyDequeCCRIndex, t_TyAllocator > m_pCCRIndex;
 
-	bool																				m_fHasLookaheads;	// any lookaheads in the rules ?
-	bool																				m_fHasTriggers;		// triggers ?
-	size_t																			m_nUnsatisfiableTransitions; // # of unsatisfiable.
-	_TyActionIdent															m_iMaxActions;
+	bool m_fHasLookaheads;	// any lookaheads in the rules ?
+	bool m_fHasTriggers;		// triggers ?
+	size_type m_nUnsatisfiableTransitions; // # of unsatisfiable.
+	_TyActionIdent m_iMaxActions;
 
 	// Triggers - we need an extra copy since ambiguity may have occurred:
-	typedef less< _TyActionIdent >	_TyCompareAI;
+	typedef less< _TyActionIdent > _TyCompareAI;
 	typedef map< _TyActionIdent, _TyAcceptAction, _TyCompareAI, t_TyAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
 
@@ -96,7 +111,7 @@ public:
   ~_dfa()
   {
   }
-#endif _DEBUG
+#endif //_DEBUG
 
 	size_type	AlphabetSize() const	{ return m_setAlphabet.size(); }
 
@@ -130,9 +145,9 @@ public:
 		_TyAlphaIndex	aiLimit = (_TyAlphaIndex)( stAlphabet - 1 -
 			( m_fHasTriggers + m_nUnsatisfiableTransitions ) );
 
-    _TyGraph::_TyLinkPosIterNonConst	lpi;
-		_TyNodeLookup::iterator itnlEnd = m_nodeLookup.end();
-		_TyNodeLookup::iterator itnlCur = m_nodeLookup.begin();
+		typename _TyGraph::_TyLinkPosIterNonConst lpi;
+		typename _TyNodeLookup::iterator itnlEnd = m_nodeLookup.end();
+		typename _TyNodeLookup::iterator itnlCur = m_nodeLookup.begin();
 		for ( ; itnlCur != itnlEnd; ++itnlCur )
 		{
 			_TyGraphNode *	pgn = static_cast< _TyGraphNode * >( *itnlCur );
@@ -186,10 +201,10 @@ public:
 		assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
 		if ( !m_pSetCompCharRange )
 		{
-			m_pSetCompCharRange._STLP_TEMPLATE construct2< _TySetCompCharRange::key_compare const &,
-																			t_TyAllocator const & >
-																		( _TySetCompCharRange::key_compare(),
-																			get_allocator() );
+			m_pSetCompCharRange._STLP_TEMPLATE construct2< typename _TySetCompCharRange::key_compare const &,
+															t_TyAllocator const & >
+														( typename _TySetCompCharRange::key_compare(),
+															get_allocator() );
 			m_pCCRIndex._STLP_TEMPLATE construct1< t_TyAllocator const & >( get_allocator() );
 
 			_CreateRangeLookup();	// Create if not already.
@@ -197,7 +212,7 @@ public:
 			// The transitions are sorted - so compression is relatively easy:
 			for ( _TyState sCur = 0; sCur < NStates(); ++sCur )
 			{
-				_TyGraph::_TyLinkPosIterNonConst	lpi( PGNGetNode( sCur )->PPGLChildHead() );
+				typename _TyGraph::_TyLinkPosIterNonConst lpi( PGNGetNode( sCur )->PPGLChildHead() );
 
 				for ( ; !lpi.FIsLast(); )
 				{
@@ -223,15 +238,15 @@ public:
 					if ( r != m_rgrngLookup[ pgl->RElConst() ] )
 					{
 						// Then a unique range - see if we already have it:
-						pair< _TySetCompCharRange::iterator, _TySetCompCharRange::iterator >
+						pair< typename _TySetCompCharRange::iterator, typename _TySetCompCharRange::iterator >
 							pit = m_pSetCompCharRange->equal_range( r );
-						_TySetCompCharRange::iterator	itFound;
+						typename _TySetCompCharRange::iterator itFound;
 						if ( ( itFound = find_if( pit.first, pit.second, 
 										unary1st( bind2nd( equal_to< _TyRange >(), r ), 
-															_TySetCompCharRange::value_type() ) ) ) == pit.second )
+															typename _TySetCompCharRange::value_type() ) ) ) == pit.second )
 						{
 							// Then a new range:
-							_TySetCompCharRange::value_type	vt( r, (_TyAlphaIndex)m_pCCRIndex->size() );
+							typename _TySetCompCharRange::value_type	vt( r, (_TyAlphaIndex)m_pCCRIndex->size() );
 							itFound = m_pSetCompCharRange->insert( vt );
 							m_pCCRIndex->push_back( itFound );
 						}
@@ -249,7 +264,7 @@ public:
 		{
 			m_rgrngLookup.allocate( m_setAlphabet.size() );
 			_TyRange *	prngLookup = m_rgrngLookup.begin();
-			for ( _TyAlphabet::iterator itAlpha = m_setAlphabet.begin();
+			for ( typename _TyAlphabet::iterator itAlpha = m_setAlphabet.begin();
 						itAlpha != m_setAlphabet.end(); ++itAlpha, ++prngLookup )
 			{
 				*prngLookup = *itAlpha;
@@ -386,10 +401,10 @@ protected:
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
 			endLink( &m_gDfa, &_TyGraph::destroy_link, pgl );
-#else __DGRAPH_INSTANCED_ALLOCATORS
+#else //__DGRAPH_INSTANCED_ALLOCATORS
     CFDtor1_void< _TyGraphLink * >
 			endLink( &_TyGraph::destroy_link, pgl );
-#endif __DGRAPH_INSTANCED_ALLOCATORS
+#endif //__DGRAPH_INSTANCED_ALLOCATORS
 
     *_ppgnAccept = m_gDfa.create_node1( m_iCurState );
 		CMFDtor1_void< _TyGraph, _TyGraphNode * >
@@ -423,10 +438,10 @@ protected:
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
 			endLink( &m_gDfa, &_TyGraph::destroy_link, pgl );
-#else __DGRAPH_INSTANCED_ALLOCATORS
+#else //__DGRAPH_INSTANCED_ALLOCATORS
     CFDtor1_void< _TyGraphLink * >
 			endLink( &_TyGraph::destroy_link, pgl );
-#endif __DGRAPH_INSTANCED_ALLOCATORS
+#endif //__DGRAPH_INSTANCED_ALLOCATORS
 
 		_pgnSrc->AddChild(	*_pgnSink, *pgl, 
 												*(_pgnSrc->PPGLBChildHead()),
@@ -447,29 +462,30 @@ class _dfa_context
 	: public _context_base< t_TyChar >
 {
 private:
-	typedef _context_base< t_TyChar >								_TyBase;
-	typedef _dfa_context< t_TyChar, t_TyAllocator >	_TyThis;
-	typedef typename _Alloc_traits< _TyThis, t_TyAllocator >::allocator_type	_TyAllocThis;
+	typedef _context_base< t_TyChar > _TyBase;
+	typedef _dfa_context< t_TyChar, t_TyAllocator > _TyThis;
+	typedef typename _Alloc_traits< _TyThis, t_TyAllocator >::allocator_type _TyAllocThis;
 public:
+	using _TyBase::m_rFaBase;
 
-	typedef typename t_TyAllocator::size_type						size_type;
-	typedef _dfa< t_TyChar, t_TyAllocator >							_TyDfa;
-	typedef typename _TyDfa::_TyGraph										_TyGraph;
-	typedef typename _TyDfa::_TyGraphNode								_TyGraphNode;
-	typedef typename _TyDfa::_TyGraphLink								_TyGraphLink;
-	typedef typename _TyDfa::_TySetStates								_TySetStates;
-	typedef typename _TyDfa::_TyAcceptAction						_TyAcceptAction;
-	typedef _swap_object< _TySetStates >								_TySwapSS;
-	typedef less< _TySwapSS >														_TyCompareStates;
-	typedef map<	_TySwapSS, _TyAcceptAction, 
-								_TyCompareStates, t_TyAllocator >			_TyPartAcceptStates;
+	typedef typename t_TyAllocator::size_type size_type;
+	typedef typename _TyBase::_TyState _TyState;
+	typedef _dfa< t_TyChar, t_TyAllocator > _TyDfa;
+	typedef typename _TyDfa::_TyGraph _TyGraph;
+	typedef typename _TyDfa::_TyGraphNode _TyGraphNode;
+	typedef typename _TyDfa::_TyGraphLink _TyGraphLink;
+	typedef typename _TyDfa::_TySetStates _TySetStates;
+	typedef typename _TyDfa::_TyAcceptAction _TyAcceptAction;
+	typedef _swap_object< _TySetStates > _TySwapSS;
+	typedef less< _TySwapSS > _TyCompareStates;
+	typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TyPartAcceptStates;
 	typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
 										hash< _TyState >, equal_to< _TyState >,
-										t_TyAllocator >										_TyAcceptPartLookup;
+										t_TyAllocator > _TyAcceptPartLookup;
 
-	_TyGraphNode *															m_pgnStart;
-	_sdpd< _TySetStates, t_TyAllocator >				m_pssAccept;
-	_TyPartAcceptStates													m_partAccept;		// Accepting state partition.
+	_TyGraphNode * m_pgnStart;
+	_sdpd< _TySetStates, t_TyAllocator > m_pssAccept;
+	_TyPartAcceptStates m_partAccept;		// Accepting state partition.
 	_sdpd< _TyAcceptPartLookup, t_TyAllocator >	m_pPartLookup;	// Accepting state partition lookup by state.
 
 	_dfa_context( _TyDfa & _rDfa )
@@ -490,7 +506,7 @@ public:
 		}
 	}
 
-	_TyDfa & RDfa()							{ return static_cast< _TyDfa & >( m_rFaBase ); }
+	_TyDfa & RDfa() { return static_cast< _TyDfa & >( m_rFaBase ); }
 	_TyDfa const & RDfa() const { return static_cast< const _TyDfa & >( m_rFaBase ); }
 
 	void	CreateAcceptingNodeSet()
@@ -509,27 +525,27 @@ public:
 	void
 	CreateAcceptPartLookup()
 	{
-		m_pPartLookup._STLP_TEMPLATE construct4< _TyAcceptPartLookup::size_type,
-															const _TyAcceptPartLookup::hasher &,
-															const _TyAcceptPartLookup::key_equal &,
+		m_pPartLookup._STLP_TEMPLATE construct4< typename _TyAcceptPartLookup::size_type,
+															const typename _TyAcceptPartLookup::hasher &,
+															const typename _TyAcceptPartLookup::key_equal &,
 															const t_TyAllocator & >
 															( m_pssAccept->countsetbits() * 2,
-															_TyAcceptPartLookup::hasher(),
-															_TyAcceptPartLookup::key_equal(),
+															typename _TyAcceptPartLookup::hasher(),
+															typename _TyAcceptPartLookup::key_equal(),
 															RDfa().get_allocator() );
 
 		// Get the accepting states from the NFA:
 		_TySetStates * pssUtil;
-		CMFDtor1_void< _TyDfa, _TyDfa::_TySSCache::iterator const &, _TyDfa::_TySSCache::iterator >
+		CMFDtor1_void< _TyDfa, typename _TyDfa::_TySSCache::iterator const &, typename _TyDfa::_TySSCache::iterator >
 			releaseUtil(	&RDfa(), &_TyDfa::_ReleaseSSCache, 
 										RDfa()._GetSSCache( pssUtil ) );
 
 		// We will create a lookup of all the accepting states to their associated partition.
-		_TyPartAcceptStates::iterator	itPAEnd = m_partAccept.end();
-		for ( _TyPartAcceptStates::iterator itPA = m_partAccept.begin();
+		typename _TyPartAcceptStates::iterator	itPAEnd = m_partAccept.end();
+		for ( typename _TyPartAcceptStates::iterator itPA = m_partAccept.begin();
 					itPA != itPAEnd; ++itPA )
 		{
-			_TyPartAcceptStates::value_type &	rvtPA = *itPA;
+			typename _TyPartAcceptStates::value_type &	rvtPA = *itPA;
 
 			*pssUtil = rvtPA.first;
 
@@ -537,14 +553,14 @@ public:
 						pssUtil->size() != stAccept;
 						stAccept = pssUtil->getclearfirstset( stAccept ) )
 			{
-				_TyAcceptPartLookup::value_type	vt( stAccept, &rvtPA );
+				typename _TyAcceptPartLookup::value_type	vt( stAccept, &rvtPA );
 #ifndef NDEBUG
-				pair< _TyAcceptPartLookup::iterator, bool >	pib = 
-#endif !NDEBUG
+				pair< typename _TyAcceptPartLookup::iterator, bool >	pib = 
+#endif //!NDEBUG
 				m_pPartLookup->insert( vt );
 #ifndef NDEBUG
 				assert( pib.second );
-#endif !NDEBUG
+#endif //!NDEBUG
 			}
 		}
 	}
@@ -588,11 +604,11 @@ public:
 		// 4) Disconnect the child of (1) and destroy the subgraph at the parent.
 		// 5) search for more trailing contexts (1).
 
-		_TyDfa::_TyAlphaIndex	aiLimit = (_TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
+		typename _TyDfa::_TyAlphaIndex	aiLimit = (typename _TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
 
 		size_t	stRemoved = 0;
 
-		_TySetStates	ssFoundNodes( RDfa().NStates(), RDfa().get_allocator() );
+		_TySetStates ssFoundNodes( RDfa().NStates(), RDfa().get_allocator() );
 		ssFoundNodes.clear();
 
 		// If we have trigger transitions then they are first.
@@ -712,31 +728,27 @@ public:
 
 		// Create a map from a pointer to an accept partition element to
 		//	the new parition for that accept state:
-		typedef map<	_TyPartAcceptStates::value_type *, _TySwapSS, 
-									less< _TyPartAcceptStates::value_type * >,
-									t_TyAllocator >	_TyMapToNewAccept;
-		_TyMapToNewAccept	mapToNewAccept
-#ifndef __GNUC__
-		( less< typename _TyPartAcceptStates::value_type * >(), RDfa().get_allocator() )
-#endif __GNUC__
-		;
+		typedef map<	typename _TyPartAcceptStates::value_type *, _TySwapSS, 
+						less< typename _TyPartAcceptStates::value_type * >,
+						t_TyAllocator >	_TyMapToNewAccept;
+		_TyMapToNewAccept mapToNewAccept( less< typename _TyPartAcceptStates::value_type * >(), RDfa().get_allocator() );
 
 		// Move through and create the initial ( empty ) state sets:
 		{ // SCOPE
-			_TyPartAcceptStates::iterator	itPartEnd = m_partAccept.end();
-			for ( _TyPartAcceptStates::iterator	it = m_partAccept.begin();
+			typename _TyPartAcceptStates::iterator	itPartEnd = m_partAccept.end();
+			for ( typename _TyPartAcceptStates::iterator	it = m_partAccept.begin();
 						it != itPartEnd; ++it )
 			{
-				_TyMapToNewAccept::value_type	vt( &(*it), _TySetStates( stNewStates, RDfa().get_allocator() ) );
+				typename _TyMapToNewAccept::value_type	vt( &(*it), _TySetStates( stNewStates, RDfa().get_allocator() ) );
 				vt.second.RObject().clear();
 				mapToNewAccept.insert( vt );
 			}
 		}
 		
-		_TyState	iStartSpace = -1;
-		_TyState	iStartNS = -1;
-		_TyState	iProcessedEmpty = 0;
-		_TyState	iEmptyNodes = 0;
+		_TyState iStartSpace = -1;
+		_TyState iStartNS = -1;
+		_TyState iProcessedEmpty = 0;
+		_TyState iEmptyNodes = 0;
 		_TyState iState;
 		for ( iState = 0; iState < RDfa().NStates(); iState++ )
 		{
@@ -751,7 +763,7 @@ public:
 					ssNewAccept.setbit( iState - iEmptyNodes );
 
 					// Set the state in the appropriate accept partition:
-					_TyMapToNewAccept::iterator itPart = mapToNewAccept.find( 
+					typename _TyMapToNewAccept::iterator itPart = mapToNewAccept.find( 
 																									PVTGetAcceptPart( iState ) );
 					assert( mapToNewAccept.end() != itPart );
 					itPart->second.RObject().setbit( iState - iEmptyNodes );
@@ -801,19 +813,15 @@ public:
 		DeallocAcceptPartLookup();
 
 		// Create the accept state partition from the old and then swap in:
-		_TyPartAcceptStates	partAcceptNew
-#ifndef __GNUC__
-		( _TyCompareStates(), RDfa().get_allocator() )
-#endif !__GNUC__
-		;
+		_TyPartAcceptStates	partAcceptNew( _TyCompareStates(), RDfa().get_allocator() );
 
-		_TyMapToNewAccept::iterator itMapEnd = mapToNewAccept.end();
-		for ( _TyMapToNewAccept::iterator	itMap = mapToNewAccept.begin();
+		typename _TyMapToNewAccept::iterator itMapEnd = mapToNewAccept.end();
+		for ( typename _TyMapToNewAccept::iterator	itMap = mapToNewAccept.begin();
 					itMap != itMapEnd; ++itMap )
 		{
 			// Swap the bitvector in from <mapToNewAccept>:
-			_TyPartAcceptStates::value_type	vt( itMap->second, itMap->first->second );
-			pair< _TyPartAcceptStates::iterator, bool >	pibInsert = partAcceptNew.insert( vt );
+			typename _TyPartAcceptStates::value_type	vt( itMap->second, itMap->first->second );
+			pair< typename _TyPartAcceptStates::iterator, bool >	pibInsert = partAcceptNew.insert( vt );
 			assert( pibInsert.second );
 		}
 
@@ -838,51 +846,46 @@ public:
 	void	CompressTriggerAcceptPartitions()
 	{
 		typedef map<	_ref< const _TyAcceptAction >,
-									pair< _TyPartAcceptStates::iterator, _TySwapSS >,
+									pair< typename _TyPartAcceptStates::iterator, _TySwapSS >,
 									less< _ref< const _TyAcceptAction > >,
 									t_TyAllocator >	_TySetTriggerParts;
 
-		_TySetTriggerParts	setTriggerParts
-#ifndef __GNUC__
-		(	_TySetTriggerParts::key_compare(), RDfa().get_allocator() )
-#endif  !__GNUC__
-		;
+		_TySetTriggerParts	setTriggerParts( typename _TySetTriggerParts::key_compare(), RDfa().get_allocator() );
 
-		_TyPartAcceptStates::iterator	itPartEnd = m_partAccept.end();
-		_TyPartAcceptStates::iterator	itPart = m_partAccept.begin();
+		typename _TyPartAcceptStates::iterator	itPartEnd = m_partAccept.end();
+		typename _TyPartAcceptStates::iterator	itPart = m_partAccept.begin();
 		while ( itPartEnd != itPart )
 		{
-			_TyPartAcceptStates::value_type & rvtPart = *itPart;
+			typename _TyPartAcceptStates::value_type & rvtPart = *itPart;
 
 			// Only compress single trigger actions:
 			if (	( e_aatTrigger == rvtPart.second.m_eaatType ) &&
 						!rvtPart.second.m_psrTriggers )
 			{
-				_TySetTriggerParts::iterator	itSTP;
+				typename _TySetTriggerParts::iterator	itSTP;
 				if ( setTriggerParts.end() == ( itSTP = setTriggerParts.find( rvtPart.second ) ) )
 				{
-					setTriggerParts.insert( _TySetTriggerParts::value_type( rvtPart.second,
-																	_TySetTriggerParts::mapped_type( 
-																		itPart, _TySetStates( 0, RDfa().get_allocator() ) ) ) );
+					setTriggerParts.insert( typename _TySetTriggerParts::value_type( rvtPart.second,
+											typename _TySetTriggerParts::mapped_type( itPart, _TySetStates( 0, RDfa().get_allocator() ) ) ) );
 					++itPart;
 				}
 				else
 				{
 					// Already have this trigger action - update the set of states with that from
 					//	this iterator - then remove this record.
-					_TySetTriggerParts::value_type & rvtSTP = *itSTP;
+					typename _TySetTriggerParts::value_type & rvtSTP = *itSTP;
 					if ( rvtSTP.second.second.RObject().size() )
 					{
 						rvtSTP.second.second.RObject() |= rvtPart.first.RObject();
 					}
 					else
 					{
-						_TyPartAcceptStates::value_type & rvtFirst = *rvtSTP.second.first;
-						_TySetStates	ssCopyFirst( rvtFirst.first.RObject() );
+						typename _TyPartAcceptStates::value_type & rvtFirst = *rvtSTP.second.first;
+						_TySetStates ssCopyFirst( rvtFirst.first.RObject() );
 						ssCopyFirst |= rvtPart.first.RObject();
 						rvtSTP.second.second.RObject().swap( ssCopyFirst );
 					}
-					_TyPartAcceptStates::iterator	itErase = itPart++;
+					typename _TyPartAcceptStates::iterator itErase = itPart++;
 					m_partAccept.erase( itErase );
 				}
 			}
@@ -893,19 +896,21 @@ public:
 		}
 
 		// Now move through the compressed states updating:
-		_TySetTriggerParts::iterator	itSTPEnd = setTriggerParts.end();
-		_TySetTriggerParts::iterator	itSTP = setTriggerParts.begin();
+		typename _TySetTriggerParts::iterator	itSTPEnd = setTriggerParts.end();
+		typename _TySetTriggerParts::iterator	itSTP = setTriggerParts.begin();
 		for ( ; itSTPEnd != itSTP; ++itSTP )
 		{
-			_TySetTriggerParts::value_type & rvtSTP = *itSTP;
+			typename _TySetTriggerParts::value_type & rvtSTP = *itSTP;
 			// If we compressed the trigger then update:
 			if ( rvtSTP.second.second.RObject().size() )
 			{
-				_TyPartAcceptStates::value_type vtCopy( *rvtSTP.second.first );
+				typename _TyPartAcceptStates::value_type vtCopy( *rvtSTP.second.first );
 				m_partAccept.erase( rvtSTP.second.first );
 				const_cast< _TySetStates& >( vtCopy.first.RObject() ).
 						swap( rvtSTP.second.second.RObject() );
-				__DEBUG_COMMA_2( pair< _TyPartAcceptStates::iterator, bool > pib = )
+#ifndef NDEBUG
+				pair< typename _TyPartAcceptStates::iterator, bool > pib =
+#endif //!NDEBUG
 				m_partAccept.insert( vtCopy );
 				assert( pib.second );
 			}
@@ -917,4 +922,4 @@ public:
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_DFA_H
+#endif //__L_DFA_H

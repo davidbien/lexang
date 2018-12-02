@@ -60,10 +60,10 @@ struct _l_char_type_map< wchar_t >
 #if 0 // These are defined incorrectly/differently under gcc, use USHRT_MAX
   static const wchar_t ms_kcMin = WCHAR_MIN;
   static const wchar_t ms_kcMax = WCHAR_MAX;
-#else 0
+#else //0
   static const wchar_t ms_kcMin = 0;
   static const wchar_t ms_kcMax = USHRT_MAX;
-#endif 0
+#endif //0
 
   static const _TyLarger ms_kucTrigger = USHRT_MAX + 1;
   static const _TyLarger ms_kucUnsatisfiableStart = USHRT_MAX + 2;
@@ -106,9 +106,9 @@ struct _l_char_type_map< unsigned int >
 #if 0 // This needs to be worked on - could just use a ulong - only need 3 non-characters
   static const _TyLarger ms_kucTrigger = UINT_MAX - 2;
   static const _TyLarger ms_kucUnsatisfiableStart = UINT_MAX - 1;
-#endif 0
+#endif //0
 };
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_CHRTR_H__
+#endif //__L_CHRTR_H__

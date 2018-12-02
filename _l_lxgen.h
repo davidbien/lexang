@@ -768,4 +768,4 @@ struct _l_generator
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_LXGEN_H
+#endif //__L_LXGEN_H

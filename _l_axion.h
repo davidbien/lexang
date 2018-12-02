@@ -27,14 +27,14 @@ public:
   typedef less< _TyPairTI > _TyCompareTriggers;
 	typedef set<	_TyPairTI, _TyCompareTriggers, 
                 __L_DEFAULT_ALLOCATOR >		_TySetSameTriggers;
-#ifdef __GNUC__
+#if 0//def __GNUC__
 // GNU gets confused about the enclosed namespace, so just reference the types explicitly.
 static set<	pair< _type_info_wrap, _type_info_wrap >, 
             less< pair< _type_info_wrap, _type_info_wrap > >, 
             __L_DEFAULT_ALLOCATOR >     m_setSameTriggers;
-#else __GNUC__
+#else //__GNUC__
 	static _TySetSameTriggers	m_setSameTriggers;
-#endif __GNUC__
+#endif //__GNUC__
 
 	_l_action_object_base()
 	{
@@ -103,19 +103,19 @@ static set<	pair< _type_info_wrap, _type_info_wrap >,
 };
 
 template < class t_TyChar, bool t_fInLexGen >
-#ifdef __GNUC__
+#if 0//def __GNUC__
 set<	pair< _type_info_wrap, _type_info_wrap >, less< pair< _type_info_wrap, _type_info_wrap > >, __L_DEFAULT_ALLOCATOR >
-#else __GNUC__
+#else //__GNUC__
 typename _l_action_object_base< t_TyChar, t_fInLexGen >::_TySetSameTriggers
-#endif __GNUC__
-#ifdef __GNUC__
+#endif //__GNUC__
+#if 0 //def __GNUC__
 _l_action_object_base< t_TyChar, t_fInLexGen >::m_setSameTriggers;
-#else __GNUC__
+#else //__GNUC__
 _l_action_object_base< t_TyChar, t_fInLexGen >::m_setSameTriggers;
 //( 
 //	typename _l_action_object_base< t_TyChar, t_fInLexGen >::_TyCompareTriggers(),
 //	__L_DEFAULT_ALLOCATOR() );
-#endif __GNUC__
+#endif //__GNUC__
 
 // When in the DFA the base class is trivial ( thus generating no virtuals ):
 template < class t_TyChar >
@@ -220,4 +220,4 @@ struct __map_to_base_class< _l_action_print< t_TyChar, t_iToken, m_fInLexGen > >
 
 __BIENUTIL_END_NAMESPACE
 
-#endif __L_AXION_H
+#endif //__L_AXION_H

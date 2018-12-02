@@ -16,6 +16,9 @@ private:
 	typedef pair< t_TyChar, t_TyChar >	_TyBase;
 	typedef _fa_char_range< t_TyChar >	_TyThis;
 public:
+	using _TyBase::first;
+	using _TyBase::second;
+	
 	_fa_char_range()
 		: _TyBase( 0, 0 )
 	{
@@ -88,4 +91,4 @@ struct _fa_char_range_intersect :
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_CHRNG_H
+#endif //__L_CHRNG_H

@@ -26,12 +26,6 @@ __LEXOBJ_BEGIN_NAMESPACE
 
 __REGEXP_USING_NAMESPACE
 
-#ifdef __GNUC__
-#define __LEXOBJ_USE_TYPENAME typename
-#else __GNUC__
-#define __LEXOBJ_USE_TYPENAME
-#endif __GNUC__
-
 typedef unsigned short		_TyNTransitions;	// Type for number of transitions ( could make unsigned short ).
 typedef unsigned short		_TyNTriggers;
 typedef signed char				_TyStateFlags;		// Type for state flags.
@@ -147,7 +141,7 @@ struct _l_state< t_TyChar, t_iTransitions, false, false, 0, 0 >
 	unsigned short							m_usOffsetTriggers;
 	_l_transition< t_TyChar >		m_rgt[ t_iTransitions ];
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTransitions, int t_iTriggers >
 struct _l_state< t_TyChar, t_iTransitions, true, false, 0, t_iTriggers >
@@ -179,7 +173,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, false, 0, 0 >
 	_l_transition< t_TyChar >		m_rgt[ t_iTransitions ];
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTransitions, int t_iTriggers >
 struct _l_state< t_TyChar, t_iTransitions, true, true, 0, t_iTriggers >
@@ -213,7 +207,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, true, 0, 0 >
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 	_TyActionIdent							m_aiLookahead;
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTransitions, int t_iLookaheadVectorEls, int t_iTriggers >
 struct _l_state< t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_iTriggers >
@@ -249,7 +243,7 @@ struct _l_state< t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0 
 	_TyActionIdent							m_aiLookahead;
 	_TyLookaheadVector					m_rgValidLookahead[ t_iLookaheadVectorEls ];
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTriggers >
 struct _l_state< t_TyChar, 0, false, false, 0, t_iTriggers >
@@ -277,7 +271,7 @@ struct _l_state< t_TyChar, 0, false, false, 0, 0 >
 	unsigned short							m_usOffsetAccept;
 	unsigned short							m_usOffsetTriggers;
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTriggers >
 struct _l_state< t_TyChar, 0, true, false, 0, t_iTriggers >
@@ -307,7 +301,7 @@ struct _l_state< t_TyChar, 0, true, false, 0, 0 >
 	unsigned short							m_usOffsetTriggers;
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iTriggers >
 struct _l_state< t_TyChar, 0, true, true, 0, t_iTriggers >
@@ -339,7 +333,7 @@ struct _l_state< t_TyChar, 0, true, true, 0, 0 >
 	typename _TyAnalyzer::_TyPMFnAccept	m_pmfnAccept;
 	_TyActionIdent							m_aiLookahead;
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar, int t_iLookaheadVectorEls, int t_iTriggers >
 struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers >
@@ -373,7 +367,7 @@ struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0 >
 	_TyActionIdent							m_aiLookahead;
 	_TyLookaheadVector					m_rgValidLookahead[ t_iLookaheadVectorEls ];
 };
-#endif !_STLP_ZERO_SIZE_ARRAYS
+#endif //!_STLP_ZERO_SIZE_ARRAYS
 
 template < class t_TyChar >
 struct _l_compare_input_with_range 
@@ -977,4 +971,4 @@ public:
 
 __LEXOBJ_END_NAMESPACE
 
-#endif __L_LXOBJ_H
+#endif //__L_LXOBJ_H

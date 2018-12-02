@@ -124,7 +124,7 @@ public:
 			// No empty element in the DFA
 			m_rDfa.m_setAlphabet.erase( m_rDfa.m_setAlphabet.begin() );
 		}
-#else 0	// But it likes this fine.
+#else //0	// But it likes this fine.
 		{
 			typename _TyAlphabetNfa::iterator itNfaAlpha = m_rNfa.m_setAlphabet.begin();
 			if ( itNfaAlpha->empty() )
@@ -133,7 +133,7 @@ public:
 			}
 			m_rDfa.m_setAlphabet.insert( itNfaAlpha, m_rNfa.m_setAlphabet.end() );
 		}		
-#endif 0
+#endif //0
 
 		// Set up max original actions - we will be adding disambiguating actions:
 		m_rDfa.m_iMaxActions = m_rNfa.m_iActionCur;
@@ -182,13 +182,13 @@ public:
 
 		_TyGraphNodeDfa *	pgnCurDfa = m_rDfaCtxt.m_pgnStart;
 
-		typedef _TyDfa::_TyAlphaIndex _TyAlphaIndex;
-#if 0 // <dbien>: can't get this to compile on VC14.
-		const _TyDfa::_TyAlphaIndex iaMax = numeric_limits< _TyAlphaIndex >::(max)();
+		typedef typename _TyDfa::_TyAlphaIndex _TyAlphaIndex;
+#ifdef __GNUC__ // <dbien>: can't get this to compile on VC14.
+		const typename _TyDfa::_TyAlphaIndex iaMax = numeric_limits< _TyAlphaIndex >::max();
 		if ( m_rDfa.m_setAlphabet.size() > iaMax )
 			throw alpha_index_overflow("_create(): Alphabet size overflowed maximum alphabet index (__TyDfa::_TyAlphaIndex).");
-#endif 0
-		typename _TyDfa::_TyAlphaIndex	aiStart = (_TyDfa::_TyAlphaIndex)(m_rDfa.m_setAlphabet.size()-1);
+#endif //__GNUC__
+		typename _TyDfa::_TyAlphaIndex	aiStart = (typename _TyDfa::_TyAlphaIndex)(m_rDfa.m_setAlphabet.size()-1);
 		typename _TyAlphabetDfa::iterator itAlphaBegin = m_rDfa.m_setAlphabet.begin();
 		
 		while ( m_sCur != m_rDfa.NStates() )
@@ -300,7 +300,7 @@ public:
 		// If the dead state has any in transitions then we need to add out transitions:
 		if ( m_fCreateDeadState && pgnDead->FParents() )
 		{			
-			typename _TyDfa::_TyAlphaIndex	aiCur = (_TyDfa::_TyAlphaIndex)m_rDfa.m_setAlphabet.size();
+			typename _TyDfa::_TyAlphaIndex	aiCur = (typename _TyDfa::_TyAlphaIndex)m_rDfa.m_setAlphabet.size();
 			aiCur -= m_rNfa.m_fHasTriggers + m_rNfa.m_nUnsatisfiableTransitions;
 
 			while (	aiCur )
@@ -312,13 +312,13 @@ public:
 						stUnsat++ < m_rNfa.m_nUnsatisfiableTransitions;
 					)
 			{
-				m_rDfa._NewTransition( pgnDead, (_TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-stUnsat ), pgnDead, 0 );
+				m_rDfa._NewTransition( pgnDead, (typename _TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-stUnsat ), pgnDead, 0 );
 			}
 
 			if ( m_rNfa.m_fHasTriggers )
 			{
 				// First transition should be trigger transition:
-				m_rDfa._NewTransition( pgnDead, (_TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-1-m_rNfa.m_nUnsatisfiableTransitions ), pgnDead, 0 );
+				m_rDfa._NewTransition( pgnDead, (typename _TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-1-m_rNfa.m_nUnsatisfiableTransitions ), pgnDead, 0 );
 			}
 		}
 
@@ -463,7 +463,7 @@ public:
 					{
 						//pvtFirstAccept = 0;
 					}
-#endif 0
+#endif //0
 
 					// If we found ambiguous triggers then we need to check if any correspond to the same
 					//	action - coalesce unique trigger actions at each state:
@@ -562,11 +562,7 @@ public:
 						}
 						// The original action to which this corresponds:
 						aaNew.m_aiRelated = pvtFirstAccept ? pvtFirstAccept->second.m_aiAction : -1;
-						_TySetLDStates setAssoc
-#ifndef __GNUC__
-							( less< _TyState >(), m_rNfa.get_allocator() )
-#endif __GNUC__
-							;
+						_TySetLDStates setAssoc( less< _TyState >(), m_rNfa.get_allocator() );
 
 						{ // BLOCK // gcc doesn't like the inline temporaries:
 							typename _TyAmbigAccept::key_type ktTemp( srFoundLARelations, srFoundTriggers );
@@ -650,13 +646,9 @@ public:
 		typedef map< _TyState, _TyLMapEl, 
 									less< _TyState >, _TyAllocatorNfa >	_TyLocalMap;
 
-		_TyLocalMap						mapNfaState
-#ifndef __GNUC__ // doesn't like the temporary
-			( less< _TyState >(), m_rNfa.get_allocator() )
-#endif __GNUC__
-			;
+		_TyLocalMap mapNfaState( less< _TyState >(), m_rNfa.get_allocator() );
 
-		typename _TyLocalMap::iterator	itNfaState;
+		typename _TyLocalMap::iterator itNfaState;
 		
 		m_rDfaCtxt.CreateAcceptingNodeSet();
 		typename _TyDfaAcceptingList::iterator itLEnd = m_lDfaAccepting.end();
@@ -797,11 +789,11 @@ public:
 																					itNfaState->second.second );
 	#ifndef NDEBUG
 			pair< typename _TyPartAcceptStates::iterator, bool >	pibDebug =
-	#endif !NDEBUG
+	#endif //!NDEBUG
 			m_rDfaCtxt.m_partAccept.insert( vt );
 	#ifndef NDEBUG
 			assert( pibDebug.second );
-	#endif !NDEBUG
+	#endif //!NDEBUG
 		}
 
 		if ( m_fAmbiguousTriggers )
@@ -834,4 +826,4 @@ public:
 __REGEXP_END_NAMESPACE
 
 
-#endif __L_DFACR_H
+#endif //__L_DFACR_H

@@ -150,6 +150,8 @@ class _fa_alloc_base : public _fa_base< t_TyChar >
 private:
 	typedef _fa_alloc_base< t_TyChar, t_TyAllocator >	_TyThis;
 	typedef _fa_base< t_TyChar >				_TyBase;
+protected:
+	using _TyBase::m_iCurState;
 public:
 
 	// Friends:
@@ -159,13 +161,14 @@ public:
 	friend struct _optimize_dfa;
 
 	typedef t_TyAllocator	_TyAllocator;
-  typedef typename _TyAllocator::size_type size_type;
+	typedef typename _TyAllocator::size_type size_type;
+	typedef typename _TyBase::_TyRange _TyRange;
+	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 
-	typedef less< _TyRange >																_TyCompareRange;
+	typedef less< _TyRange > _TyCompareRange;
 	typedef set< _TyRange, _TyCompareRange, t_TyAllocator >	_TyAlphabet;
 
-	typedef _fa_accept_action<	_TyActionIdent, _TySdpActionBase,
-															__L_DEFAULT_ALLOCATOR >						  _TyAcceptAction;
+	typedef _fa_accept_action< _TyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
 
   // REVIEW: <dbien>: This is kind of bogus - shouldn't really 
   //  reference an internal impll class.
@@ -200,7 +203,7 @@ public:
   ~_fa_alloc_base()
   {
   }
-#endif _DEBUG
+#endif //_DEBUG
 
 	t_TyAllocator	get_allocator() const _STLP_NOTHROW	{ return m_setAlphabet.get_allocator(); }
 
@@ -263,7 +266,7 @@ protected:
 		{
 			// Need a new cache:
 			assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
-			_TySetStates	ss( static_cast< size_t >( m_iCurState ), get_allocator() );
+			_TySetStates ss( static_cast< size_t >( m_iCurState ), get_allocator() );
 			m_ssCache.push_back( ss );
 			_rpss = &( m_ssCache.back().RObject() );
 			return m_ssCache.end() - 1;
@@ -286,4 +289,4 @@ protected:
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_FABAS_H
+#endif //__L_FABAS_H

@@ -18,32 +18,49 @@ template < class t_TyChar, class t_TyAllocator > class _nfa_context;
 
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
 class _nfa 
-	: public _fa_alloc_base< t_TyChar, t_TyAllocator >,
+	:	public _fa_alloc_base< t_TyChar, t_TyAllocator >,
 		public _alloc_base< char, t_TyAllocator >
 {
 private:
-	typedef _fa_alloc_base< t_TyChar, t_TyAllocator >		_TyBase;
-	typedef _nfa< t_TyChar, t_TyAllocator >							_TyThis;
-	typedef _alloc_base< char, t_TyAllocator >					_TyCharAllocBase;
+	typedef _fa_alloc_base< t_TyChar, t_TyAllocator > _TyBase;
+	typedef _nfa< t_TyChar, t_TyAllocator > _TyThis;
+	typedef _alloc_base< char, t_TyAllocator > _TyCharAllocBase;
+protected:
+	using _TyBase::m_iCurState;	
+	using _TyBase::m_setAlphabet;
+	using _TyBase::m_nodeLookup;
+	using _TyBase::ms_kreTrigger;
+	using _TyBase::ms_kreUnsatisfiableStart;
+	using _TyBase::_UpdateNodeLookup;
+	using _TyBase::_GetSSCache;
 public:
+	using _TyBase::NStates;
 
-  typedef typename _TyCharAllocBase::size_type size_type;
+	typedef typename _TyCharAllocBase::size_type size_type;
 
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
 	friend struct _create_dfa;
 	friend class _nfa_context< t_TyChar, t_TyAllocator >;
 
-	typedef _nfa_context_base< t_TyChar >						_TyNfaCtxtBase;
+	typedef _nfa_context_base< t_TyChar > _TyNfaCtxtBase;
 	typedef _nfa_context< t_TyChar, t_TyAllocator >	_TyNfaCtxt;
-	typedef _TyNfaCtxt															_TyContext;
+	typedef _TyNfaCtxt _TyContext;
+	typedef typename _TyBase::_TyState _TyState;
+	typedef typename _TyBase::_TyRange _TyRange;
+	typedef typename _TyBase::_TyRangeEl _TyRangeEl;
+	typedef typename _TyBase::_TySetStates _TySetStates;
+	typedef typename _TyBase::_TyAcceptAction _TyAcceptAction;
+	typedef typename _TyBase::_TyUnsignedChar _TyUnsignedChar;
+	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
+	typedef typename _TyBase::_TyAlphabet _TyAlphabet;
+	typedef typename _TyBase::_TySSCache _TySSCache;
 
-	typedef __DGRAPH_NAMESPACE dgraph<  _TyState, _TyRange, 
-                                      false, t_TyAllocator >	_TyGraph;
-	typedef typename _TyGraph::_TyGraphNode								      _TyGraphNode;
-	typedef typename _TyGraph::_TyGraphLink								      _TyGraphLink;
+	typedef __DGRAPH_NAMESPACE dgraph< _TyState, _TyRange, false, t_TyAllocator > _TyGraph;
+	typedef typename _TyGraph::_TyGraphNode _TyGraphNode;
+	typedef typename _TyGraph::_TyGraphLink _TyGraphLink;
 
-	_TyGraph		m_gNfa;
+	_TyGraph m_gNfa;
 
 	typedef __DGRAPH_NAMESPACE _gr_select_value_modifiable< _TyGraphLink, 
 								_fa_char_range_intersect< _TyRange > >	_TyLinkSelect;
@@ -54,40 +71,38 @@ public:
 	// We cache the selection iterator to keep from allocating/deallocating all the time:
 	_TySelectIterConst	m_selit;
 
-	bool					m_fHaveEmpty;	// Have we already added the empty set to the alphabet lookup.
+	bool m_fHaveEmpty;	// Have we already added the empty set to the alphabet lookup.
 
 	// Cache for already computed closure by state:
-	char *				m_cpClosureCache;
+	char * m_cpClosureCache;
 	// bit vector indicating which cache sets are computed.
-	_TySetStates	m_ssClosureComputed;
+	_TySetStates m_ssClosureComputed;
 
-	int						m_iActionCur;
+	int m_iActionCur;
 
-	typedef less< _TyState >														_TyCompareStates;
-	typedef map<	_TyState, _TyAcceptAction, 
-								_TyCompareStates, t_TyAllocator >			_TySetAcceptStates;
-	typedef typename _TySetAcceptStates::iterator								_TySetAcceptIT;
-	typedef typename _TySetAcceptStates::value_type							_TySetAcceptVT;
+	typedef less< _TyState > _TyCompareStates;
+	typedef map< _TyState, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TySetAcceptStates;
+	typedef typename _TySetAcceptStates::iterator _TySetAcceptIT;
+	typedef typename _TySetAcceptStates::value_type _TySetAcceptVT;
 
 	// Sometimes need to order the accept actions by action identifier:
-	typedef less< _TyActionIdent >											_TyCompareAI;
+	typedef less< _TyActionIdent > _TyCompareAI;
 	typedef map<	_TyActionIdent, typename _TySetAcceptStates::value_type *,
-								_TyCompareAI, t_TyAllocator >					_TySetASByActionID;
+					_TyCompareAI, t_TyAllocator > _TySetASByActionID;
 
-	_sdpd< _TySetAcceptStates, t_TyAllocator >			m_pSetAcceptStates;
-	_sdpd< _TySetASByActionID, t_TyAllocator >			m_pLookupActionID;
-	bool																						m_fHasLookaheads;
-	bool																						m_fHasTriggers;
-	bool																						m_fHasFreeActions;
-	int																							m_nUnsatisfiableTransitions;
+	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
+	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
+	bool m_fHasLookaheads;
+	bool m_fHasTriggers;
+	bool m_fHasFreeActions;
+	int m_nUnsatisfiableTransitions;
 
 	_nfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		: _TyBase( _rAlloc ),
 			_TyCharAllocBase( _rAlloc ),
 			m_fHaveEmpty( false ),
 			m_gNfa( typename _TyGraph::_TyAllocatorSet( _rAlloc, _rAlloc, _rAlloc ) ),
-			m_selit(	0, 0, true, true, 
-								_rAlloc, _TyLinkSelect( _TyRange( 0, 0 ) ) ),
+			m_selit( 0, 0, true, true, _rAlloc, _TyLinkSelect( _TyRange( 0, 0 ) ) ),
 			m_ssClosureComputed( 0, _rAlloc ),
 			m_cpClosureCache( 0 ),
 			m_iActionCur( 0 ),
@@ -125,8 +140,7 @@ public:
 	{
 		if ( m_cpClosureCache )
 		{
-			_TyCharAllocBase::deallocate_n( m_cpClosureCache, 
-																			m_ssClosureComputed.size_bytes() * NStates() );
+			_TyCharAllocBase::deallocate_n( m_cpClosureCache, m_ssClosureComputed.size_bytes() * NStates() );
 			m_cpClosureCache = 0;
 		}
 		_TySetStates	ssComputed( 0, get_allocator() );
@@ -196,13 +210,13 @@ public:
 	void	Dump( ostream & _ros, _TyNfaCtxt const & _rCtxt ) const
 	{
 		// Dump the alphabet and the graph:
-		DumpAlphabet( _ros );
+		_TyBase::DumpAlphabet( _ros );
 		_ros << "NFA:\n";	
 		_ros << "Start state : {" << _rCtxt.m_pgnStart->RElConst() << "}.\n";
 		if ( _rCtxt.m_pssAccept )
 		{
 			_ros << "Accepting states :";
-			DumpStates( _ros, *_rCtxt.m_pssAccept );
+			_TyBase::DumpStates( _ros, *_rCtxt.m_pssAccept );
 			_ros << "\n";
 		}
 		else
@@ -317,7 +331,10 @@ protected:	// accessed by _nfa_context:
 		_TyAcceptAction	aa( m_iActionCur++, 0 );
 		aa.m_eaatType = e_aatAntiAccepting;
 		_TySetAcceptVT	vtAcceptState( _rctxt2.m_pgnAccept->RElConst(), aa );
-		__DEBUG_COMMA_2( pair< _TySetAcceptIT, bool >	pib = )
+
+#ifndef NDEBUG
+		pair<_TySetAcceptIT,bool> pib =
+#endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
 		assert( pib.second );
 	}
@@ -325,7 +342,7 @@ protected:	// accessed by _nfa_context:
 	void	_Renumber(	_TyGraphNode * _pgnNew, _TyState _stAcceptOld, 
 										_TyGraphNode ** _ppgnAcceptNew )
 	{
-		_TyGraph::iterator	gfit( _pgnNew, 0, false, true, get_allocator() );
+		typename _TyGraph::iterator	gfit( _pgnNew, 0, false, true, get_allocator() );
 		for( ; !gfit.FAtEnd(); ++gfit )
 		{
 			if ( !gfit.PGLCur() )
@@ -423,7 +440,9 @@ protected:	// accessed by _nfa_context:
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		aa.m_eaatType = e_aatTrigger;
 		_TySetAcceptVT	vtAcceptState( _st, aa );
-		__DEBUG_COMMA_2( pair< _TySetAcceptIT, bool >	pib = )
+#ifndef NDEBUG
+		pair< _TySetAcceptIT, bool > pib =
+#endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
 		assert( pib.second );
 	}
@@ -435,7 +454,9 @@ protected:	// accessed by _nfa_context:
 		m_fHasFreeActions = true;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		_TySetAcceptVT	vtAcceptState( _st, aa );
-		__DEBUG_COMMA_2( pair< _TySetAcceptIT, bool >	pib = )
+#ifndef NDEBUG
+		pair< _TySetAcceptIT, bool > pib =
+#endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
 		assert( pib.second );
 	}
@@ -540,7 +561,7 @@ protected:	// accessed by _nfa_context:
 						it != itEnd;
 						++it )
 			{
-				_TySetASByActionID::value_type	vt( it->second.m_aiAction, &*it );
+				typename _TySetASByActionID::value_type	vt( it->second.m_aiAction, &*it );
 				m_pLookupActionID->insert( vt );
 			}
 		}
@@ -573,15 +594,15 @@ protected:	// accessed by _nfa_context:
 			// We may have already computed the closure for this state:
 			if ( m_ssClosureComputed.isbitset( nState ) )
 			{
-				_rsetResult.or_equals( (_TySetStates::_TyEl*)PCGetClosureCache( nState ) );
+				_rsetResult.or_equals( (typename _TySetStates::_TyEl*)PCGetClosureCache( nState ) );
 			}
 			else
 			{
 				// Then we are going to compute the closure cache for this state:
 				m_ssClosureComputed.setbit( nState );
-				_TySetStates::_TyEl *	pssVector = (_TySetStates::_TyEl*)PCGetClosureCache( nState );
+				typename _TySetStates::_TyEl * pssVector = (typename _TySetStates::_TyEl*)PCGetClosureCache( nState );
 				pssCur->swap_vector( pssVector );
-				CMFDtor1_void< _TySetStates, _TySetStates::_TyEl *& >
+				CMFDtor1_void< _TySetStates, typename _TySetStates::_TyEl *& >
 					swapBack( pssCur, &_TySetStates::swap_vector, pssVector );
 							
 				pssCur->clear();
@@ -602,7 +623,7 @@ protected:	// accessed by _nfa_context:
 						if ( m_ssClosureComputed.isbitset( _pgnCur->RElConst() ) )
 						{
 							// Then closure already computed for this node:
-							pssCur->or_equals( (_TySetStates::_TyEl*)PCGetClosureCache( _pgnCur->RElConst() ) );
+							pssCur->or_equals( (typename _TySetStates::_TyEl*)PCGetClosureCache( _pgnCur->RElConst() ) );
 							// Instruct the graph iterator not to iterate below this node:
 							m_selit.SkipContext();
 							continue;
@@ -700,7 +721,7 @@ protected:	// accessed by _nfa_context:
   // Caller owns lifetime of result *_ppgn.
 	void		_NewStartState( _TyGraphNode ** _ppgn )
 	{
-    *_ppgn = m_gNfa.create_node1( m_iCurState );
+		*_ppgn = m_gNfa.create_node1( m_iCurState );
 		_UpdateNodeLookup( *_ppgn );
 		m_iCurState++;
 	}
@@ -717,10 +738,10 @@ protected:	// accessed by _nfa_context:
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
 			endLink( &m_gNfa, &_TyGraph::destroy_link, pgl );
-#else __DGRAPH_INSTANCED_ALLOCATORS
+#else //__DGRAPH_INSTANCED_ALLOCATORS
     CFDtor1_void< _TyGraphLink * >
 			endLink( &_TyGraph::destroy_link, pgl );
-#endif __DGRAPH_INSTANCED_ALLOCATORS
+#endif //__DGRAPH_INSTANCED_ALLOCATORS
 
     *_ppgnAccept = m_gNfa.create_node1( m_iCurState );
 		CMFDtor1_void< _TyGraph, _TyGraphNode * >
@@ -749,10 +770,10 @@ protected:	// accessed by _nfa_context:
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
 			endLink( &m_gNfa, &_TyGraph::destroy_link, pgl );
-#else __DGRAPH_INSTANCED_ALLOCATORS
+#else //__DGRAPH_INSTANCED_ALLOCATORS
     CFDtor1_void< _TyGraphLink * >
 			endLink( &_TyGraph::destroy_link, pgl );
-#endif __DGRAPH_INSTANCED_ALLOCATORS
+#endif //__DGRAPH_INSTANCED_ALLOCATORS
 
 		_pgnSrc->AddChild(	*_pgnSink, *pgl, 
 												*(_pgnSrc->PPGLBChildHead()),
@@ -840,20 +861,24 @@ private:
 	typedef _nfa_context< t_TyChar, t_TyAllocator >	_TyThis;
 	typedef typename _Alloc_traits< _TyThis, t_TyAllocator >::allocator_type	_TyAllocThis;
 public:
+	using _TyBase::m_rFaBase;
 
 	typedef _nfa< t_TyChar, t_TyAllocator >	_TyNfa;
-	typedef typename _TyNfa::_TyGraphNode								_TyGraphNode;
-	typedef typename _TyNfa::_TyGraphLink								_TyGraphLink;
-	typedef typename _TyNfa::_TySetStates								_TySetStates;
-	typedef typename _TyNfa::_TyUnsignedChar						_TyUnsignedChar;
+	typedef typename _TyNfa::_TyGraphNode _TyGraphNode;
+	typedef typename _TyNfa::_TyGraphLink _TyGraphLink;
+	typedef typename _TyNfa::_TySetStates _TySetStates;
+	typedef typename _TyNfa::_TyUnsignedChar _TyUnsignedChar;
+	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
+	typedef typename _TyBase::_TyRange _TyRange;
+	typedef typename _TyBase::_TyState _TyState;
  
-	_TyGraphNode *							m_pgnStart;
+	_TyGraphNode * m_pgnStart;
 
-	_sdpd< _TySetStates, t_TyAllocator >						m_pssAccept;
+	_sdpd< _TySetStates, t_TyAllocator > m_pssAccept;
 
-	_TyGraphNode *							m_pgnAccept;
-	_dtorp< _TySdpActionBase >	m_pSdpAction;	// The action associated with this _nfa_context.
-	_TyGraphNode *							m_pgnAltAccept;
+	_TyGraphNode * m_pgnAccept;
+	_dtorp< _TySdpActionBase > m_pSdpAction;	// The action associated with this _nfa_context.
+	_TyGraphNode * m_pgnAltAccept;
 
 	_nfa_context( _TyNfa & _rNfa )
 		: _TyBase( _rNfa ),
@@ -880,11 +905,10 @@ public:
 		}
 	}
 
-	_TyNfa & RNfa()							{ return static_cast< _TyNfa & >( m_rFaBase ); }
+	_TyNfa & RNfa() { return static_cast< _TyNfa & >( m_rFaBase ); }
 	_TyNfa const & RNfa() const { return static_cast< const _TyNfa & >( m_rFaBase ); }
 
-	void	SetAction(  const _TySdpActionBase * _pSdp, 
-                    enum EActionType _eat = e_atNormal )
+	void	SetAction( const _TySdpActionBase * _pSdp, enum EActionType _eat = e_atNormal )
 	{
 		switch( _eat )
 		{
@@ -1026,8 +1050,8 @@ public:
 		m_pssAccept->clear();
 
 		// Copy the accepting states to the bit vector:
-		_TyNfa::_TySetAcceptIT itEnd = RNfa().m_pSetAcceptStates->end();
-		for ( _TyNfa::_TySetAcceptIT it = RNfa().m_pSetAcceptStates->begin();
+		typename _TyNfa::_TySetAcceptIT itEnd = RNfa().m_pSetAcceptStates->end();
+		for ( typename _TyNfa::_TySetAcceptIT it = RNfa().m_pSetAcceptStates->begin();
 					it != itEnd;
 					++it )
 		{
@@ -1038,7 +1062,7 @@ public:
 
 __REGEXP_END_NAMESPACE
 
-#endif __L_NFA_H
+#endif //__L_NFA_H
 
 // Unused code - on the way out...
 
@@ -1161,4 +1185,4 @@ __REGEXP_END_NAMESPACE
 		_rctxt1_Result.m_pgnStart = _rctxt2.m_pgnStart; 
 		_rctxt2.m_pgnStart = 0;
 	}
-#endif 0
+#endif //0
