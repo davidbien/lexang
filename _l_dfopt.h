@@ -51,7 +51,7 @@ struct _compare_partition_classes
 	}
 
 	bool	operator ()(	t_TyPartitionClass * const & _rpl, 
-											t_TyPartitionClass * const & _rpr ) const _STLP_NOTHROW
+											t_TyPartitionClass * const & _rpr ) const _BIEN_NOTHROW
 	{
 		return (*_rpl).lessthan( (*_rpr), m_stAlphabet );
 	}
@@ -112,7 +112,7 @@ public:
 	}
 
 	bool	lessthan(	_TyThis const & _r,
-									size_t _stAlphabet ) const _STLP_NOTHROW
+									size_t _stAlphabet ) const _BIEN_NOTHROW
 	{
 		// Move through the transition arrays until we find a difference:
 		t_TyPartitionEl ** pppeCurThis = m_pppelTransitions;

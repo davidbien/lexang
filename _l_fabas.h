@@ -97,12 +97,12 @@ public:
 		return m_eaatType == e_aatLookahead ? m_aiAction : m_aiRelated;
 	}
 
-	t_TyAllocator	get_allocator() const _STLP_NOTHROW
+	t_TyAllocator	get_allocator() const _BIEN_NOTHROW
 	{
 		return m_psrRelated.get_allocator();
 	}
 
-	bool	operator < ( const _TyThis & _r ) const _STLP_NOTHROW
+	bool	operator < ( const _TyThis & _r ) const _BIEN_NOTHROW
 	{
 		if ( m_eaatType == _r.m_eaatType )
 		{
@@ -205,7 +205,7 @@ public:
   }
 #endif //_DEBUG
 
-	t_TyAllocator	get_allocator() const _STLP_NOTHROW	{ return m_setAlphabet.get_allocator(); }
+	t_TyAllocator	get_allocator() const _BIEN_NOTHROW	{ return m_setAlphabet.get_allocator(); }
 
 	void	DumpStates( ostream & _ros, _TySetStates const & _r ) const
 	{

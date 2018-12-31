@@ -29,7 +29,7 @@ public:
 	{
 	}
 
-	bool	empty() const _STLP_NOTHROW
+	bool	empty() const _BIEN_NOTHROW
 	{
 		if ( !first )
 		{
@@ -39,12 +39,12 @@ public:
 		return false;
 	}
 
-	bool	operator < ( _TyThis const & _r ) const _STLP_NOTHROW
+	bool	operator < ( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		return second < _r.first;
 	}
 
-	bool	intersects( _TyThis const & _r ) const _STLP_NOTHROW
+	bool	intersects( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		if ( first < _r.first )
 			return second >= _r.first;
@@ -52,20 +52,20 @@ public:
 			return first <= _r.second;
 	}
 
-	bool	contains( t_TyChar const & _r ) const _STLP_NOTHROW
+	bool	contains( t_TyChar const & _r ) const _BIEN_NOTHROW
 	{
 		return _r >= first && _r <= second;
 	}
 
-	bool	isconsecutiveleft( _TyThis const & _r ) const _STLP_NOTHROW
+	bool	isconsecutiveleft( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		return _r.second+1 == first;
 	}
-	bool	isconsecutiveright( _TyThis const & _r ) const _STLP_NOTHROW
+	bool	isconsecutiveright( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		return second+1 == _r.first;
 	}
-	bool	isconsecutive( _TyThis const & _r ) const _STLP_NOTHROW
+	bool	isconsecutive( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		return isconsecutiveleft( _r ) || isconsecutiveright( _r );
 	}
@@ -83,7 +83,7 @@ template < class _TyNfaCharRange >
 struct _fa_char_range_intersect : 
 	public binary_function< _TyNfaCharRange, _TyNfaCharRange, bool >
 {
-	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _STLP_NOTHROW
+	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
 	{
 		return _rL.intersects( _rR );
 	}

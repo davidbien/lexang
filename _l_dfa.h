@@ -22,7 +22,7 @@ struct _sort_dfa_link
 	: public binary_function< const t_TyGraphLink *, const t_TyGraphLink *, bool >
 {
 	bool	operator()( const t_TyGraphLink * const & _rpglL, 
-										const t_TyGraphLink * const & _rpglR ) const _STLP_NOTHROW
+										const t_TyGraphLink * const & _rpglR ) const _BIEN_NOTHROW
 	{
 		return _rpglL->RElConst() < _rpglR->RElConst();
 	}

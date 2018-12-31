@@ -122,7 +122,7 @@ public:
 		DeallocClosureCache();
 	}
 
-	t_TyAllocator	get_allocator() const _STLP_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
+	t_TyAllocator	get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
 
 	void	AllocClosureCache()
 	{
@@ -961,7 +961,7 @@ public:
 		pAllocate.transfer();
 	}
 
-	void	DestroyOther( _TyBase * _pb ) _STLP_NOTHROW
+	void	DestroyOther( _TyBase * _pb ) _BIEN_NOTHROW
 	{
 		_sdp< _TyThis, _TyAllocThis >	 pDeallocate(	static_cast< _TyThis * >( _pb ), 
 																								RNfa().get_allocator() );

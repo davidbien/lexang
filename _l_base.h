@@ -48,12 +48,12 @@ public:
 	{
 	}
 
-	_TyState	NStates() const _STLP_NOTHROW
+	_TyState	NStates() const _BIEN_NOTHROW
 	{
 		return m_iCurState;
 	}
 
-	void			SetNumStates(_TyState _iStates ) _STLP_NOTHROW
+	void			SetNumStates(_TyState _iStates ) _BIEN_NOTHROW
 	{
 		m_iCurState = _iStates;
 	}
@@ -126,7 +126,7 @@ public:
 
 // The most derived nfa_context will define these virtuals:
 	virtual void	Clone( _TyThis ** _pp ) const = 0;
-	virtual void	DestroyOther( _TyThis * _pThis ) _STLP_NOTHROW = 0;
+	virtual void	DestroyOther( _TyThis * _pThis ) _BIEN_NOTHROW = 0;
 	virtual void	Dump( ostream & _ros ) const = 0;
 
 	// NFA construction virtuals:

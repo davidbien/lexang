@@ -33,8 +33,8 @@ public:
 
 	virtual void	ConstructNFA( _TyCtxtBase & _rNfa, size_t _stLevel = 0 ) const = 0;
 
-	virtual bool	FIsLiteral() const _STLP_NOTHROW		{ return false; }
-	virtual bool	FMatchesEmpty() const _STLP_NOTHROW	{ return false; }
+	virtual bool	FIsLiteral() const _BIEN_NOTHROW		{ return false; }
+	virtual bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; }
 
 	// Allocation - this is overridden by the element receiving
 	//	the final regular expression
@@ -62,7 +62,7 @@ protected:
 		return 0;
 	}
 
-	void						_Deallocate( char * ) _STLP_NOTHROW
+	void						_Deallocate( char * ) _BIEN_NOTHROW
 	{
 		assert( 0 );
 	}
@@ -75,11 +75,11 @@ protected:
 								_TyThis ** _pprbStorage )
 	{
 		char * cp = _prbCopier->_CPAllocate( sizeof( t_TyMostDerived ) );
-		_STLP_TRY
+		_BIEN_TRY
 		{
 			*_pprbStorage = new ( cp ) t_TyMostDerived( *_pmdCopy );
 		}
-		_STLP_UNWIND( _prbCopier->_Deallocate( cp ) );
+		_BIEN_UNWIND( _prbCopier->_Deallocate( cp ) );
 	}
 
 	// Partial clone:
@@ -91,11 +91,11 @@ protected:
 								__false_type )
 	{
 		char * cp = _prbCopier->_CPAllocate( sizeof( t_TyMostDerived ) );
-		_STLP_TRY
+		_BIEN_TRY
 		{
 			*_pprbStorage = new ( cp ) t_TyMostDerived( *_pmdCopy, __false_type() );
 		}
-		_STLP_UNWIND( _prbCopier->_Deallocate( cp ) );
+		_BIEN_UNWIND( _prbCopier->_Deallocate( cp ) );
 	}
 };
 
@@ -124,8 +124,8 @@ public:
 		_rNfaCtxt.CreateEmptyNFA();
 	}
 
-	bool	FIsLiteral() const _STLP_NOTHROW { return true; }
-	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return true; }
+	bool	FIsLiteral() const _BIEN_NOTHROW { return true; }
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
@@ -177,7 +177,7 @@ public:
 		_rNfaCtxt.CreateLiteralNFA( m_c );
 	}
 
-	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
@@ -229,8 +229,8 @@ public:
 		_rNfaCtxt.CreateStringNFA( m_s.begin() );
 	}
 
-	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return m_s.empty(); }
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return m_s.empty(); }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
@@ -287,7 +287,7 @@ public:
 		_rNfaCtxt.CreateRangeNFA( m_r );
 	}
 
-	bool	FIsLiteral() const _STLP_NOTHROW		{ return true; }
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
 
 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
@@ -337,7 +337,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{ 
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
@@ -405,7 +405,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{ 
 		return m_re1.FMatchesEmpty() || m_re2.FMatchesEmpty();
 	}
@@ -469,7 +469,7 @@ public:
 	{
 	}
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{ 
 		return true;
 	}
@@ -545,7 +545,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{
     // REVIEW: <dbien>: Is this correct ?
 		return m_re1.FMatchesEmpty() && !m_re2.FMatchesEmpty();
@@ -614,7 +614,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
@@ -680,7 +680,7 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{ 
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
@@ -779,7 +779,7 @@ public:
 		}
 	}
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{ 
 		return true;
 	}
@@ -854,7 +854,7 @@ public:
 		}
 	}
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{
 		// triggers report that they match empty since they consume no input.
 		return true;
@@ -916,7 +916,7 @@ public:
 	{
 	}
 
-	bool	FMatchesEmpty() const _STLP_NOTHROW	
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{
 		// not really sure what to return here - these get removed from the graph.
 		return false;
@@ -1054,8 +1054,8 @@ public:
 		}
 	}
 
-	bool	FIsLiteral() const _STLP_NOTHROW		{ return m_pbre->FIsLiteral(); }
-	bool	FMatchesEmpty() const _STLP_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return m_pbre->FIsLiteral(); }
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
 
 	virtual void	Dump( _TyOstream & _ros ) const
 	{
@@ -1081,7 +1081,7 @@ protected:
 		return cpAllocated;
 	}
 
-	void						_Deallocate( char * _cp, size_t _st ) _STLP_NOTHROW
+	void						_Deallocate( char * _cp, size_t _st ) _BIEN_NOTHROW
 	{
 		_TyAllocBase::deallocate_n( _cp, _st );
 	}
