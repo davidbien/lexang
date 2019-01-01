@@ -38,21 +38,33 @@ protected:
 	typedef typename _TyDfa::_TyGraphLink	_TyGraphLinkDfa;
 	typedef typename _TyDfa::_TyAcceptAction	_TyAcceptAction;
 
-	typedef hash_map<	_TySwapSSNfa, _TyGraphNodeDfa*, 
-										hash< _TySwapSSNfa >, equal_to< _TySwapSSNfa >, 
-										_TyAllocatorNfa >															_TyLookupSS;
-	typedef deque< const _TySetStatesNfa*, _TyAllocatorNfa >				_TyMapStateToSS;
-
-	typedef slist< pair< _TyState, _TyState >, _TyAllocatorNfa >		_TyDfaAcceptingList;
+#ifdef __LEXANG_USE_STLPORT
+  typedef hash_map<	_TySwapSSNfa, _TyGraphNodeDfa*,
+										  hash< _TySwapSSNfa >, equal_to< _TySwapSSNfa >, 
+										  _TyAllocatorNfa > _TyLookupSS;
+  typedef slist< pair< _TyState, _TyState >, _TyAllocatorNfa > _TyDfaAcceptingList;
+  typedef deque< const _TySetStatesNfa*, _TyAllocatorNfa > _TyMapStateToSS;
+#else __LEXANG_USE_STLPORT
+  typedef typename _Alloc_traits< typename unordered_map< _TySwapSSNfa, _TyGraphNodeDfa* >::value_type, _TyAllocatorNfa >::allocator_type _tySwapSSNfaAlloc;
+  typedef unordered_map<	_TySwapSSNfa, _TyGraphNodeDfa*,
+    hash< _TySwapSSNfa >, equal_to< _TySwapSSNfa >,
+    _tySwapSSNfaAlloc > _TyLookupSS;
+  typedef typename _Alloc_traits< typename forward_list< pair< _TyState, _TyState > >::value_type, _TyAllocatorNfa >::allocator_type _TyDfaAcceptingListAlloc;
+  typedef forward_list< pair< _TyState, _TyState >, _TyDfaAcceptingListAlloc > _TyDfaAcceptingList;
+  typedef typename _Alloc_traits< typename deque< const _TySetStatesNfa* >::value_type, _TyAllocatorNfa >::allocator_type _TyMapStateToSSAlloc;
+  typedef deque< const _TySetStatesNfa*, _TyMapStateToSSAlloc > _TyMapStateToSS;
+#endif __LEXANG_USE_STLPORT
 
 	// Lookahead disambiguating stuff:
-	typedef set< _TyState, less< _TyState >, _TyAllocatorNfa >	_TySetLDStates;
+  typedef typename _Alloc_traits< typename set< _TyState, less< _TyState > >::value_type, _TyAllocatorNfa >::allocator_type _TySetLDStatesAlloc;
+  typedef set< _TyState, less< _TyState >, _TySetLDStatesAlloc > _TySetLDStates;
 	typedef pair< _TySetLDStates, _TyAcceptAction >							_TyPairStatesAction;
 	typedef _swap_object< typename _TyAcceptAction::_TySetActionIds >		_TySwapSetActionIds;
 	typedef pair< _TySwapSetActionIds, _TySwapSetActionIds >		_TyPairSSActionIds;
 	typedef less< _TyPairSSActionIds >													_TyCompareAmbigKey;
-	typedef map<	_TyPairSSActionIds, _TyPairStatesAction,
-								_TyCompareAmbigKey, _TyAllocatorNfa >					_TyAmbigAccept;
+  typedef typename _Alloc_traits< typename map< _TyPairSSActionIds, _TyPairStatesAction,
+                                                _TyCompareAmbigKey >::value_type, _TyAllocatorNfa >::allocator_type _TyAmbigAcceptAlloc;
+  typedef map< _TyPairSSActionIds, _TyPairStatesAction, _TyCompareAmbigKey, _TyAmbigAcceptAlloc > _TyAmbigAccept;
 
 	_TyLookupSS			m_ssLookup;
 	_TyMapStateToSS	m_mapStateToSS;
@@ -350,11 +362,11 @@ public:
 		_TySetStatesNfa const *	pssInLookup;
 		m_mapStateToSS.push_back( pssInLookup = &(*pibInserted.first).first.RObject() );
 		assert( m_mapStateToSS.size() == m_rDfa.NStates() );
-		size_t	stFirst = m_pssAcceptingNfa->FirstIntersection( *m_pssCur );
+    _TySetStatesNfa::size_type stFirst = m_pssAcceptingNfa->FirstIntersection( *m_pssCur );
 		if ( m_pssAcceptingNfa->size() != stFirst )
 		{
 			// If we have multiple intersections then the rule set is ambiguous:
-			size_t	stNext = m_pssAcceptingNfa->NextIntersection( *m_pssCur, stFirst );
+      _TySetStatesNfa::size_type stNext = m_pssAcceptingNfa->NextIntersection( *m_pssCur, stFirst );
 			if ( stNext != m_pssAcceptingNfa->size() )
 			{
 				// Then we have an ambiguous rule:
@@ -574,14 +586,14 @@ public:
 						//	triggers then allocate the respective objects:
 						if ( fFoundLookaheadAccept )
 						{
-							itAmbig->second.second.m_psrRelated._STLP_TEMPLATE construct2
+							itAmbig->second.second.m_psrRelated.template construct2
 								< typename _TyAcceptAction::_TySetActionIds::size_type,
 									typename _TyAcceptAction::_TySetActionIds::_TyAllocator const & >
 								( 0, srFoundLARelations.get_allocator() );
 						}
 						if ( fFoundTrigger )
 						{
-							itAmbig->second.second.m_psrTriggers._STLP_TEMPLATE construct2
+							itAmbig->second.second.m_psrTriggers.template construct2
 								< typename _TyAcceptAction::_TySetActionIds::size_type,
 									typename _TyAcceptAction::_TySetActionIds::_TyAllocator const & >
 								( 0, srFoundLARelations.get_allocator() );
@@ -643,8 +655,8 @@ public:
 		typedef typename _TyDfaCtxt::_TySwapSS		_TySwapSSDfa;
 		typedef typename _TyDfa::_TyAcceptAction	_TyAcceptAction;
 		typedef pair< _TySwapSSDfa, _TyAcceptAction >	_TyLMapEl;
-		typedef map< _TyState, _TyLMapEl, 
-									less< _TyState >, _TyAllocatorNfa >	_TyLocalMap;
+    typedef typename _Alloc_traits< typename map< _TyState, _TyLMapEl, less< _TyState > >::value_type, _TyAllocatorNfa >::allocator_type _TyLocalMapAllocator;
+    typedef map< _TyState, _TyLMapEl, less< _TyState >, _TyLocalMapAllocator >	_TyLocalMap;
 
 		_TyLocalMap mapNfaState( less< _TyState >(), m_rNfa.get_allocator() );
 
@@ -800,7 +812,7 @@ public:
 		{
 			// Copy the trigger actions to a separate data structure - this ensures creation
 			//	even when ambiguity occurs:
-			m_rDfa.m_pMapTriggers._STLP_TEMPLATE construct2
+			m_rDfa.m_pMapTriggers.template construct2
 				< typename _TyDfa::_TyCompareAI const &, typename _TyDfa::_TyAllocator const & >
 				( typename _TyDfa::_TyCompareAI(), m_rDfa.get_allocator() );
 																	

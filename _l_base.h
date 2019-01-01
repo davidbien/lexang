@@ -36,7 +36,11 @@ public:
 	static const _TyRangeEl	ms_kreTrigger;
 	static const _TyRangeEl	ms_kreUnsatisfiableStart;
 
-	typedef ptrdiff_t	_TyState;
+#ifdef _MSC_VER
+	typedef int	_TyState;
+#else _MSC_VER
+  typedef ptrdiff_t	_TyState;
+#endif _MSC_VER
 
 	typedef _l_action_object_base< t_TyChar, true >									_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >												_TySdpActionBase;

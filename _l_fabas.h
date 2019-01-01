@@ -84,11 +84,11 @@ public:
 		}
 		if ( _r.m_psrRelated )
 		{
-			m_psrRelated._STLP_TEMPLATE construct1< _TySetActionIds const & >( *_r.m_psrRelated );
+			m_psrRelated.template construct1< _TySetActionIds const & >( *_r.m_psrRelated );
 		}
 		if ( _r.m_psrTriggers )
 		{
-			m_psrTriggers._STLP_TEMPLATE construct1< _TySetActionIds const & >( *_r.m_psrTriggers );
+			m_psrTriggers.template construct1< _TySetActionIds const & >( *_r.m_psrTriggers );
 		}
 	}
 
@@ -161,12 +161,13 @@ public:
 	friend struct _optimize_dfa;
 
 	typedef t_TyAllocator	_TyAllocator;
-	typedef typename _TyAllocator::size_type size_type;
+	typedef typename _Alloc_traits< char, _TyAllocator >::size_type size_type;
 	typedef typename _TyBase::_TyRange _TyRange;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 
 	typedef less< _TyRange > _TyCompareRange;
-	typedef set< _TyRange, _TyCompareRange, t_TyAllocator >	_TyAlphabet;
+  typedef typename _Alloc_traits< typename set < _TyRange, _TyCompareRange >::value_type, t_TyAllocator >::allocator_type _TyAlphabetAllocator;
+	typedef set< _TyRange, _TyCompareRange, _TyAlphabetAllocator >	_TyAlphabet;
 
 	typedef _fa_accept_action< _TyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
 
@@ -174,13 +175,23 @@ public:
   //  reference an internal impll class.
 	typedef __DGRAPH_NAMESPACE _graph_node_base	_TyLexanGraphNodeBase;
 
-	typedef deque< _TyLexanGraphNodeBase *, t_TyAllocator >	_TyNodeLookup;
+#ifdef __LEXANG_USE_STLPORT
+  typedef deque< _TyLexanGraphNodeBase *, t_TyAllocator >	_TyNodeLookup;
+#else __LEXANG_USE_STLPORT
+  typedef typename _Alloc_traits< typename deque< _TyLexanGraphNodeBase * >::value_type, t_TyAllocator >::allocator_type _TyNodeLookupAllocator;
+  typedef deque< _TyLexanGraphNodeBase *, _TyNodeLookupAllocator >	_TyNodeLookup;
+#endif __LEXANG_USE_STLPORT
 
 	// Type for set of states:
 	typedef _simple_bitvec< unsigned int, t_TyAllocator >		_TySetStates;
 
 	// Type for state set cache:
-	typedef deque< _swap_object< _TySetStates >, t_TyAllocator >	_TySSCache;
+#ifdef __LEXANG_USE_STLPORT
+  typedef deque< _swap_object< _TySetStates >, t_TyAllocator >	_TySSCache;
+#else __LEXANG_USE_STLPORT
+  typedef typename _Alloc_traits< typename deque< _swap_object< _TySetStates > >::value_type, t_TyAllocator >::allocator_type _TySSCacheAllocator;
+  typedef deque< _swap_object< _TySetStates >, _TySSCacheAllocator >	_TySSCache;
+#endif __LEXANG_USE_STLPORT
 
 	_TyAlphabet	m_setAlphabet;
 
@@ -253,7 +264,7 @@ protected:
 		assert(	m_uiUnusedCacheBitVec == ( ( 1 << m_ssCache.size() ) - 1 ) );
 	}
 
-	typename _TySSCache::iterator		_GetSSCache( _TySetStates *& _rpss )
+	typename _TySSCache::iterator _GetSSCache( _TySetStates *& _rpss )
 	{
 		if ( m_uiUnusedCacheBitVec )
 		{

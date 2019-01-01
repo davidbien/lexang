@@ -20,7 +20,9 @@
 
 #include "lexang/_l_axion.h"
 
+#ifdef __LEXANG_USE_STLPORT
 #define _STLP_ZERO_SIZE_ARRAYS // This isn't part of the current STLport but we still have it here.
+#endif __LEXANG_USE_STLPORT
 
 __LEXOBJ_BEGIN_NAMESPACE
 

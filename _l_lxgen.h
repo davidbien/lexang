@@ -5,6 +5,8 @@
 
 // Lexical analyzer generator.
 
+#include <ios>
+#include <string>
 #include <fstream>
 
 __REGEXP_BEGIN_NAMESPACE
@@ -56,8 +58,10 @@ struct _l_generator
 	typedef basic_string< t_TyCharOut, char_traits<t_TyCharOut>, _TyAllocator >	_TyString;
 
 	typedef _l_gen_dfa< _TyDfa, t_TyCharOut >		_TyGenDfa;
-	typedef list< _TyGenDfa, _TyAllocator >			_TyDfaList;
-	_TyDfaList								m_lDfaGen;
+
+  typedef typename _Alloc_traits< typename list< _TyGenDfa >::value_type, _TyAllocator >::allocator_type _TyDfaListAllocator;
+	typedef list< _TyGenDfa, _TyDfaListAllocator > _TyDfaList;
+	_TyDfaList m_lDfaGen;
 	typename _TyDfaList::value_type *	m_pvtDfaCur;
 
 	_TyString			m_sfnHeader;			// The header file we are generating.
@@ -82,8 +86,10 @@ struct _l_generator
 	//	and whether the action has been referenced by any DFA.
 	typedef pair< _TyActionIdent, bool >				_TyMAValue;
 	typedef _ref< const _TyActionObjectBase >		_TyRefActionObjectBase;
+  typedef typename _Alloc_traits< typename map< _TyRefActionObjectBase, _TyMAValue,
+                                                less< _TyRefActionObjectBase > >::value_type, _TyAllocator >::allocator_type _TyMapActionsAllocator;
 	typedef map< _TyRefActionObjectBase, _TyMAValue, 
-								less< _TyRefActionObjectBase >,_TyAllocator >	_TyMapActions;
+								less< _TyRefActionObjectBase >,_TyMapActionsAllocator >	_TyMapActions;
 	_TyMapActions	m_mapActions;	
 
 	_l_generator( const t_TyCharOut * _pcfnHeader,
@@ -136,10 +142,10 @@ struct _l_generator
 
 	void	generate()
 	{
-		_unique_actions();
+    _unique_actions();
 
-	  ofstream	ofsHeader( m_sfnHeader.begin() );
-		ofstream	ofsImp( m_sfnImp.begin() );
+    ofstream ofsHeader( m_sfnHeader.c_str() );
+    ofstream	ofsImp( m_sfnImp.c_str() );
 
 		_HeaderHeader( ofsHeader );
 		_ImpHeader( ofsImp );
@@ -698,7 +704,7 @@ struct _l_generator
 			if ( pvtAction->second.m_psrTriggers )
 			{
 				size_t	stEnd = pvtAction->second.m_psrTriggers->size();
-				for ( size_t stTrigger = pvtAction->second.m_psrTriggers->getclearfirstset(); 
+				for ( auto stTrigger = pvtAction->second.m_psrTriggers->getclearfirstset(); 
 							stEnd != stTrigger;
 						)
 				{
@@ -754,7 +760,7 @@ struct _l_generator
 			typename _TyMapActions::value_type & rvt = *itMA;
 			if ( rvt.second.second )
 			{
-					rvt.first->Render( _rosImp, m_sCharTypeName.begin() );
+					rvt.first->Render( _rosImp, m_sCharTypeName.c_str() );
 					_rosImp << "\t" << m_sBaseActionName << rvt.second.first << ";\n";
 					_rosImp << "bool\t_TyAnalyzer::Action" << rvt.second.first << "()\n";
 					_rosImp << "{\n";

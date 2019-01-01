@@ -7,10 +7,12 @@
 // Range is [first,second] ( i.e. not [first,second). )
 // Can use [0,0] for empty element - since not valid input.
 
+#include <ostream>
+
 __REGEXP_BEGIN_NAMESPACE
 
 template < class t_TyChar >
-struct _fa_char_range : public pair< t_TyChar, t_TyChar >
+struct _fa_char_range : public std::pair< t_TyChar, t_TyChar >
 {
 private:
 	typedef pair< t_TyChar, t_TyChar >	_TyBase;
@@ -70,7 +72,7 @@ public:
 		return isconsecutiveleft( _r ) || isconsecutiveright( _r );
 	}
 
-	friend ostream & operator << ( ostream & _ros, const _TyThis & _r )
+	friend std::ostream & operator << ( std::ostream & _ros, const _TyThis & _r )
 	{
 		_ros << "['" << ( _r.first ? _r.first : ' ' ) << 
 					 "'-'" << ( _r.second ? _r.second : ' ' ) << "']";
@@ -80,8 +82,10 @@ public:
 };
 
 template < class _TyNfaCharRange >
-struct _fa_char_range_intersect : 
-	public binary_function< _TyNfaCharRange, _TyNfaCharRange, bool >
+struct _fa_char_range_intersect
+#ifdef __LEXANG_USE_STLPORT
+	: public binary_function< _TyNfaCharRange, _TyNfaCharRange, bool >
+#endif __LEXANG_USE_STLPORT
 {
 	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
 	{

@@ -41,7 +41,9 @@ public:
 
 template < class t_TyPartitionClass >
 struct _compare_partition_classes
+#ifdef __LEXANG_USE_STLPORT
 	: public binary_function< t_TyPartitionClass *, t_TyPartitionClass *, bool >
+#endif __LEXANG_USE_STLPORT
 {
 	size_t	m_stAlphabet;	// The number of characters in the alphabet.
 
@@ -156,7 +158,7 @@ protected:
 	typedef	t_TyDfa	_TyDfa;
 	typedef	typename _TyDfa::_TyContext	_TyDfaCtxt;
 	typedef typename _TyDfa::_TyAllocator	_TyAllocator;
-	typedef typename _TyAllocPartClass::size_type	size_type;
+	typedef typename t_TyDfa::_TySetStates::size_type	size_type;
 
 	_TyDfa &			m_rDfa;
 	_TyDfaCtxt &	m_rDfaCtxt;
@@ -178,13 +180,14 @@ protected:
 	//	objects. This allows insertion of the same object into the map - allows
 	//	the set number -> state set mapping to remain correct for at least half
 	//	of the elements of a split set.
-	typedef _swap_object< _TySetStates >															_TySwapSS;
-	typedef _partition_el< _TySwapSS >																_TyPartitionEl;
-	typedef _gco< _TyPartitionEl, _TyAllocator, true, true >					_TyGcoPE;
-	typedef _gcr< _TyPartitionEl, _TyGcoPE >													_TyGcrPE;
-	typedef _gcp< _TyPartitionEl, _TyGcoPE >													_TyGcpPE;
-	typedef less< _TyGcrPE >																					_TyCompPE;
-	typedef set< _TyGcrPE, _TyCompPE, _TyAllocator >									_TyPartition;
+	typedef _swap_object< _TySetStates > _TySwapSS;
+	typedef _partition_el< _TySwapSS > _TyPartitionEl;
+	typedef _gco< _TyPartitionEl, _TyAllocator, true, true > _TyGcoPE;
+	typedef _gcr< _TyPartitionEl, _TyGcoPE > _TyGcrPE;
+	typedef _gcp< _TyPartitionEl, _TyGcoPE > _TyGcpPE;
+	typedef less< _TyGcrPE > _TyCompPE;
+  typedef typename _Alloc_traits< typename set< _TyGcrPE, _TyCompPE >::value_type, _TyAllocator >::allocator_type _TyPartitionAlloc;
+	typedef set< _TyGcrPE, _TyCompPE, _TyPartitionAlloc > _TyPartition;
 
 	_TyPartition	m_partition;
 	_TyGcpPE			m_gcppeSingleton;
@@ -205,7 +208,8 @@ protected:
 
 	// This is the set of current classes.
 	typedef _compare_partition_classes< _TyPartitionClass > _TyCompPartClases;
-	typedef set< _TyPartitionClass *, _TyCompPartClases, _TyAllocator >	_TySetPartClasses;
+  typedef typename _Alloc_traits< typename set< _TyPartitionClass *, _TyCompPartClases >::value_type, _TyAllocator >::allocator_type _TySetPartClassesAlloc;
+  typedef set< _TyPartitionClass *, _TyCompPartClases, _TySetPartClassesAlloc >	_TySetPartClasses;
 
 	_TySetPartClasses	m_setPartClasses;
 
@@ -230,7 +234,7 @@ public:
 			m_rgLookupRep( m_rDfa.get_allocator() )
 	{
 		_TyPartitionEl	peSingleton( INT_MAX, _TySetStates( 0, m_rDfa.get_allocator() ) );
-		m_gcppeSingleton._STLP_TEMPLATE Create1< _TyPartitionEl const & >( peSingleton, m_rDfa.get_allocator() );
+		m_gcppeSingleton.template Create1< _TyPartitionEl const & >( peSingleton, m_rDfa.get_allocator() );
 
 		_sdp< void *, _TyAllocator >	pvAllocMap( _TyAllocVPBase::get_allocator() );
 		_TyAllocVPBase::allocate_n( pvAllocMap.PtrRef(), m_stDfaStatesOrig );
@@ -258,8 +262,7 @@ public:
 		assert( m_stSizeClassCache == m_stUsedClassCache );
 		_sdp< _TyPartitionClass, _TyAllocator >	ppcNew( _TyAllocPartClass::get_allocator() );
 		ppcNew.PtrRef() = _TyAllocPartClass::allocate_type( );
-		new ( ppcNew ) _TyPartitionClass( m_stDfaStatesOrig, 
-																			_TyAllocPartClass::get_allocator() );
+		new ( ppcNew ) _TyPartitionClass( m_stDfaStatesOrig, _TyAllocPartClass::get_allocator() );
 		_dtorp< _TyPartitionClass >	dtorPC( ppcNew );	// throw-safety.
 		void **	pvTransitions;
 		_TyAllocVPBase::allocate_n( pvTransitions, m_rDfa.AlphabetSize() );
@@ -332,12 +335,12 @@ public:
 		if ( _pel->first >= 0 )
 		{
 			m_rgsmeMap[ _pel->first ] = _pel;
-			_rss.clearbit( _pel->first );
+			_rss.clearbit( (_TySetStates::size_type)_pel->first );
 		}	
 		else
 		{
-			size_type	stNextUpdate;
-			size_type	stFirstUpdate;
+      _TySetStates::size_type	stNextUpdate;
+      _TySetStates::size_type	stFirstUpdate;
 			int	iUpdates = 0;
 			for ( stFirstUpdate = stNextUpdate = _rss.getclearfirstset();
 						_rss.size() != stNextUpdate;
@@ -363,7 +366,7 @@ public:
 		_TyPartitionEl	peInsert( _iSingleStateHint, _TySetStates( _rssInsert ) );
 
 		_TyGcpPE	gcpPeInsert;
-		gcpPeInsert._STLP_TEMPLATE Create1< _TyPartitionEl const & >( peInsert, m_rDfa.get_allocator() );
+		gcpPeInsert.template Create1< _TyPartitionEl const & >( peInsert, m_rDfa.get_allocator() );
 
 		// Now set the state->state set map pointers:
 		_UpdateStateMap( gcpPeInsert, _rssInsert );
@@ -621,7 +624,7 @@ protected:
 		// At the end of this process the non-representatives will have no out transitions.
 		// The only in transitions that need to be moved are those from singleton partition groups.
 		// ( Also they will be the only ones that are left. )
-		_TySetStates	ssOutOnAlpha( m_rDfa.AlphabetSize(), m_rDfa.get_allocator() );
+		_TySetStates	ssOutOnAlpha( (_TyState)m_rDfa.AlphabetSize(), m_rDfa.get_allocator() );
 
 		// Create a lookup which we will lazily fill with the representative state's graph node
 		//	as we process:
@@ -630,7 +633,7 @@ protected:
 
 		typename _TyPartition::iterator itCur = _rcitUpper;
 
-		size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing.
+    _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing.
 
 		typename _TyGraph::_TyLinkPosIterNonConst	lpi;
 

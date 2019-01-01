@@ -19,7 +19,9 @@ class _dfa_context;
 
 template < class t_TyGraphLink >
 struct _sort_dfa_link 
+#ifdef __LEXANG_USE_STLPORT
 	: public binary_function< const t_TyGraphLink *, const t_TyGraphLink *, bool >
+#endif __LEXANG_USE_STLPORT
 {
 	bool	operator()( const t_TyGraphLink * const & _rpglL, 
 										const t_TyGraphLink * const & _rpglR ) const _BIEN_NOTHROW
@@ -77,8 +79,10 @@ public:
 
 	// Compressed character range map - we allow multiple entries that compare equal -
 	//	we check before inserting a new entry that it is not present in the equal range:
-	typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, t_TyAllocator > _TySetCompCharRange;
-	typedef deque< typename _TySetCompCharRange::iterator, t_TyAllocator > _TyDequeCCRIndex;
+  typedef typename _Alloc_traits< typename multimap< _TyRange, _TyAlphaIndex >::value_type, t_TyAllocator >::allocator_type _TySetCompCharRangeAllocator;
+  typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, _TySetCompCharRangeAllocator > _TySetCompCharRange;
+  typedef typename _Alloc_traits< typename deque< typename _TySetCompCharRange::iterator >::value_type, t_TyAllocator >::allocator_type _TyDequeCCRIndexAllocator;
+  typedef deque< typename _TySetCompCharRange::iterator, _TyDequeCCRIndexAllocator > _TyDequeCCRIndex;
 	
 	_sdpd< _TySetCompCharRange, t_TyAllocator >	m_pSetCompCharRange;
 	_sdpd< _TyDequeCCRIndex, t_TyAllocator > m_pCCRIndex;
@@ -90,7 +94,8 @@ public:
 
 	// Triggers - we need an extra copy since ambiguity may have occurred:
 	typedef less< _TyActionIdent > _TyCompareAI;
-	typedef map< _TyActionIdent, _TyAcceptAction, _TyCompareAI, t_TyAllocator >	_TyMapTriggers;
+  typedef typename _Alloc_traits< typename map< _TyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
+  typedef map< _TyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
 
 	_dfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
@@ -201,11 +206,11 @@ public:
 		assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
 		if ( !m_pSetCompCharRange )
 		{
-			m_pSetCompCharRange._STLP_TEMPLATE construct2< typename _TySetCompCharRange::key_compare const &,
+			m_pSetCompCharRange.template construct2< typename _TySetCompCharRange::key_compare const &,
 															t_TyAllocator const & >
 														( typename _TySetCompCharRange::key_compare(),
 															get_allocator() );
-			m_pCCRIndex._STLP_TEMPLATE construct1< t_TyAllocator const & >( get_allocator() );
+			m_pCCRIndex.template construct1< t_TyAllocator const & >( get_allocator() );
 
 			_CreateRangeLookup();	// Create if not already.
 
@@ -242,8 +247,13 @@ public:
 							pit = m_pSetCompCharRange->equal_range( r );
 						typename _TySetCompCharRange::iterator itFound;
 						if ( ( itFound = find_if( pit.first, pit.second, 
+#ifdef __LEXANG_USE_STLPORT
 										unary1st( bind2nd( equal_to< _TyRange >(), r ), 
-															typename _TySetCompCharRange::value_type() ) ) ) == pit.second )
+															typename _TySetCompCharRange::value_type() ) ) 
+#else //__LEXANG_USE_STLPORT
+                  [&r](auto _el) { return r == _el.first; } )
+#endif //__LEXANG_USE_STLPORT
+              ) == pit.second )
 						{
 							// Then a new range:
 							typename _TySetCompCharRange::value_type	vt( r, (_TyAlphaIndex)m_pCCRIndex->size() );
@@ -396,7 +406,7 @@ protected:
 															_TyGraphNode ** _ppgnAccept,
 															_TyGraphLink ** _ppglAdded )
 	{
-		_TyGraphLink *	pgl = m_gDfa._STLP_TEMPLATE create_link1
+		_TyGraphLink *	pgl = m_gDfa.template create_link1
       < _TyAlphaIndex const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
@@ -433,7 +443,7 @@ protected:
 													_TyGraphNode * _pgnSink,
 													_TyGraphLink ** _ppglAdded )
 	{
-		_TyGraphLink *	pgl = m_gDfa._STLP_TEMPLATE create_link1
+		_TyGraphLink *	pgl = m_gDfa.template create_link1
       < _TyAlphaIndex const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
@@ -468,7 +478,7 @@ private:
 public:
 	using _TyBase::m_rFaBase;
 
-	typedef typename t_TyAllocator::size_type size_type;
+  typedef typename _Alloc_traits< char, t_TyAllocator >::size_type size_type;
 	typedef typename _TyBase::_TyState _TyState;
 	typedef _dfa< t_TyChar, t_TyAllocator > _TyDfa;
 	typedef typename _TyDfa::_TyGraph _TyGraph;
@@ -478,10 +488,19 @@ public:
 	typedef typename _TyDfa::_TyAcceptAction _TyAcceptAction;
 	typedef _swap_object< _TySetStates > _TySwapSS;
 	typedef less< _TySwapSS > _TyCompareStates;
-	typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TyPartAcceptStates;
-	typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
-										hash< _TyState >, equal_to< _TyState >,
-										t_TyAllocator > _TyAcceptPartLookup;
+#ifdef __LEXANG_USE_STLPORT
+  typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TyPartAcceptStates;
+  typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
+										  hash< _TyState >, equal_to< _TyState >,
+										  t_TyAllocator > _TyAcceptPartLookup;
+#else __LEXANG_USE_STLPORT
+  typedef typename _Alloc_traits< typename map< _TySwapSS, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TyPartAcceptStatesAllocator;
+  typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, _TyPartAcceptStatesAllocator > _TyPartAcceptStates;
+  typedef typename _Alloc_traits< typename unordered_map< _TyState, typename _TyPartAcceptStates::value_type * >::value_type, t_TyAllocator >::allocator_type _TyAcceptPartLookupAllocator;
+  typedef unordered_map< _TyState, typename _TyPartAcceptStates::value_type *,
+                        hash< _TyState >, equal_to< _TyState >,
+                      _TyAcceptPartLookupAllocator > _TyAcceptPartLookup;
+#endif __LEXANG_USE_STLPORT
 
 	_TyGraphNode * m_pgnStart;
 	_sdpd< _TySetStates, t_TyAllocator > m_pssAccept;
@@ -511,7 +530,7 @@ public:
 
 	void	CreateAcceptingNodeSet()
 	{
-		m_pssAccept._STLP_TEMPLATE construct2< _TyState, const t_TyAllocator & >
+		m_pssAccept.template construct2< _TyState, const t_TyAllocator & >
 			( RDfa().NStates(), RDfa().get_allocator() );
 		m_pssAccept->clear();
 	}
@@ -525,7 +544,7 @@ public:
 	void
 	CreateAcceptPartLookup()
 	{
-		m_pPartLookup._STLP_TEMPLATE construct4< typename _TyAcceptPartLookup::size_type,
+		m_pPartLookup.template construct4< typename _TyAcceptPartLookup::size_type,
 															const typename _TyAcceptPartLookup::hasher &,
 															const typename _TyAcceptPartLookup::key_equal &,
 															const t_TyAllocator & >
@@ -549,7 +568,7 @@ public:
 
 			*pssUtil = rvtPA.first;
 
-			for ( size_type	stAccept = pssUtil->getclearfirstset();
+			for (_TySetStates::size_type stAccept = pssUtil->getclearfirstset();
 						pssUtil->size() != stAccept;
 						stAccept = pssUtil->getclearfirstset( stAccept ) )
 			{
@@ -606,7 +625,7 @@ public:
 
 		typename _TyDfa::_TyAlphaIndex	aiLimit = (typename _TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
 
-		size_t	stRemoved = 0;
+    _TySetStates::size_type stRemoved = 0;
 
 		_TySetStates ssFoundNodes( RDfa().NStates(), RDfa().get_allocator() );
 		ssFoundNodes.clear();
@@ -714,9 +733,9 @@ public:
 		}
 	}
 
-	void	CompressNodeLookup( size_type _stNonReps )
+	void CompressNodeLookup( typename _TySetStates::size_type _stNonReps )
 	{
-		size_type	stNewStates = RDfa().NStates() - _stNonReps;
+    _TySetStates::size_type	stNewStates = RDfa().NStates() - _stNonReps;
 
 		// We should compress the state numbers and the node lookup in the DFA.
 		// At the same time set up the new accepting state set.
@@ -728,9 +747,11 @@ public:
 
 		// Create a map from a pointer to an accept partition element to
 		//	the new parition for that accept state:
+    typedef typename _Alloc_traits< typename map< typename _TyPartAcceptStates::value_type *, _TySwapSS,
+                                                  less< typename _TyPartAcceptStates::value_type * > >::value_type, t_TyAllocator >::allocator_type _TyMapToNewAcceptAllocator;
 		typedef map<	typename _TyPartAcceptStates::value_type *, _TySwapSS, 
 						less< typename _TyPartAcceptStates::value_type * >,
-						t_TyAllocator >	_TyMapToNewAccept;
+            _TyMapToNewAcceptAllocator >	_TyMapToNewAccept;
 		_TyMapToNewAccept mapToNewAccept( less< typename _TyPartAcceptStates::value_type * >(), RDfa().get_allocator() );
 
 		// Move through and create the initial ( empty ) state sets:
@@ -845,10 +866,10 @@ public:
 	//	ids.
 	void	CompressTriggerAcceptPartitions()
 	{
-		typedef map<	_ref< const _TyAcceptAction >,
-									pair< typename _TyPartAcceptStates::iterator, _TySwapSS >,
-									less< _ref< const _TyAcceptAction > >,
-									t_TyAllocator >	_TySetTriggerParts;
+  typedef typename _Alloc_traits< typename map< _ref< const _TyAcceptAction >, pair< typename _TyPartAcceptStates::iterator, _TySwapSS >,
+                                                less< _ref< const _TyAcceptAction > > >::value_type, t_TyAllocator >::allocator_type _TySetTriggerPartsAllocator;
+		typedef map<  _ref< const _TyAcceptAction >, pair< typename _TyPartAcceptStates::iterator, _TySwapSS >,
+									less< _ref< const _TyAcceptAction > >, _TySetTriggerPartsAllocator >	_TySetTriggerParts;
 
 		_TySetTriggerParts	setTriggerParts( typename _TySetTriggerParts::key_compare(), RDfa().get_allocator() );
 

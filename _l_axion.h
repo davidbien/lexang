@@ -9,6 +9,7 @@
 #include <iostream>
 
 __REGEXP_BEGIN_NAMESPACE
+using namespace std;
 
 typedef int	_TyActionIdent;
 typedef unsigned long _TyLookaheadVector;
@@ -25,16 +26,10 @@ public:
 	// We have a static set of trigger action disambiguating objects.
 	typedef pair< _type_info_wrap, _type_info_wrap >		_TyPairTI;
   typedef less< _TyPairTI > _TyCompareTriggers;
+  typedef typename _Alloc_traits< typename set<	_TyPairTI, _TyCompareTriggers >::value_type, __L_DEFAULT_ALLOCATOR >::allocator_type _TySetSameTriggersAllocator;
 	typedef set<	_TyPairTI, _TyCompareTriggers, 
-                __L_DEFAULT_ALLOCATOR >		_TySetSameTriggers;
-#if 0//def __GNUC__
-// GNU gets confused about the enclosed namespace, so just reference the types explicitly.
-static set<	pair< _type_info_wrap, _type_info_wrap >, 
-            less< pair< _type_info_wrap, _type_info_wrap > >, 
-            __L_DEFAULT_ALLOCATOR >     m_setSameTriggers;
-#else //__GNUC__
+                _TySetSameTriggersAllocator >		_TySetSameTriggers;
 	static _TySetSameTriggers	m_setSameTriggers;
-#endif //__GNUC__
 
 	_l_action_object_base()
 	{

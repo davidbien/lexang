@@ -209,7 +209,7 @@ protected:
 public:
 	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
 
-	typedef basic_string< t_TyChar, char_traits< t_TyChar >, t_TyAllocator > _TyString;
+	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
 	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	_TyString	m_s;
@@ -226,7 +226,7 @@ public:
 
 	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
 	{
-		_rNfaCtxt.CreateStringNFA( m_s.begin() );
+		_rNfaCtxt.CreateStringNFA( &m_s.begin()[0] );
 	}
 
 	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
@@ -755,7 +755,7 @@ public:
 		: _TyAllocBase( _rAlloc )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
+		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, get_allocator() );
 #if 1 //ndef __GNUC__ 
 		(*m_pSdpAction)->m_pmfnRenderChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );
@@ -841,12 +841,12 @@ public:
 		: _TyAllocBase( _rAlloc )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
+		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, get_allocator() );
 	}
 
 	// We always clone the trigger actions.
 	_regexp_trigger( const _TyThis & _r, __false_type = __false_type() )
-		: _TyAllocBase( _r )
+		: _TyAllocBase( _r.get_allocator() )
 	{
 		if ( _r.m_pSdpAction )
 		{
@@ -968,8 +968,13 @@ public:
 	size_t											m_stFinalSize;	
 	_dtorp< _TySdpActionBase >	m_pSdpAction;
 
-	typedef list< _TyThis, t_TyAllocator >	_TyFinalList;
-	_TyFinalList								m_lAlternatives;
+#ifdef __LEXANG_USE_STLPORT
+  typedef t_TyAllocator _TyFinalListAllocator;
+#else __LEXANG_USE_STLPORT
+  typedef typename _Alloc_traits< typename list< _TyThis >::value_type, t_TyAllocator >::allocator_type _TyFinalListAllocator;
+#endif __LEXANG_USE_STLPORT
+  typedef list< _TyThis, _TyFinalListAllocator >	_TyFinalList;
+	_TyFinalList m_lAlternatives;
 
 	// Construct from base - this copies the base object.
 	_regexp_final(	_TyBase const & _r,
@@ -982,7 +987,7 @@ public:
 
 	// Full copy constructor - this copies everything.
 	_regexp_final( _TyThis const & _r )
-		: _TyAllocBase( _r ),
+		: _TyAllocBase( _r.get_allocator() ),
 			m_lAlternatives( _r.m_lAlternatives )
 	{
 		_r.m_pbre->Clone( this, &m_pbre.PtrRef() );
@@ -995,7 +1000,7 @@ public:
 	// Partial copy constructor - this copies the current regular expression - 
 	//	not any associated rules {m_lAlternatives} nor the action object.
 	_regexp_final( _TyThis const & _r, __false_type )
-		: _TyAllocBase( _r ),
+		: _TyAllocBase( _r.get_allocator() ),
 			m_lAlternatives( _r.get_allocator() )
 	{
 		_r.m_pbre->Clone( this, &m_pbre.PtrRef() );
@@ -1012,7 +1017,7 @@ public:
 	void	SetAction( t_TyActionObject _ao )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::_STLP_TEMPLATE construct1< t_TyActionObject const & >( _ao, get_allocator() );
+		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, get_allocator() );
 	}
 
 	// We have an associated list(and sublists) of final rules - these implement the 

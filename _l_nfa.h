@@ -81,14 +81,15 @@ public:
 	int m_iActionCur;
 
 	typedef less< _TyState > _TyCompareStates;
-	typedef map< _TyState, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TySetAcceptStates;
+  typedef typename _Alloc_traits< typename map< _TyState, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TySetAcceptStatesAllocator;
+  typedef map< _TyState, _TyAcceptAction, _TyCompareStates, _TySetAcceptStatesAllocator > _TySetAcceptStates;
 	typedef typename _TySetAcceptStates::iterator _TySetAcceptIT;
 	typedef typename _TySetAcceptStates::value_type _TySetAcceptVT;
 
 	// Sometimes need to order the accept actions by action identifier:
 	typedef less< _TyActionIdent > _TyCompareAI;
-	typedef map<	_TyActionIdent, typename _TySetAcceptStates::value_type *,
-					_TyCompareAI, t_TyAllocator > _TySetASByActionID;
+  typedef typename _Alloc_traits< typename map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
+  typedef map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
@@ -113,7 +114,7 @@ public:
 			m_fHasFreeActions( false ),
 			m_nUnsatisfiableTransitions( 0 )
 	{
-		m_pSetAcceptStates._STLP_TEMPLATE construct2< const _TyCompareStates &, const t_TyAllocator & >
+		m_pSetAcceptStates.template construct2< const _TyCompareStates &, const t_TyAllocator & >
 																	( _TyCompareStates(), get_allocator() );
 	}
 
@@ -554,7 +555,7 @@ protected:	// accessed by _nfa_context:
 	{
 		if ( !m_pLookupActionID )
 		{
-			m_pLookupActionID._STLP_TEMPLATE construct2< const _TyCompareAI &, const t_TyAllocator & >
+			m_pLookupActionID.template construct2< const _TyCompareAI &, const t_TyAllocator & >
 												( _TyCompareAI(), get_allocator() );
 			_TySetAcceptIT itEnd = m_pSetAcceptStates->end();
 			for ( _TySetAcceptIT it = m_pSetAcceptStates->begin();
@@ -733,7 +734,7 @@ protected:	// accessed by _nfa_context:
 	{
 		_UpdateAlphabet( _r );
 
-		_TyGraphLink * pgl = m_gNfa._STLP_TEMPLATE create_link1
+		_TyGraphLink * pgl = m_gNfa.template create_link1
       < _TyRange const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
@@ -766,7 +767,7 @@ protected:	// accessed by _nfa_context:
 		_UpdateAlphabet( _r );
 
 		_TyGraphLink *	pgl = m_gNfa.
-      _STLP_TEMPLATE create_link1< _TyRange const & >( _r );
+      template create_link1< _TyRange const & >( _r );
 #ifdef __DGRAPH_INSTANCED_ALLOCATORS
 		CMFDtor1_void< _TyGraph, _TyGraphLink * >
 			endLink( &m_gNfa, &_TyGraph::destroy_link, pgl );
@@ -1045,7 +1046,7 @@ public:
 
 	void	_CreateAcceptingNodeSet()
 	{
-		m_pssAccept._STLP_TEMPLATE construct2< _TyState, const t_TyAllocator & >
+		m_pssAccept.template construct2< _TyState, const t_TyAllocator & >
 			( RNfa().NStates(), RNfa().get_allocator() );
 		m_pssAccept->clear();
 
@@ -1101,7 +1102,7 @@ __REGEXP_END_NAMESPACE
 
 		typedef _select_minus_closure	_TyMinusSelect;
 		typedef typename _TyGraph::_TyGraphTraits:: 
-			_STLP_TEMPLATE _get_link_select_iter< _TyMinusSelect >::_TyGraphFwdIterSelectConst	_TyMinusSelectIter;
+			template _get_link_select_iter< _TyMinusSelect >::_TyGraphFwdIterSelectConst	_TyMinusSelectIter;
 
 		// We cache the selection iterator to keep from allocating/deallocating all the time:
 		_TyMinusSelectIter	selitMinus(	_pgnStart, 0, true, false, 
@@ -1156,7 +1157,7 @@ __REGEXP_END_NAMESPACE
 
 		typedef _select_not_state	_TyForwardSelect;
 		typedef typename _TyGraph::_TyGraphTraits:: 
-			_STLP_TEMPLATE _get_link_select_iter< _TyForwardSelect >::_TyGraphFwdIterSelectConst	_TyForwardSelectIter;
+			template _get_link_select_iter< _TyForwardSelect >::_TyGraphFwdIterSelectConst	_TyForwardSelectIter;
 
 		// We cache the selection iterator to keep from allocating/deallocating all the time:
 		_TyForwardSelectIter	selitForward(	_rctxt2.m_pgnStart, 0, true, true, 
