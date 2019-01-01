@@ -251,7 +251,11 @@ public:
 										unary1st( bind2nd( equal_to< _TyRange >(), r ), 
 															typename _TySetCompCharRange::value_type() ) ) 
 #else //__LEXANG_USE_STLPORT
-                  [&r](auto _el) { return r == _el.first; } )
+                  [=,&kr = as_const(r)](auto _el) 
+                  { 
+                    static_assert(is_const_v<remove_reference_t<decltype(kr)>>);
+                    return kr == _el.first; 
+                  } )
 #endif //__LEXANG_USE_STLPORT
               ) == pit.second )
 						{
@@ -309,9 +313,12 @@ public:
 			assert( 0 );	// ni - though easy.
 		}
 
-		_TySetStates * pssAccepting;
-		CMFDtor1_void< _TyThis, typename _TySSCache::iterator const &, typename _TySSCache::iterator >
-			releaseSSAccepting( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssAccepting ) );
+    // Set up the release of the pssAccepting. There are a lot of local variables required for this.
+    _TySetStates * pssAccepting;
+    size_t stRelease = _STGetSSCache(pssAccepting);
+    auto fcReleaseAccept = [=]() { _ReleaseSSCache(stRelease); }; // define the lambda for the releasing pssAccepting back to the cache.
+    typedef decltype(fcReleaseAccept) tyDeclFcReleaseAccept;
+    _fcallobj< tyDeclFcReleaseAccept > fcoReleaseAccept(fcReleaseAccept);
 		pssAccepting->clear();
 		_rctxt.GetAcceptingNodeSet( *pssAccepting );
 
@@ -555,9 +562,8 @@ public:
 
 		// Get the accepting states from the NFA:
 		_TySetStates * pssUtil;
-		CMFDtor1_void< _TyDfa, typename _TyDfa::_TySSCache::iterator const &, typename _TyDfa::_TySSCache::iterator >
-			releaseUtil(	&RDfa(), &_TyDfa::_ReleaseSSCache, 
-										RDfa()._GetSSCache( pssUtil ) );
+		CMFDtor1_void< _TyDfa, size_t >
+			releaseUtil(	&RDfa(), &_TyDfa::_ReleaseSSCache, RDfa()._STGetSSCache(pssUtil) );
 
 		// We will create a lookup of all the accepting states to their associated partition.
 		typename _TyPartAcceptStates::iterator	itPAEnd = m_partAccept.end();

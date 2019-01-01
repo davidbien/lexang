@@ -120,12 +120,23 @@ public:
 	// Returns false if we go over the node limit.
 	bool	create( )
 	{
-		// Get the accepting states from the NFA:
-		CMFDtor1_void< _TyNfa, typename _TySSCacheNfa::iterator const &, typename _TySSCacheNfa::iterator >
-			releaseAcceptingNfa(	&m_rNfa, &_TyNfa::_ReleaseSSCache, 
-														m_rNfa._GetSSCache( m_pssAcceptingNfa ) );
-		m_pssAcceptingNfa->clear();
-		m_rNfaCtxt.GetAcceptingNodeSet( *m_pssAcceptingNfa );
+    // We can't store iterators to a deque to which a push_back() or push_front() is called - so all bets are off with storing iterators.
+    // We can however, in the presence of at least push_back() or push_front(),  store pointers/refs to elements. In fact as such we can just store an index to the element in question.
+    // Get the accepting states from the NFA:
+
+#if 0
+    CMFDtor1_void< _TyNfa, size_t >
+      releaseAcceptingNfa(&m_rNfa, &_TyNfa::_ReleaseSSCache, m_rNfa._STGetSSCache(m_pssAcceptingNfa));
+#endif 0
+    size_t stReleaseAccepting = m_rNfa._STGetSSCache(m_pssAcceptingNfa);
+    auto fcReleaseAccept = [=]() // define the lambda for the releasing pssAccepting back to the cache.
+    { 
+      m_rNfa._ReleaseSSCache(stReleaseAccepting); 
+    };
+    typedef decltype(fcReleaseAccept) tyDeclFcReleaseAccept;
+    _fcallobj< tyDeclFcReleaseAccept > fcoReleaseAccept(fcReleaseAccept);
+    m_pssAcceptingNfa->clear();
+    m_rNfaCtxt.GetAcceptingNodeSet(*m_pssAcceptingNfa);
 
 		// Copy the alphabet set from the NFA to the DFA:
 #if 0	// Retail version doesn't like this code.
@@ -150,9 +161,8 @@ public:
 		// Set up max original actions - we will be adding disambiguating actions:
 		m_rDfa.m_iMaxActions = m_rNfa.m_iActionCur;
 
-		CMFDtor1_void< _TyNfa, typename _TySSCacheNfa::iterator const &, typename _TySSCacheNfa::iterator >
-			releaseCur(	&m_rNfa, &_TyNfa::_ReleaseSSCache, 
-									m_rNfa._GetSSCache( m_pssCur ) );
+    CMFDtor1_void< _TyNfa, size_t >
+      releaseCur(&m_rNfa, &_TyNfa::_ReleaseSSCache, m_rNfa._STGetSSCache(m_pssCur));
 		m_pssCur->clear();
 
 		// If we have a dead state then create it as the zeroth state -
@@ -187,9 +197,8 @@ public:
 		_TySetStatesNfa const * pssInLookup = _NewDfaState( m_rDfaCtxt.m_pgnStart );
 
 		_TySetStatesNfa * pssMove;
-		CMFDtor1_void< _TyNfa, typename _TySSCacheNfa::iterator const &, typename _TySSCacheNfa::iterator >
-			releaseMove(	&m_rNfa, &_TyNfa::_ReleaseSSCache, 
-										m_rNfa._GetSSCache( pssMove ) );
+		CMFDtor1_void< _TyNfa, size_t >
+			releaseMove( &m_rNfa, &_TyNfa::_ReleaseSSCache, m_rNfa._STGetSSCache(pssMove) );
 		pssMove->clear();
 
 		_TyGraphNodeDfa *	pgnCurDfa = m_rDfaCtxt.m_pgnStart;

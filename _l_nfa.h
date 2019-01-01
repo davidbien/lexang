@@ -32,7 +32,7 @@ protected:
 	using _TyBase::ms_kreTrigger;
 	using _TyBase::ms_kreUnsatisfiableStart;
 	using _TyBase::_UpdateNodeLookup;
-	using _TyBase::_GetSSCache;
+	using _TyBase::_STGetSSCache;
 public:
 	using _TyBase::NStates;
 
@@ -165,21 +165,21 @@ public:
 		AllocClosureCache();
 
 		_TySetStates * pssAccepting;
-		CMFDtor1_void< _TyThis, typename _TySSCache::iterator const &, typename _TySSCache::iterator >
-			releaseSSAccepting( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssAccepting ) );
+		CMFDtor1_void< _TyThis, size_t >
+			releaseSSAccepting( this, &_TyThis::_ReleaseSSCache, _STGetSSCache(pssAccepting) );
 		pssAccepting->clear();
 		_rctxt.GetAcceptingNodeSet( *pssAccepting );
 
 		// This is going to be pretty slow - but that's what you get matching with an NFA:
 		_TySetStates * pssCur;
-		CMFDtor1_void< _TyThis, typename _TySSCache::iterator const &, typename _TySSCache::iterator >
-			releaseSSCur( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssCur ) );
+		CMFDtor1_void< _TyThis, size_t >
+			releaseSSCur( this, &_TyThis::_ReleaseSSCache, _STGetSSCache(pssCur) );
 		pssCur->clear();
 		Closure( _rctxt.m_pgnStart, *pssCur, true );
 
 		_TySetStates * pssMove;
-		CMFDtor1_void< _TyThis, typename _TySSCache::iterator const &, typename _TySSCache::iterator >
-			releaseSSMove( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssMove ) );
+		CMFDtor1_void< _TyThis, size_t >
+			releaseSSMove( this, &_TyThis::_ReleaseSSCache, _STGetSSCache(pssMove) );
 		pssMove->clear();
 
 		while( *_pc && !pssCur->empty() )
@@ -581,8 +581,8 @@ protected:	// accessed by _nfa_context:
 
 		// Re-use the sets for efficiency:
 		_TySetStates * pssCur;
-		CMFDtor1_void< _TyThis, typename _TySSCache::iterator const &, typename _TySSCache::iterator >
-			releaseSS( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssCur ) );
+		CMFDtor1_void< _TyThis, size_t >
+			releaseSS( this, &_TyThis::_ReleaseSSCache, _STGetSSCache(pssCur) );
 
 		// Find a state in <_rsetStart>:
 		_TyState nState;
@@ -652,8 +652,8 @@ protected:	// accessed by _nfa_context:
 
 		// Re-use the sets for efficiency:
 		_TySetStates * pssCur;
-		CMFDtor1_void< _TyThis, typename _TySSCache::iterator const &, typename _TySSCache::iterator >
-			releaseSS( this, &_TyThis::_ReleaseSSCache, _GetSSCache( pssCur ) );
+		CMFDtor1_void< _TyThis, size_t >
+			releaseSS( this, &_TyThis::_ReleaseSSCache, _STGetSSCache(pssCur) );
 
 		// Find a state in <_rsetStart>:
 		_TyState nState;

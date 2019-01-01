@@ -264,14 +264,18 @@ protected:
 		assert(	m_uiUnusedCacheBitVec == ( ( 1 << m_ssCache.size() ) - 1 ) );
 	}
 
-	typename _TySSCache::iterator _GetSSCache( _TySetStates *& _rpss )
+  // So a deque invalidates all iterators when a push_back or push_front is performed.
+  // However the address of the elements of the deque, so they claim, is not changed.
+  // We'll just record the index and then use that on release - makes it easy - and ignores if they reallocate the deque.
+  // Hmmm: I am disappointed that deque iterators are invalidated by push...() - this is the major usage case and this is why you used deque.
+  // Anyway the most typesafe way seems to be to just use the element point which is claimed to not change as long as you don't do such and such which I will not do (I never remove elements - it is a cache).
+  size_t _STGetSSCache(_TySetStates *& _rpss )
 	{
 		if ( m_uiUnusedCacheBitVec )
 		{
 			size_t stUnused = _bv_get_clear_first_set( m_uiUnusedCacheBitVec );
-			typename _TySSCache::iterator	itFound = m_ssCache.begin() + stUnused;
-			_rpss = &( (*itFound).RObject() );
-			return itFound;
+      _rpss = &m_ssCache[stUnused].RObject();
+      return stUnused;
 		}
 		else
 		{
@@ -279,23 +283,23 @@ protected:
 			assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
 			_TySetStates ss( static_cast< size_t >( m_iCurState ), get_allocator() );
 			m_ssCache.push_back( ss );
-			_rpss = &( m_ssCache.back().RObject() );
-			return m_ssCache.end() - 1;
+      _rpss = &m_ssCache.back().RObject();
+			return m_ssCache.size()-1;
 		}
 	}
 
-	void		_ReleaseSSCache( typename _TySSCache::iterator const & _rit )
+  // Provide the element to be released. It is an exception situation if the element is outside of the range of current elements.
+	void _ReleaseSSCache(size_t _stRelease)
 	{
-		size_t	stRelease = _rit - m_ssCache.begin();
-		assert( !( m_uiUnusedCacheBitVec & ( 1 << stRelease ) ) );
-		m_uiUnusedCacheBitVec |= ( 1 << stRelease );
+    assert(_stRelease < m_ssCache.size());
+    assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
+		m_uiUnusedCacheBitVec |= ( 1 << _stRelease );
 	}
 
 	void	_UpdateNodeLookup( _TyLexanGraphNodeBase * _pgnb )
 	{
 		m_nodeLookup.push_back( _pgnb );
 	}
-
 };
 
 __REGEXP_END_NAMESPACE

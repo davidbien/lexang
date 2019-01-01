@@ -18,6 +18,7 @@
 #include "bienutil/_dtorp.h"
 #include "bienutil/_swapobj.h"
 #include "bienutil/_pairfxn.h"
+#include "bienutil/_fcallobj.h"
 #include "lexang/_l_chrtr.h"
 #include "lexang/_l_chrng.h"
 #include "lexang/_l_axion.h"
