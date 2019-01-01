@@ -38,9 +38,9 @@ public:
 
 #ifdef _MSC_VER
 	typedef int	_TyState;
-#else _MSC_VER
+#else //_MSC_VER
   typedef ptrdiff_t	_TyState;
-#endif _MSC_VER
+#endif //_MSC_VER
 
 	typedef _l_action_object_base< t_TyChar, true >									_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >												_TySdpActionBase;

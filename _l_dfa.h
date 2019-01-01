@@ -21,7 +21,7 @@ template < class t_TyGraphLink >
 struct _sort_dfa_link 
 #ifdef __LEXANG_USE_STLPORT
 	: public binary_function< const t_TyGraphLink *, const t_TyGraphLink *, bool >
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 {
 	bool	operator()( const t_TyGraphLink * const & _rpglL, 
 										const t_TyGraphLink * const & _rpglR ) const _BIEN_NOTHROW
@@ -500,14 +500,14 @@ public:
   typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
 										  hash< _TyState >, equal_to< _TyState >,
 										  t_TyAllocator > _TyAcceptPartLookup;
-#else __LEXANG_USE_STLPORT
+#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename map< _TySwapSS, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TyPartAcceptStatesAllocator;
   typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, _TyPartAcceptStatesAllocator > _TyPartAcceptStates;
   typedef typename _Alloc_traits< typename unordered_map< _TyState, typename _TyPartAcceptStates::value_type * >::value_type, t_TyAllocator >::allocator_type _TyAcceptPartLookupAllocator;
   typedef unordered_map< _TyState, typename _TyPartAcceptStates::value_type *,
                         hash< _TyState >, equal_to< _TyState >,
                       _TyAcceptPartLookupAllocator > _TyAcceptPartLookup;
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 
 	_TyGraphNode * m_pgnStart;
 	_sdpd< _TySetStates, t_TyAllocator > m_pssAccept;
@@ -574,7 +574,7 @@ public:
 
 			*pssUtil = rvtPA.first;
 
-			for (_TySetStates::size_type stAccept = pssUtil->getclearfirstset();
+			for (typename _TySetStates::size_type stAccept = pssUtil->getclearfirstset();
 						pssUtil->size() != stAccept;
 						stAccept = pssUtil->getclearfirstset( stAccept ) )
 			{
@@ -631,7 +631,7 @@ public:
 
 		typename _TyDfa::_TyAlphaIndex	aiLimit = (typename _TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
 
-    _TySetStates::size_type stRemoved = 0;
+    typename _TySetStates::size_type stRemoved = 0;
 
 		_TySetStates ssFoundNodes( RDfa().NStates(), RDfa().get_allocator() );
 		ssFoundNodes.clear();
@@ -741,7 +741,7 @@ public:
 
 	void CompressNodeLookup( typename _TySetStates::size_type _stNonReps )
 	{
-    _TySetStates::size_type	stNewStates = RDfa().NStates() - _stNonReps;
+    typename _TySetStates::size_type	stNewStates = RDfa().NStates() - _stNonReps;
 
 		// We should compress the state numbers and the node lookup in the DFA.
 		// At the same time set up the new accepting state set.

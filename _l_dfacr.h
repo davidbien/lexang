@@ -44,7 +44,7 @@ protected:
 										  _TyAllocatorNfa > _TyLookupSS;
   typedef slist< pair< _TyState, _TyState >, _TyAllocatorNfa > _TyDfaAcceptingList;
   typedef deque< const _TySetStatesNfa*, _TyAllocatorNfa > _TyMapStateToSS;
-#else __LEXANG_USE_STLPORT
+#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename unordered_map< _TySwapSSNfa, _TyGraphNodeDfa* >::value_type, _TyAllocatorNfa >::allocator_type _tySwapSSNfaAlloc;
   typedef unordered_map<	_TySwapSSNfa, _TyGraphNodeDfa*,
     hash< _TySwapSSNfa >, equal_to< _TySwapSSNfa >,
@@ -53,7 +53,7 @@ protected:
   typedef forward_list< pair< _TyState, _TyState >, _TyDfaAcceptingListAlloc > _TyDfaAcceptingList;
   typedef typename _Alloc_traits< typename deque< const _TySetStatesNfa* >::value_type, _TyAllocatorNfa >::allocator_type _TyMapStateToSSAlloc;
   typedef deque< const _TySetStatesNfa*, _TyMapStateToSSAlloc > _TyMapStateToSS;
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 
 	// Lookahead disambiguating stuff:
   typedef typename _Alloc_traits< typename set< _TyState, less< _TyState > >::value_type, _TyAllocatorNfa >::allocator_type _TySetLDStatesAlloc;
@@ -127,7 +127,7 @@ public:
 #if 0
     CMFDtor1_void< _TyNfa, size_t >
       releaseAcceptingNfa(&m_rNfa, &_TyNfa::_ReleaseSSCache, m_rNfa._STGetSSCache(m_pssAcceptingNfa));
-#endif 0
+#endif //0
     size_t stReleaseAccepting = m_rNfa._STGetSSCache(m_pssAcceptingNfa);
     auto fcReleaseAccept = [=]() // define the lambda for the releasing pssAccepting back to the cache.
     { 
@@ -371,11 +371,11 @@ public:
 		_TySetStatesNfa const *	pssInLookup;
 		m_mapStateToSS.push_back( pssInLookup = &(*pibInserted.first).first.RObject() );
 		assert( m_mapStateToSS.size() == m_rDfa.NStates() );
-    _TySetStatesNfa::size_type stFirst = m_pssAcceptingNfa->FirstIntersection( *m_pssCur );
+    typename _TySetStatesNfa::size_type stFirst = m_pssAcceptingNfa->FirstIntersection( *m_pssCur );
 		if ( m_pssAcceptingNfa->size() != stFirst )
 		{
 			// If we have multiple intersections then the rule set is ambiguous:
-      _TySetStatesNfa::size_type stNext = m_pssAcceptingNfa->NextIntersection( *m_pssCur, stFirst );
+      typename _TySetStatesNfa::size_type stNext = m_pssAcceptingNfa->NextIntersection( *m_pssCur, stFirst );
 			if ( stNext != m_pssAcceptingNfa->size() )
 			{
 				// Then we have an ambiguous rule:

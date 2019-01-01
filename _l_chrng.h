@@ -12,7 +12,7 @@
 __REGEXP_BEGIN_NAMESPACE
 
 template < class t_TyChar >
-struct _fa_char_range : public std::pair< t_TyChar, t_TyChar >
+struct _fa_char_range : public pair< t_TyChar, t_TyChar >
 {
 private:
 	typedef pair< t_TyChar, t_TyChar >	_TyBase;
@@ -85,7 +85,7 @@ template < class _TyNfaCharRange >
 struct _fa_char_range_intersect
 #ifdef __LEXANG_USE_STLPORT
 	: public binary_function< _TyNfaCharRange, _TyNfaCharRange, bool >
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 {
 	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
 	{

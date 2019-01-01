@@ -970,9 +970,9 @@ public:
 
 #ifdef __LEXANG_USE_STLPORT
   typedef t_TyAllocator _TyFinalListAllocator;
-#else __LEXANG_USE_STLPORT
+#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename list< _TyThis >::value_type, t_TyAllocator >::allocator_type _TyFinalListAllocator;
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
   typedef list< _TyThis, _TyFinalListAllocator >	_TyFinalList;
 	_TyFinalList m_lAlternatives;
 

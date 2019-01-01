@@ -43,7 +43,7 @@ template < class t_TyPartitionClass >
 struct _compare_partition_classes
 #ifdef __LEXANG_USE_STLPORT
 	: public binary_function< t_TyPartitionClass *, t_TyPartitionClass *, bool >
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 {
 	size_t	m_stAlphabet;	// The number of characters in the alphabet.
 
@@ -335,12 +335,12 @@ public:
 		if ( _pel->first >= 0 )
 		{
 			m_rgsmeMap[ _pel->first ] = _pel;
-			_rss.clearbit( (_TySetStates::size_type)_pel->first );
+			_rss.clearbit( (typename _TySetStates::size_type)_pel->first );
 		}	
 		else
 		{
-      _TySetStates::size_type	stNextUpdate;
-      _TySetStates::size_type	stFirstUpdate;
+      typename _TySetStates::size_type	stNextUpdate;
+      typename _TySetStates::size_type	stFirstUpdate;
 			int	iUpdates = 0;
 			for ( stFirstUpdate = stNextUpdate = _rss.getclearfirstset();
 						_rss.size() != stNextUpdate;
@@ -633,7 +633,7 @@ protected:
 
 		typename _TyPartition::iterator itCur = _rcitUpper;
 
-    _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing.
+    typename _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing.
 
 		typename _TyGraph::_TyLinkPosIterNonConst	lpi;
 
