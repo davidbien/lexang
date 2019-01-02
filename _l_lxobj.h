@@ -7,9 +7,13 @@
 #include <stddef.h>
 #include <assert.h>
 #include <wchar.h>
+#ifdef __LEXANG_USE_STLPORT
 #include <stl/_alloc.h>
-#include <typeinfo>
 #include <hash_set>
+#else __LEXANG_USE_STLPORT
+#include <unordered_set>
+#endif __LEXANG_USE_STLPORT
+#include <typeinfo>
 #include "bienutil/bienutil.h"
 #include "bienutil/_basemap.h"
 #include "lexang/_l_ns.h"
@@ -373,8 +377,10 @@ struct _l_state< t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0 >
 
 template < class t_TyChar >
 struct _l_compare_input_with_range 
-	: public binary_function<	_l_transition< t_TyChar >, 
+#ifdef __LEXANG_USE_STLPORT
+  : public binary_function<	_l_transition< t_TyChar >,
 														typename _l_transition< t_TyChar >::_TyUnsignedChar, bool >
+#endif __LEXANG_USE_STLPORT
 {
 	bool	operator () ( _l_transition< t_TyChar > const & _rrl, 
 											typename _l_transition< t_TyChar >::_TyUnsignedChar const & _rucr ) const

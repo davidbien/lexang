@@ -7,9 +7,9 @@
 
 #include <set>
 #include <iostream>
+#include "bienutil/_aloctrt.h"
 
 __REGEXP_BEGIN_NAMESPACE
-using namespace std;
 
 typedef int	_TyActionIdent;
 typedef unsigned long _TyLookaheadVector;
