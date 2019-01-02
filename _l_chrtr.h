@@ -5,6 +5,8 @@
 
 // Character traits for lexical analyzer.
 
+#include <limits.h>
+
 __REGEXP_BEGIN_NAMESPACE
 
 template < class t_TyCharType >
