@@ -10,9 +10,9 @@
 #ifdef __LEXANG_USE_STLPORT
 #include <stl/_alloc.h>
 #include <hash_set>
-#else __LEXANG_USE_STLPORT
+#else //__LEXANG_USE_STLPORT
 #include <unordered_set>
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 #include <typeinfo>
 #include "bienutil/bienutil.h"
 #include "bienutil/_basemap.h"
@@ -26,7 +26,7 @@
 
 #ifdef __LEXANG_USE_STLPORT
 #define _STLP_ZERO_SIZE_ARRAYS // This isn't part of the current STLport but we still have it here.
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 
 __LEXOBJ_BEGIN_NAMESPACE
 
@@ -380,7 +380,7 @@ struct _l_compare_input_with_range
 #ifdef __LEXANG_USE_STLPORT
   : public binary_function<	_l_transition< t_TyChar >,
 														typename _l_transition< t_TyChar >::_TyUnsignedChar, bool >
-#endif __LEXANG_USE_STLPORT
+#endif //__LEXANG_USE_STLPORT
 {
 	bool	operator () ( _l_transition< t_TyChar > const & _rrl, 
 											typename _l_transition< t_TyChar >::_TyUnsignedChar const & _rucr ) const
