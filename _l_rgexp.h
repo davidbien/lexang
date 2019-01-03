@@ -2,6 +2,7 @@
 #define __L_RGEXP_H
 
 #include <list>
+#include <sstream>
 
 // _L_REGEXP_DEFAULTCHAR:
 // This used for some function default arguments.
@@ -862,7 +863,23 @@ public:
 
 	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
 	{
-		_rcbNfa.CreateTriggerNFA();
+    try
+    {
+      _rcbNfa.CreateTriggerNFA();
+    }
+    catch (regexp_trigger_found_first_exception & _rexc)
+    {
+      // Record the action to which we are responding:
+      if (!!m_pSdpAction)
+      {
+        stringstream strstr;
+        strstr << _rexc.what() << ":";
+        (*m_pSdpAction)->Render(strstr, "Unknown");
+        string strAction = strstr.str();
+        _rexc.SetWhat(strAction);
+        throw;
+      }
+    }
 		
 		// If we have an action object then set into NFA:
 		_rcbNfa.SetAction( m_pSdpAction, e_atTrigger );

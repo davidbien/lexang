@@ -39,7 +39,7 @@ private:
 protected:
 	using _TyBase::m_iCurState;
 	using _TyBase::m_setAlphabet;
-	using _TyBase::_UpdateNodeLookup;
+	using _TyBase::_STUpdateNodeLookup;
 public:
 	using _TyBase::m_nodeLookup;
 	using _TyBase::get_allocator;
@@ -402,7 +402,8 @@ protected:
 	void		_NewStartState( _TyGraphNode ** _ppgn )
 	{
     *_ppgn = m_gDfa.create_node1( m_iCurState );
-		_UpdateNodeLookup( *_ppgn );
+		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgn );
+    assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	} 
 
@@ -441,7 +442,8 @@ protected:
 			*_ppglAdded = pgl;
 		}
 	
-		_UpdateNodeLookup( *_ppgnAccept );
+		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgnAccept );
+    assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	}
 

@@ -8,6 +8,8 @@
 #include <typeinfo>
 #include "dgraph/_gr_inc.h"
 
+#define __LEXANG_DEFAULT_ALLOCATOR __DGRAPH_DEFAULT_ALLOCATOR
+
 #include "_l_ns.h"
 #include "bienutil/_ticont.h"
 #include "bienutil/_ref.h"

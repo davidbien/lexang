@@ -296,9 +296,10 @@ protected:
 		m_uiUnusedCacheBitVec |= ( 1 << _stRelease );
 	}
 
-	void	_UpdateNodeLookup( _TyLexanGraphNodeBase * _pgnb )
+	size_t _STUpdateNodeLookup( _TyLexanGraphNodeBase * _pgnb )
 	{
 		m_nodeLookup.push_back( _pgnb );
+    return m_nodeLookup.size() - 1;
 	}
 };
 

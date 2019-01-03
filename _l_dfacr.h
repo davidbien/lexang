@@ -578,7 +578,8 @@ public:
 						// Now set the trigger flag if we found any:
 						if ( fFoundTrigger )
 						{
-							m_fAmbiguousTriggers = true;	// We have ambiguous triggers.
+              assert(!!srFoundTriggers.countsetbits());
+                m_fAmbiguousTriggers = true;	// We have ambiguous triggers.
 							(int&)aaNew.m_eaatType |= e_aatTrigger;
 						}
 						// The original action to which this corresponds:

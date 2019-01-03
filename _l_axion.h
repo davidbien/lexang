@@ -94,7 +94,9 @@ public:
 	}
 
 	virtual void Render(ostream & _ros, const char * _pcCharName) const = 0;
-	virtual void RenderW(wostream & _ros, const wchar_t * _pcCharName) const = 0;
+  virtual void Render(stringstream & _ros, const char * _pcCharName) const = 0;
+  virtual void RenderW(wostream & _ros, const wchar_t * _pcCharName) const = 0;
+  virtual void RenderW(wstringstream & _ros, const wchar_t * _pcCharName) const = 0;
 };
 
 template < class t_TyChar, bool t_fInLexGen >
@@ -123,27 +125,45 @@ struct _l_action_object_base< t_TyChar, false >
 // Translation into a simple integer token.
 template < class t_TyChar, int t_iToken, bool t_fInLexGen = true >
 struct _l_action_token
-	: public _l_action_object_base< t_TyChar, t_fInLexGen >
+  : public _l_action_object_base< t_TyChar, t_fInLexGen >
 {
 private:
-	typedef _l_action_token< t_TyChar, t_iToken, t_fInLexGen >	_TyThis;
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen >			_TyBase;
+  typedef _l_action_token< t_TyChar, t_iToken, t_fInLexGen >	_TyThis;
+  typedef _l_action_object_base< t_TyChar, t_fInLexGen >			_TyBase;
 public:
 
-	_l_action_token()
-	{
-	}
+  _l_action_token()
+  {
+  }
 
-	_l_action_token( _TyThis const & _r )
-		: _TyBase( _r )
-	{
-	}
+  _l_action_token(_TyThis const & _r)
+    : _TyBase(_r)
+  {
+  }
 
-	void Render(ostream & _ros, const char * _pcCharName) const
+  void Render(ostream & _ros, const char * _pcCharName) const
+  {
+    return _DoRender(_ros, _pcCharName);
+  }
+  void Render(stringstream & _ros, const char * _pcCharName) const
+  {
+    return _DoRender(_ros, _pcCharName);
+  }
+  void RenderW(wostream & _ros, const wchar_t * _pcCharName) const
+  {
+    return _DoRenderW(_ros, _pcCharName);
+  }
+  void RenderW(wstringstream & _ros, const wchar_t * _pcCharName) const
+  {
+    return _DoRenderW(_ros, _pcCharName);
+  }
+  template < class t_TyOStream >
+  void _DoRender(t_TyOStream & _ros, const char * _pcCharName) const
 	{
 		_ros << "_l_action_token< " << _pcCharName << ", " << t_iToken << ", false >";
 	}
-	void RenderW(wostream & _ros, const wchar_t * _pcCharName) const
+  template < class t_TyEOStream >
+  void _DoRenderW(t_TyEOStream & _ros, const wchar_t * _pcCharName) const
 	{
 		_ros << L"_l_action_token< " << _pcCharName << L", " << t_iToken << L", false >";
 	}
@@ -176,11 +196,29 @@ public:
 	{
 	}
 
-	void Render(ostream & _ros, const char * _pcCharName) const
+  void Render(ostream & _ros, const char * _pcCharName) const
+  {
+    return _DoRender(_ros, _pcCharName);
+  }
+  void Render(stringstream & _ros, const char * _pcCharName) const
+  {
+    return _DoRender(_ros, _pcCharName);
+  }
+  void RenderW(wostream & _ros, const wchar_t * _pcCharName) const
+  {
+    return _DoRenderW(_ros, _pcCharName);
+  }
+  void RenderW(wstringstream & _ros, const wchar_t * _pcCharName) const
+  {
+    return _DoRenderW(_ros, _pcCharName);
+  }
+  template < class t_tyOStream >
+	void _DoRender(t_tyOStream & _ros, const char * _pcCharName) const
 	{
 		_ros << "_l_action_print< " << _pcCharName << ", " << t_iToken << ", false >";
 	}
-	void RenderW(wostream & _ros, const wchar_t * _pcCharName) const
+  template < class t_tyWOStream >
+  void _DoRenderW(t_tyWOStream & _ros, const wchar_t * _pcCharName) const
 	{
 		_ros << L"_l_action_print< " << _pcCharName << L", " << t_iToken << L", false >";
 	}

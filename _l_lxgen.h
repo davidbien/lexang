@@ -402,6 +402,7 @@ struct _l_generator
 				_ros << ", ";
 				if ( pvtAction->second.m_psrTriggers )
 				{
+          assert(pvtAction->second.m_psrTriggers->countsetbits());
 					_ros << pvtAction->second.m_psrTriggers->countsetbits();
 				}
 				else

@@ -16,6 +16,23 @@ __REGEXP_BEGIN_NAMESPACE
 template < class t_TyChar > class _nfa_context_base;
 template < class t_TyChar, class t_TyAllocator > class _nfa_context;
 
+// class regexp_trigger_first:
+// We throw this when we encounter a trigger as the first state in an NFA - it will fire all the time regardless of input - so it is dumb
+#ifdef __NAMDDEXC_STDBASE
+#pragma push_macro("std")
+#undef std
+#endif //__NAMDDEXC_STDBASE
+class regexp_trigger_found_first_exception : public std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
+{
+  typedef std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
+public:
+  regexp_trigger_found_first_exception() : _TyBase("regexp_trigger_found_first_exception") {}
+  regexp_trigger_found_first_exception(const string_type & __s) : _TyBase(__s) {}
+};
+#ifdef __NAMDDEXC_STDBASE
+#pragma pop_macro("std")
+#endif //__NAMDDEXC_STDBASE
+
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
 class _nfa 
 	:	public _fa_alloc_base< t_TyChar, t_TyAllocator >,
@@ -31,7 +48,7 @@ protected:
 	using _TyBase::m_nodeLookup;
 	using _TyBase::ms_kreTrigger;
 	using _TyBase::ms_kreUnsatisfiableStart;
-	using _TyBase::_UpdateNodeLookup;
+	using _TyBase::_STUpdateNodeLookup;
 	using _TyBase::_STGetSSCache;
 public:
 	using _TyBase::NStates;
@@ -355,7 +372,7 @@ protected:	// accessed by _nfa_context:
 				}
 				pgn->RElNonConst() = m_iCurState++;
 				assert( pgn->RElNonConst() == m_nodeLookup.size() );
-				_UpdateNodeLookup( pgn );
+				(void)_STUpdateNodeLookup( pgn );
 			}
 		}
 	}
@@ -416,6 +433,11 @@ protected:	// accessed by _nfa_context:
 	void	CreateTriggerNFA( _TyNfaCtxt & _rctxt )
 	{
     assert( !_rctxt.m_pgnStart ); // throw-safety.
+    // If the current state is 0 then we are starting all productions with a trigger. This doesn't seem to make much sense and indeed the trigger fires regardless
+    //  so I am going to throw an error if the current state is 0 when this trigger is encountered.
+    if (!m_iCurState)
+      throw regexp_trigger_found_first_exception();
+
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, 
 												_TyRange( 0, 0 ), 
@@ -723,7 +745,8 @@ protected:	// accessed by _nfa_context:
 	void		_NewStartState( _TyGraphNode ** _ppgn )
 	{
 		*_ppgn = m_gNfa.create_node1( m_iCurState );
-		_UpdateNodeLookup( *_ppgn );
+    size_t stNodeNumAdded = _STUpdateNodeLookup( *_ppgn );
+    assert(_TyState(stNodeNumAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -756,7 +779,8 @@ protected:	// accessed by _nfa_context:
 		endLink.Reset();
     // can throw after this.
 	
-		_UpdateNodeLookup( *_ppgnAccept );
+		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgnAccept );
+    assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -953,7 +977,9 @@ public:
 		_rss = *m_pssAccept;
 	}
 	
-	void	Clone( _TyBase ** _pp ) const
+  // Clone() and DestroyOther() are used as a pair to maintain the lifetime of any cloned
+  // _nfa_context. (*this)'s allocator is used because the library itself doesn't call new() or delete() it always allocates using allocators.
+  void	Clone( _TyBase ** _pp ) const
 	{
 		// Use the allocator that we have:
 		_sdp< _TyThis, _TyAllocThis >	 pAllocate( RNfa().get_allocator() );
