@@ -505,9 +505,7 @@ protected:	// accessed by _nfa_context:
 	void	_AddAccept( _TyNfaCtxt & _rCtxt )
 	{
 		assert( _rCtxt.m_pgnAccept );
-		_TyAcceptAction	aa( m_iActionCur++, 
-												// gcc warning( or bug ):
-												const_cast< _dtorp< _TySdpActionBase > const & >( _rCtxt.m_pSdpAction ) );
+		_TyAcceptAction	aa( m_iActionCur++, _rCtxt.m_pSdpAction );
 		// If this accept state has a related lookahead intermediate accept state
 		//	( the actual accept state for expression ) then relate the two
 		//	via action identifier. Then when we are generating the final DFA
