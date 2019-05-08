@@ -915,9 +915,15 @@ struct _l_analyzer_unique_onematch
 {
 private:
 	typedef _l_analyzer< t_TyChar, false, t_fSupportTriggers >	_TyBase;
+	using _TyBase::m_pcCur;
+	using _TyBase::m_pspCur;
+	using _TyBase::m_pspStart;
+	using _TyBase::_getnext;
 public:
 
+	typedef typename _TyBase::_TyUnsignedChar _TyUnsignedChar;
 	typedef typename _TyBase::_TyStateProto _TyStateProto;
+	typedef typename _TyBase::_TyPMFnAccept _TyPMFnAccept;
 
 	_l_analyzer_unique_onematch( _TyStateProto * _pspStart )
 		: _TyBase( _pspStart )

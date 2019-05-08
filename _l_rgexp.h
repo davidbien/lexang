@@ -255,7 +255,7 @@ template < class t_TyChar, class t_TyAllocator >
 __INLINE _regexp_litstr< t_TyChar, t_TyAllocator >
 litstr( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
 {
-	return _regexp_litstr< t_TyChar >( _c, _rAlloc );
+	return _regexp_litstr< t_TyChar >( _pc, _rAlloc );
 }
 
 template < class t_TyChar >
@@ -756,7 +756,7 @@ public:
 		: _TyAllocBase( _rAlloc )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
-		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, get_allocator() );
+		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, _TyAllocBase::get_allocator() );
 #if 1 //ndef __GNUC__ 
 		(*m_pSdpAction)->m_pmfnRenderChar = 
       static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );

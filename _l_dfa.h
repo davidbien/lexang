@@ -44,6 +44,8 @@ public:
 	using _TyBase::m_nodeLookup;
 	using _TyBase::get_allocator;
 	using _TyBase::NStates;
+	using _TyBase::_ReleaseSSCache;
+	using _TyBase::DumpAlphabet;
 
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
@@ -63,6 +65,7 @@ public:
 	typedef typename _TyBase::_TyAcceptAction _TyAcceptAction;
 	typedef typename _TyBase::_TyNodeLookup _TyNodeLookup;
 	typedef typename _TyBase::_TyAlphabet _TyAlphabet;
+	typedef typename _TyBase::_TySetStates _TySetStates;
 
 	typedef int	_TyAlphaIndex;	// We use an index into a range lookup table as the link element.
 															// If the index is negative then it is an index into the CCRIndex.
@@ -295,7 +298,7 @@ public:
 					prngFound->contains( _rc ) )
 		{
 			size_type st = prngFound - m_rgrngLookup.begin();
-			if (st > numeric_limits< _tyAlphaIndex >::(max)())
+			if (st > numeric_limits< _TyAlphaIndex >::max())
 				throw alpha_index_overflow("_LookupAlphaSetNum(): Alpha index overflowed.");
 			return prngFound - m_rgrngLookup.begin();
 		}
