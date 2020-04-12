@@ -89,12 +89,12 @@ protected:
 	_CloneHelper( t_TyMostDerived const * _pmdCopy, 
 								_TyThis * _prbCopier, 
 								_TyThis ** _pprbStorage, 
-								__false_type )
+								std::false_type )
 	{
 		char * cp = _prbCopier->_CPAllocate( sizeof( t_TyMostDerived ) );
 		_BIEN_TRY
 		{
-			*_pprbStorage = new ( cp ) t_TyMostDerived( *_pmdCopy, __false_type() );
+			*_pprbStorage = new ( cp ) t_TyMostDerived( *_pmdCopy, std::false_type() );
 		}
 		_BIEN_UNWIND( _prbCopier->_Deallocate( cp ) );
 	}
@@ -115,7 +115,7 @@ public:
 	_regexp_empty()
 	{
 	}
-	_regexp_empty( _TyThis const & _r, __false_type = __false_type() )
+	_regexp_empty( _TyThis const & _r, std::false_type = std::false_type() )
 	{
 	}  
 
@@ -168,7 +168,7 @@ public:
 		: m_c( _c )
 	{
 	}
-	_regexp_literal( _TyThis const & _r, __false_type = __false_type() )
+	_regexp_literal( _TyThis const & _r, std::false_type = std::false_type() )
 		: m_c( _r.m_c )
 	{
 	}  
@@ -220,7 +220,7 @@ public:
 		: m_s( _pc, _alloc )
 	{
 	}
-	_regexp_litstr( _TyThis const & _r, __false_type = __false_type() )
+	_regexp_litstr( _TyThis const & _r, std::false_type = std::false_type() )
     : m_s( _r.m_s )
   {
   }
@@ -278,7 +278,7 @@ public:
 		: m_r( _cFirst, _cLast )
 	{
 	}
-	_regexp_litrange( _TyThis const & _r, __false_type = __false_type() )
+	_regexp_litrange( _TyThis const & _r, std::false_type = std::false_type() )
 		: m_r( _r.m_r )
   {
   }
@@ -328,13 +328,13 @@ public:
 
 	_regexp_follows(	t_TyRegExp1 const & _re1,
 										t_TyRegExp2	const & _re2 )
-		: m_re1( _re1, __false_type() ),
-			m_re2( _re2, __false_type() )
+		: m_re1( _re1, std::false_type() ),
+			m_re2( _re2, std::false_type() )
 	{
 	}
-	_regexp_follows( _TyThis const & _r, __false_type = __false_type() )
-		: m_re1( _r.m_re1, __false_type() ),
-			m_re2( _r.m_re2, __false_type() )
+	_regexp_follows( _TyThis const & _r, std::false_type = std::false_type() )
+		: m_re1( _r.m_re1, std::false_type() ),
+			m_re2( _r.m_re2, std::false_type() )
   {
   }
 
@@ -396,13 +396,13 @@ public:
 
 	_regexp_or(	t_TyRegExp1 const & _re1,
 							t_TyRegExp2	const & _re2 )
-		: m_re1( _re1, __false_type() ),
-			m_re2( _re2, __false_type() )
+		: m_re1( _re1, std::false_type() ),
+			m_re2( _re2, std::false_type() )
 	{
 	}
-	_regexp_or( _TyThis const & _r, __false_type = __false_type() )
-		: m_re1( _r.m_re1, __false_type() ),
-			m_re2( _r.m_re2, __false_type() )
+	_regexp_or( _TyThis const & _r, std::false_type = std::false_type() )
+		: m_re1( _r.m_re1, std::false_type() ),
+			m_re2( _r.m_re2, std::false_type() )
   {
   }
 
@@ -461,12 +461,12 @@ public:
 	t_TyRegExp	m_re;
 
 	_regexp_zeroormore(	t_TyRegExp const & _re )
-		: m_re( _re, __false_type() )
+		: m_re( _re, std::false_type() )
 	{
 	}
 	_regexp_zeroormore( _TyThis const & _r,
-                      __false_type = __false_type() )
-		: m_re( _r.m_re, __false_type() )
+                      std::false_type = std::false_type() )
+		: m_re( _r.m_re, std::false_type() )
 	{
 	}
 
@@ -535,14 +535,14 @@ public:
 
 	_regexp_excludes(	t_TyRegExp1 const & _re1,
 							      t_TyRegExp2	const & _re2 )
-		: m_re1( _re1, __false_type() ),
-			m_re2( _re2, __false_type() )
+		: m_re1( _re1, std::false_type() ),
+			m_re2( _re2, std::false_type() )
 	{
 	}
 	_regexp_excludes( _TyThis const & _r, 
-                    __false_type = __false_type() )
-		: m_re1( _r.m_re1, __false_type() ),
-			m_re2( _r.m_re2, __false_type() )
+                    std::false_type = std::false_type() )
+		: m_re1( _r.m_re1, std::false_type() ),
+			m_re2( _r.m_re2, std::false_type() )
   {
   }
 
@@ -604,14 +604,14 @@ public:
 
 	_regexp_completes(  t_TyRegExp1 const & _re1,
 							        t_TyRegExp2	const & _re2 )
-		: m_re1( _re1, __false_type() ),
-			m_re2( _re2, __false_type() )
+		: m_re1( _re1, std::false_type() ),
+			m_re2( _re2, std::false_type() )
 	{
 	}
 	_regexp_completes(  _TyThis const & _r, 
-                      __false_type = __false_type() )
-		: m_re1( _r.m_re1, __false_type() ),
-			m_re2( _r.m_re2, __false_type() )
+                      std::false_type = std::false_type() )
+		: m_re1( _r.m_re1, std::false_type() ),
+			m_re2( _r.m_re2, std::false_type() )
   {
   }
 
@@ -670,14 +670,14 @@ public:
 
 	_regexp_lookahead(  t_TyRegExp1 const & _re1,
 							        t_TyRegExp2	const & _re2 )
-		: m_re1( _re1, __false_type() ),
-			m_re2( _re2, __false_type() )
+		: m_re1( _re1, std::false_type() ),
+			m_re2( _re2, std::false_type() )
 	{
 	}
 	_regexp_lookahead(  _TyThis const & _r, 
-                      __false_type = __false_type() )
-		: m_re1( _r.m_re1, __false_type() ),
-			m_re2( _r.m_re2, __false_type() )
+                      std::false_type = std::false_type() )
+		: m_re1( _r.m_re1, std::false_type() ),
+			m_re2( _r.m_re2, std::false_type() )
   {
   }
 
@@ -771,7 +771,7 @@ public:
 	}
 
 	// We always clone the action actions.
-	_regexp_action( const _TyThis & _r, __false_type = __false_type() )
+	_regexp_action( const _TyThis & _r, std::false_type = std::false_type() )
 		: _TyAllocBase( _r )
 	{
 		if ( _r.m_pSdpAction )
@@ -846,7 +846,7 @@ public:
 	}
 
 	// We always clone the trigger actions.
-	_regexp_trigger( const _TyThis & _r, __false_type = __false_type() )
+	_regexp_trigger( const _TyThis & _r, std::false_type = std::false_type() )
 		: _TyAllocBase( _r.get_allocator() )
 	{
 		if ( _r.m_pSdpAction )
@@ -928,7 +928,7 @@ public:
 	}
 
 	_regexp_unsatisfiable(  const _TyThis & _r, 
-                          __false_type = __false_type() )
+                          std::false_type = std::false_type() )
 		: m_nUnsatisfiable( _r.m_nUnsatisfiable )
 	{
 	}
@@ -1016,7 +1016,7 @@ public:
 
 	// Partial copy constructor - this copies the current regular expression - 
 	//	not any associated rules {m_lAlternatives} nor the action object.
-	_regexp_final( _TyThis const & _r, __false_type )
+	_regexp_final( _TyThis const & _r, std::false_type )
 		: _TyAllocBase( _r.get_allocator() ),
 			m_lAlternatives( _r.get_allocator() )
 	{
@@ -1091,7 +1091,7 @@ protected:
 	{
 		// We will clone this - since we know ( cuz were in this method ) that
 		//	this final is not at the top level - use the partial copy:
-		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage, __false_type() );
+		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage, std::false_type() );
 	}
 
 // Allocation virtuals:
