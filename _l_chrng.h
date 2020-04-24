@@ -8,25 +8,35 @@
 // Can use [0,0] for empty element - since not valid input.
 
 #include <ostream>
+#include "bienutil/jsonstrm.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
-template < class t_TyChar >
-struct _fa_char_range : public pair< t_TyChar, t_TyChar >
+// We store the elements as t_TyRangeEl which is larger than t_TyChar because there are values that are 
+//	outside of the character range.
+template < class t_TyRangeEl, class t_TyChar >
+struct _fa_char_range : public pair< t_TyRangeEl, t_TyRangeEl >
 {
 private:
-	typedef pair< t_TyChar, t_TyChar >	_TyBase;
-	typedef _fa_char_range< t_TyChar >	_TyThis;
+	typedef pair< t_TyRangeEl, t_TyRangeEl > _TyBase;
+	typedef _fa_char_range _TyThis;
 public:
+	typedef t_TyRangeEl _TyRangeEl;
+	typedef t_TyChar _TyChar;
+	typedef typename _l_char_type_map< _TyChar >::_TyUnsigned _TyUnsignedChar;
+
 	using _TyBase::first;
 	using _TyBase::second;
+
+	_fa_char_range( _fa_char_range const & ) = default;
+	~_fa_char_range() = default;
 	
 	_fa_char_range()
 		: _TyBase( 0, 0 )
 	{
 	}
 
-	_fa_char_range( t_TyChar _rFirst, t_TyChar _rSecond )
+	_fa_char_range( t_TyRangeEl _rFirst, t_TyRangeEl _rSecond )
 		: _TyBase( _rFirst, _rSecond )
 	{
 	}
@@ -54,7 +64,7 @@ public:
 			return first <= _r.second;
 	}
 
-	bool	contains( t_TyChar const & _r ) const _BIEN_NOTHROW
+	bool	contains( t_TyRangeEl const & _r ) const _BIEN_NOTHROW
 	{
 		return _r >= first && _r <= second;
 	}
@@ -79,6 +89,34 @@ public:
 		return _ros;
 	}
 
+	template < class t_TyJsonValueLife >
+	void ToJSONStream( t_TyJsonValueLife & _jvl  ) const
+	{
+		assert( _jvl.FAtArrayValue() );
+		if ( _jvl.FAtArrayValue() )
+		{
+			if ( !first )
+				_jvl.WriteNullValue();
+			else
+			if ( ( first > _l_char_type_map< _TyChar >::ms_kcMax ) || ( first < 32 ) ) // filter out unprintable characters.
+				_jvl.WriteValue( (_TyUnsignedChar)first );
+			else
+			{
+				_TyChar ch = (_TyChar)first;
+				_jvl.WriteStringValue( &ch, 1 );
+			}
+			if ( !second )
+				_jvl.WriteNullValue();
+			else
+			if ( ( second > _l_char_type_map< _TyChar >::ms_kcMax ) || ( second < 32 ) ) // filter out unprintable characters.
+				_jvl.WriteValue( (_TyUnsignedChar)second );
+			else
+			{
+				_TyChar ch = (_TyChar)second;
+				_jvl.WriteStringValue( &ch, 1 );
+			}
+		}
+	}
 };
 
 template < class _TyNfaCharRange >

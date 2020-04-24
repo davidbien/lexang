@@ -5,9 +5,11 @@
 
 // Base classes for finite automata.
 
-#include "bienutil/_simpbv.h"
 #include <set>
 #include <deque>
+#include "bienutil/_simpbv.h"
+#include "bienutil/jsonstrm.h"
+#include "_l_ns.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -19,8 +21,8 @@ struct _optimize_dfa;
 
 enum	EActionActionType
 {
-	e_aatNone									= 0,
-	e_aatAccept								= 1,
+	e_aatNone = 0,
+	e_aatAccept = 1,
 		// A normal action ( i.e. doesn't involve lookahead.
 	e_aatLookahead,
 		// The non-accepting lookahead state. This is the accepting state of the follows
@@ -39,70 +41,70 @@ enum	EActionActionType
 		// Trigger modifier - this action is also a trigger ( may be just a trigger ).
 };
 
-template <	class t_TyActionIdent, class t_TySdpActionBase,
-						class t_TyAllocator >
+template <	class t_TyActionIdent, class t_TySdpActionBase, class t_TyAllocator >
 struct _fa_accept_action
 {
 private:
-	typedef _fa_accept_action< t_TyActionIdent, t_TySdpActionBase, t_TyAllocator >	_TyThis;
+	typedef _fa_accept_action _TyThis;
 public:
 
-	typedef _simple_bitvec< _TyLookaheadVector, t_TyAllocator >		_TySetActionIds;
+	typedef _simple_bitvec< _TyLookaheadVector, t_TyAllocator > _TySetActionIds;
 
-	EActionActionType												m_eaatType;
-	t_TyActionIdent													m_aiAction;
-	_dtorp< t_TySdpActionBase >							m_pSdpAction;
-	t_TyActionIdent													m_aiRelated;
+	EActionActionType m_eaatType;
+	t_TyActionIdent m_aiAction;
+	_dtorp< t_TySdpActionBase > m_pSdpAction;
+	t_TyActionIdent m_aiRelated;
 	_sdpd< _TySetActionIds, t_TyAllocator >	m_psrRelated;	// If this is non-null then a bit-vector of related action identifiers.
 	_sdpd< _TySetActionIds, t_TyAllocator >	m_psrTriggers;	// If this is non-null then a bit-vector of trigger action identifiers.
 
+	_fa_accept_action() = delete;
 	_fa_accept_action(	t_TyActionIdent _aiAction, 
-											const t_TySdpActionBase * _pSdpAction, 
-											t_TyAllocator const & _rAlloc = t_TyAllocator() )
-		: m_eaatType( e_aatAccept ),
+						const t_TySdpActionBase * _pSdpAction, 
+						t_TyAllocator const & _rAlloc = t_TyAllocator() )
+		:	m_eaatType( e_aatAccept ),
 			m_aiAction( _aiAction ),
 			m_aiRelated( _aiAction ),
 			m_psrRelated( _rAlloc ),
 			m_psrTriggers( _rAlloc )
 	{
-		if ( _pSdpAction )
+		if ( !!_pSdpAction )
 		{
 			_pSdpAction->clone( &m_pSdpAction.PtrRef() );
 		}
 	}
 
 	_fa_accept_action( _TyThis const & _r )
-		: m_eaatType( _r.m_eaatType ),
+		:	m_eaatType( _r.m_eaatType ),
 			m_aiAction( _r.m_aiAction ),
 			m_aiRelated( _r.m_aiRelated ),
 			m_psrRelated( _r.get_allocator() ),
 			m_psrTriggers( _r.get_allocator() )
 	{
-		if ( _r.m_pSdpAction )
+		if ( !!_r.m_pSdpAction )
 		{
 			_r.m_pSdpAction->clone( &m_pSdpAction.PtrRef() );
 		}
-		if ( _r.m_psrRelated )
+		if ( !!_r.m_psrRelated )
 		{
 			m_psrRelated.template construct1< _TySetActionIds const & >( *_r.m_psrRelated );
 		}
-		if ( _r.m_psrTriggers )
+		if ( !!_r.m_psrTriggers )
 		{
 			m_psrTriggers.template construct1< _TySetActionIds const & >( *_r.m_psrTriggers );
 		}
 	}
 
-	t_TyActionIdent	GetOriginalActionId()
+	t_TyActionIdent	GetOriginalActionId() const
 	{
 		return m_eaatType == e_aatLookahead ? m_aiAction : m_aiRelated;
 	}
 
-	t_TyAllocator	get_allocator() const _BIEN_NOTHROW
+	t_TyAllocator get_allocator() const _BIEN_NOTHROW
 	{
 		return m_psrRelated.get_allocator();
 	}
 
-	bool	operator < ( const _TyThis & _r ) const _BIEN_NOTHROW
+	bool operator < ( const _TyThis & _r ) const _BIEN_NOTHROW
 	{
 		if ( m_eaatType == _r.m_eaatType )
 		{
@@ -112,7 +114,7 @@ public:
 				{
 					if ( !!m_psrTriggers == !!_r.m_psrTriggers )
 					{
-						if ( m_psrTriggers )
+						if ( !!m_psrTriggers )
 						{
 							return *m_psrTriggers < *_r.m_psrTriggers;
 						}
@@ -166,7 +168,7 @@ public:
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 
 	typedef less< _TyRange > _TyCompareRange;
-  typedef typename _Alloc_traits< typename set < _TyRange, _TyCompareRange >::value_type, t_TyAllocator >::allocator_type _TyAlphabetAllocator;
+	typedef typename _Alloc_traits< typename set < _TyRange, _TyCompareRange >::value_type, t_TyAllocator >::allocator_type _TyAlphabetAllocator;
 	typedef set< _TyRange, _TyCompareRange, _TyAlphabetAllocator >	_TyAlphabet;
 
 	typedef _fa_accept_action< _TyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
@@ -201,6 +203,10 @@ public:
 	unsigned int	m_uiUnusedCacheBitVec;
 	static const int	ms_kiMaxSetCache = CHAR_BIT * sizeof( unsigned int );
 
+	_fa_alloc_base( _fa_alloc_base const & ) = delete;
+	_fa_alloc_base & operator = ( _fa_alloc_base const & ) = delete;
+	~_fa_alloc_base() = default;
+
 	_fa_alloc_base( t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		: _TyBase(),
 			m_setAlphabet( _TyCompareRange(), _rAlloc ),
@@ -210,15 +216,9 @@ public:
 	{
 	}
 
-#ifdef _DEBUG
-  ~_fa_alloc_base()
-  {
-  }
-#endif //_DEBUG
+	t_TyAllocator get_allocator() const _BIEN_NOTHROW	{ return m_setAlphabet.get_allocator(); }
 
-	t_TyAllocator	get_allocator() const _BIEN_NOTHROW	{ return m_setAlphabet.get_allocator(); }
-
-	void	DumpStates( ostream & _ros, _TySetStates const & _r ) const
+	void DumpStates( ostream & _ros, _TySetStates const & _r ) const
 	{
 		_ros << "{";
 		bool	fYet = false;
@@ -241,10 +241,9 @@ public:
 		}
 		_ros << "}";
 	}
-
-	void	DumpAlphabet( ostream & _ros ) const
+	void DumpAlphabet( ostream & _ros ) const
 	{
-		// Dump the alphabet and the graph:
+		// Dump the alphabet:
 		_ros << "Alphabet : {";
 		for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
 					it != m_setAlphabet.end();
@@ -255,9 +254,53 @@ public:
 		_ros << "}.\n";
 	}
 
+	template < class t_tyJsonValueLife >
+	void StatesToJSON( t_tyJsonValueLife & _jvl, _TySetStates const & _r ) const
+	{
+		assert( _jvl.FAtArrayValue() );
+		if ( _jvl.FAtArrayValue() )
+		{
+			for ( typename _TySetStates::size_type stCur = 0;
+					stCur < _r.size(); ++stCur )
+			{
+				if ( _r.isbitset( stCur ) )
+					_jvl.WriteValue( stCur );
+			}
+		}
+	}
+	template < class t_tyJsonOutputStream >
+	void AlphabetToJSON( JsonValueLife< t_tyJsonOutputStream > & _jvl  ) const
+	{
+		assert( _jvl.FAtArrayValue() );
+		if ( _jvl.FAtArrayValue() )
+		{
+			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
+						it != m_setAlphabet.end();
+						( ++it == m_setAlphabet.end() ) || ( _ros << "," ) )
+			{
+				JsonValueLife< t_tyJsonOutputStream > jvl( _jvl, ejvtArray );
+				it->ToJSONStream( jvl );
+			}
+		}
+	}
+	void AlphabetToJSON( JsonValueLifeAbstractBase< t_TyChar > & _jvl  ) const
+	{
+		assert( _jvl.FAtArrayValue() );
+		if ( _jvl.FAtArrayValue() )
+		{
+			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
+						it != m_setAlphabet.end(); ++it )
+			{
+				std::unique_ptr< JsonValueLifeAbstractBase< t_TyChar > > pjvl;
+				_jvl.NewSubValue( ejvtArray, pjvl );
+				it->ToJSONStream( *pjvl );
+			}
+		}
+	}
+
 protected:
 
-	void	_ClearSSCache()
+	void _ClearSSCache()
 	{
 		m_ssCache.clear();
 		m_uiUnusedCacheBitVec = 0;
@@ -274,8 +317,8 @@ protected:
 		if ( m_uiUnusedCacheBitVec )
 		{
 			size_t stUnused = _bv_get_clear_first_set( m_uiUnusedCacheBitVec );
-      _rpss = &m_ssCache[stUnused].RObject();
-      return stUnused;
+			_rpss = &m_ssCache[stUnused].RObject();
+			return stUnused;
 		}
 		else
 		{
@@ -283,7 +326,7 @@ protected:
 			assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
 			_TySetStates ss( static_cast< size_t >( m_iCurState ), get_allocator() );
 			m_ssCache.push_back( ss );
-      _rpss = &m_ssCache.back().RObject();
+			_rpss = &m_ssCache.back().RObject();
 			return m_ssCache.size()-1;
 		}
 	}
@@ -291,15 +334,15 @@ protected:
   // Provide the element to be released. It is an exception situation if the element is outside of the range of current elements.
 	void _ReleaseSSCache(size_t _stRelease)
 	{
-    assert(_stRelease < m_ssCache.size());
-    assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
+		assert(_stRelease < m_ssCache.size());
+		assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
 		m_uiUnusedCacheBitVec |= ( 1 << _stRelease );
 	}
 
 	size_t _STUpdateNodeLookup( _TyLexanGraphNodeBase * _pgnb )
 	{
 		m_nodeLookup.push_back( _pgnb );
-    return m_nodeLookup.size() - 1;
+		return m_nodeLookup.size() - 1;
 	}
 };
 

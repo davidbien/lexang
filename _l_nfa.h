@@ -98,15 +98,15 @@ public:
 	int m_iActionCur;
 
 	typedef less< _TyState > _TyCompareStates;
-  typedef typename _Alloc_traits< typename map< _TyState, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TySetAcceptStatesAllocator;
-  typedef map< _TyState, _TyAcceptAction, _TyCompareStates, _TySetAcceptStatesAllocator > _TySetAcceptStates;
+	typedef typename _Alloc_traits< typename map< _TyState, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TySetAcceptStatesAllocator;
+	typedef map< _TyState, _TyAcceptAction, _TyCompareStates, _TySetAcceptStatesAllocator > _TySetAcceptStates;
 	typedef typename _TySetAcceptStates::iterator _TySetAcceptIT;
 	typedef typename _TySetAcceptStates::value_type _TySetAcceptVT;
 
 	// Sometimes need to order the accept actions by action identifier:
 	typedef less< _TyActionIdent > _TyCompareAI;
-  typedef typename _Alloc_traits< typename map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
-  typedef map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
+	typedef typename _Alloc_traits< typename map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
+	typedef map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
@@ -116,7 +116,7 @@ public:
 	int m_nUnsatisfiableTransitions;
 
 	_nfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
-		: _TyBase( _rAlloc ),
+		:	 _TyBase( _rAlloc ),
 			_TyCharAllocBase( _rAlloc ),
 			m_fHaveEmpty( false ),
 			m_gNfa( typename _TyGraph::_TyAllocatorSet( _rAlloc, _rAlloc, _rAlloc ) ),
@@ -225,7 +225,7 @@ public:
 		}
 	}
 
-	void	Dump( ostream & _ros, _TyNfaCtxt const & _rCtxt ) const
+	void Dump( ostream & _ros, _TyNfaCtxt const & _rCtxt ) const
 	{
 		// Dump the alphabet and the graph:
 		_TyBase::DumpAlphabet( _ros );
@@ -246,19 +246,45 @@ public:
 		m_gNfa.dump_node( _ros, _rCtxt.m_pgnStart );
 	}
 
+	void ToJSONStream( JsonValueLifeAbstractBase< t_TyChar > & _jvl, _TyNfaCtxt const & _rCtxt ) const
+	{
+		assert( _jvl.FAtObjectValue() ); // Will throw below if we aren't...
+		// Dump the alphabet and the graph:
+		{//B
+			std::unique_ptr< JsonValueLifeAbstractBase< t_TyChar > > pjvlAlphabet;
+			_jvl.NewSubValue( str_array_cast< t_TyChar >( "NFA:Alphabet" ), ejvtArray, pjvlAlphabet );
+			_TyBase::AlphabetToJSON( *pjvlAlphabet );
+		}//EB
+
+		_jvl.WriteValue( str_array_cast< t_TyChar >( "NFA:StartState" ), _rCtxt.m_pgnStart->RElConst() );
+
+		if ( !!_rCtxt.m_pssAccept )
+		{
+			std::unique_ptr< JsonValueLifeAbstractBase< t_TyChar > > pjvlStates;
+			_jvl.NewSubValue( str_array_cast< t_TyChar >( "NFA:AcceptingStates" ), ejvtArray, pjvlStates );
+			_TyBase::StatesToJSON( *pjvlStates, *_rCtxt.m_pssAccept );
+		}
+		else
+		if ( !!_rCtxt.m_pgnAccept )
+		{
+			_jvl.WriteValue( str_array_cast< t_TyChar >( "NFA:AcceptingState" ), _rCtxt.m_pgnAccept->RElConst() );
+		}
+
+		// TODO:
+		//m_gNfa.dump_node( _ros, _rCtxt.m_pgnStart );
+	}
+
 protected:	// accessed by _nfa_context:
 
 	void	DestroySubGraph( _TyGraphNode * _pgn )
 	{
-    if ( _pgn )
-    {
-		  m_gNfa.destroy_node( _pgn );
-    }
+		if ( !!_pgn )
+			m_gNfa.destroy_node( _pgn );
 	}
 
 	void	CreateRangeNFA( _TyNfaCtxt & _rctxt, _TyRange const & _rr )
 	{
-    assert( !_rctxt.m_pgnStart ); // throw-safety.
+    	assert( !_rctxt.m_pgnStart ); // throw-safety.
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, _rr, &_rctxt.m_pgnAccept );
 	}
@@ -782,9 +808,9 @@ protected:	// accessed by _nfa_context:
 		m_iCurState++;
 	}
 
-	void		_NewTransition( _TyGraphNode * _pgnSrc, 
-													_TyRange const & _r,
-													_TyGraphNode * _pgnSink )
+	void _NewTransition( _TyGraphNode * _pgnSrc, 
+						_TyRange const & _r,
+						_TyGraphNode * _pgnSink )
 	{
 		_UpdateAlphabet( _r );
 
@@ -799,13 +825,13 @@ protected:	// accessed by _nfa_context:
 #endif //__DGRAPH_INSTANCED_ALLOCATORS
 
 		_pgnSrc->AddChild(	*_pgnSink, *pgl, 
-												*(_pgnSrc->PPGLBChildHead()),
-												*(_pgnSink->PPGLBParentHead()) );
+							*(_pgnSrc->PPGLBChildHead()),
+							*(_pgnSink->PPGLBParentHead()) );
     // no throwing here.
 		endLink.Reset();
 	}
 
-	void		_UpdateAlphabet( _TyRange const & _r )
+	void _UpdateAlphabet( _TyRange const & _r )
 	{
 		// Special case empty:
 		if ( !_r.first )
@@ -853,8 +879,7 @@ protected:	// accessed by _nfa_context:
 						}
 						else
 						{
-							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, 
-										cLow++ ) );
+							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, cLow++ ) );
 						}
 					}
 					else
@@ -867,8 +892,7 @@ protected:	// accessed by _nfa_context:
 
 			if ( cLow <= _r.second )
 			{
-				m_setAlphabet.insert( itLower, 
-															_TyRange( cLow, _r.second ) );
+				m_setAlphabet.insert( itLower, _TyRange( cLow, _r.second ) );
 			}
 		}
 	}
@@ -904,7 +928,7 @@ public:
 	_TyGraphNode * m_pgnAltAccept;
 
 	_nfa_context( _TyNfa & _rNfa )
-		: _TyBase( _rNfa ),
+		:	_TyBase( _rNfa ),
 			m_pgnStart( 0 ),
 			m_pgnAltAccept( 0 ),
 			m_pssAccept( _rNfa.get_allocator() )
@@ -912,7 +936,7 @@ public:
 	}
 
 	_nfa_context( _TyThis const & _r )
-		: _TyBase( _r ),
+		:	_TyBase( _r ),
 			m_pgnStart( 0 ),
 			m_pgnAltAccept( 0 ),
 			m_pssAccept( _r.RNfa().get_allocator() )
@@ -931,7 +955,7 @@ public:
 	_TyNfa & RNfa() { return static_cast< _TyNfa & >( m_rFaBase ); }
 	_TyNfa const & RNfa() const { return static_cast< const _TyNfa & >( m_rFaBase ); }
 
-	void	SetAction( const _TySdpActionBase * _pSdp, enum EActionType _eat = e_atNormal )
+	void SetAction( const _TySdpActionBase * _pSdp, enum EActionType _eat = e_atNormal )
 	{
 		switch( _eat )
 		{
@@ -960,7 +984,7 @@ public:
 		}
 	}
 
-	void	GetAcceptingNodeSet( _TySetStates & _rss )
+	void GetAcceptingNodeSet( _TySetStates & _rss )
 	{
 		if ( m_pgnAccept )
 		{
@@ -975,9 +999,9 @@ public:
 		_rss = *m_pssAccept;
 	}
 	
-  // Clone() and DestroyOther() are used as a pair to maintain the lifetime of any cloned
-  // _nfa_context. (*this)'s allocator is used because the library itself doesn't call new() or delete() it always allocates using allocators.
-  void	Clone( _TyBase ** _pp ) const
+	// Clone() and DestroyOther() are used as a pair to maintain the lifetime of any cloned
+	// _nfa_context. (*this)'s allocator is used because the library itself doesn't call new() or delete() it always allocates using allocators.
+	void Clone( _TyBase ** _pp ) const
 	{
 		// Use the allocator that we have:
 		_sdp< _TyThis, _TyAllocThis >	 pAllocate( RNfa().get_allocator() );
@@ -986,81 +1010,84 @@ public:
 		pAllocate.transfer();
 	}
 
-	void	DestroyOther( _TyBase * _pb ) _BIEN_NOTHROW
+	void DestroyOther( _TyBase * _pb ) _BIEN_NOTHROW
 	{
-		_sdp< _TyThis, _TyAllocThis >	 pDeallocate(	static_cast< _TyThis * >( _pb ), 
-																								RNfa().get_allocator() );
+		_sdp< _TyThis, _TyAllocThis > pDeallocate( static_cast< _TyThis * >( _pb ), RNfa().get_allocator() );
 		_pb->~_TyBase();	// Call virtual destructor.
 	}
 
-	void	Dump( ostream & _ros ) const
+	void Dump( ostream & _ros ) const
 	{
 		// Dump the alphabet and the graph:
 		RNfa().Dump( _ros, *this );
 	}
+	void ToJSONStream( JsonValueLifeAbstractBase< t_TyChar > & _jvl ) const
+	{
+		RNfa().ToJSONStream( _jvl, *this );
+	}
 
 	// Create NFA's - delegate to NFA container:
-	void	CreateEmptyNFA()
+	void CreateEmptyNFA()
 	{
 		RNfa().CreateRangeNFA( *this, _TyRange( 0, 0 ) );
 	}
-	void	CreateLiteralNFA( t_TyChar const & _rc )
+	void CreateLiteralNFA( t_TyChar const & _rc )
 	{
 		RNfa().CreateRangeNFA( *this, _TyRange( _rc, _rc ) );
 	}
-	void	CreateStringNFA( t_TyChar const * _pc )
+	void CreateStringNFA( t_TyChar const * _pc )
 	{
 		RNfa().CreateStringNFA( *this, (_TyUnsignedChar*)_pc );
 	}
-	void	CreateRangeNFA( _TyRange const & _rr )
+	void CreateRangeNFA( _TyRange const & _rr )
 	{
 		RNfa().CreateRangeNFA( *this, _rr );
 	}
-	void	CreateFollowsNFA( _TyBase & _rcb )
+	void CreateFollowsNFA( _TyBase & _rcb )
 	{
 		RNfa().CreateFollowsNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void	CreateLookaheadNFA( _TyBase & _rcb )
+	void CreateLookaheadNFA( _TyBase & _rcb )
 	{
 		// We need to save the intermediate accept state ( otherwise we won't know
 		//	where it is ).
 		RNfa().CreateLookaheadNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void	CreateTriggerNFA()
+	void CreateTriggerNFA()
 	{
 		// We need to save the intermediate accept state ( otherwise we won't know
 		//	where it is ).
 		RNfa().CreateTriggerNFA( *this );
 	}
-	void	CreateOrNFA( _TyBase & _rcb )
+	void CreateOrNFA( _TyBase & _rcb )
 	{
 		RNfa().CreateOrNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void	CreateExcludesNFA( _TyBase & _rcb )
+	void CreateExcludesNFA( _TyBase & _rcb )
 	{
 		RNfa().CreateExcludesNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void	CreateCompletesNFA( _TyBase & _rcb )
+	void CreateCompletesNFA( _TyBase & _rcb )
 	{
 		RNfa().CreateCompletesNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void	CreateZeroOrMoreNFA()
+	void CreateZeroOrMoreNFA()
 	{
 		RNfa().CreateZeroOrMoreNFA( *this );
 	}
-	void	CreateUnsatisfiableNFA( size_t _nUnsatisfiable )
+	void CreateUnsatisfiableNFA( size_t _nUnsatisfiable )
 	{
 		RNfa().CreateUnsatisfiableNFA( *this, _nUnsatisfiable );
 	}
 
 	// We will be added more alternative rules to this NFA - set it up for that:
-	void	StartAddRules()
+	void StartAddRules()
 	{
 		RNfa()._InitSetAcceptStates( *this );
 		RNfa().CreateAltRuleNFA( *this ); 
 	}
 
-	void	AddAlternativeNFA( _TyBase & _rcb )
+	void AddAlternativeNFA( _TyBase & _rcb )
 	{
 		// We add the accepting state and potential action to our container:
 		_TyThis &	rc( static_cast< _TyThis & >( _rcb ) );
@@ -1068,7 +1095,7 @@ public:
 		RNfa().AddAlternativeNFA( *this, rc );
 	}
 
-	void	_CreateAcceptingNodeSet()
+	void _CreateAcceptingNodeSet()
 	{
 		m_pssAccept.template construct2< _TyState, const t_TyAllocator & >
 			( RNfa().NStates(), RNfa().get_allocator() );
