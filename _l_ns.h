@@ -5,7 +5,7 @@
 
 // Lexical analyzer namespace stuff.
 
-#include "bienutil/bienutil.h"
+#include "bienutil.h"
 
 #define __REGEXP_USE_NAMESPACE ns_re // Always use namespaces.
 #define __REGEXP_OP_USE_NAMESPACE ns_re_op

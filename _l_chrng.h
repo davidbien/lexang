@@ -8,7 +8,7 @@
 // Can use [0,0] for empty element - since not valid input.
 
 #include <ostream>
-#include "bienutil/jsonstrm.h"
+#include "jsonstrm.h"
 
 __REGEXP_BEGIN_NAMESPACE
 

@@ -14,15 +14,15 @@
 #include <unordered_set>
 #endif //__LEXANG_USE_STLPORT
 #include <typeinfo>
-#include "bienutil/bienutil.h"
-#include "bienutil/_basemap.h"
-#include "lexang/_l_ns.h"
-#include "lexang/_l_chrtr.h"
-#include "bienutil/_ticont.h"
+#include "bienutil.h"
+#include "_basemap.h"
+#include "_l_ns.h"
+#include "_l_chrtr.h"
+#include "_ticont.h"
 #include <functional>
 #include <algorithm>
 
-#include "lexang/_l_axion.h"
+#include "_l_axion.h"
 
 #ifdef __LEXANG_USE_STLPORT
 #define _STLP_ZERO_SIZE_ARRAYS // This isn't part of the current STLport but we still have it here.

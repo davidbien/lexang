@@ -7,8 +7,8 @@
 
 #include <set>
 #include <deque>
-#include "bienutil/_simpbv.h"
-#include "bienutil/jsonstrm.h"
+#include "_simpbv.h"
+#include "jsonstrm.h"
 #include "_l_ns.h"
 
 __REGEXP_BEGIN_NAMESPACE

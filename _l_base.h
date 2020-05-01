@@ -40,7 +40,9 @@ public:
 
 #ifdef _MSC_VER
 	typedef int	_TyState;
-#else //_MSC_VER
+#elif __APPLE__
+  typedef int64_t	_TyState;
+#else
   typedef ptrdiff_t	_TyState;
 #endif //_MSC_VER
 

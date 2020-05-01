@@ -221,7 +221,7 @@ struct _l_generator
 		_ros << "// " << m_sfnHeader << "\n";
 		_ros << "// Generated DFA.\n";
 		_ros << "\n";
-		_ros << "#include \"lexang/_l_lxobj.h\"\n";
+		_ros << "#include \"_l_lxobj.h\"\n";
 		_ros << "\n";
 		if ( m_fUseNamespaces )
 		{

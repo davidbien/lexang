@@ -3,7 +3,7 @@
 
 // _l_dfopt.h
 
-#include "bienutil/_garcoll.h"
+#include "_garcoll.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
