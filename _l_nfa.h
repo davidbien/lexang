@@ -629,6 +629,10 @@ protected:	// accessed by _nfa_context:
 		_TySetStates * pssCur;
 		CMFDtor1_void< _TyThis, size_t >
 			releaseSS( this, &_TyThis::_ReleaseSSCache, _STGetSSCache(pssCur) );
+		// REVIEW:<dbien>: It seems that pssCur contains garbage, but that it *probably* doesn't matter in this case.
+		// 	(i.e. unless we can encounter the current state during the selection iters perusal of the graph - which I am guess for regular expressions we cannot - so it doens't matter here)
+		// However the cost of clearing it is negligible so let's do that:
+		pssCur->clear();
 
 		// Find a state in <_rsetStart>:
 		_TyState nState;
