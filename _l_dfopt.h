@@ -403,7 +403,7 @@ public:
 		// Create the initial partition of accepting/non-accepting:
 		_TySetStates	ssUtil( m_rDfa.NStates(), m_rDfa.get_allocator() );
 		m_rDfaCtxt.GetAcceptingNodeSet( ssUtil );
-		ssUtil.invert();
+		ssUtil.invert(); // Non-accepting states.
 		if ( t_fPartDeadImmed || !m_rDfa.m_nodeLookup[ 0 ]->FChildren() )
 		{
 			ssUtil.clearbit( 0 ); // clear dead state.			
