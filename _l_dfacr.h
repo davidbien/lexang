@@ -170,21 +170,21 @@ public:
 		//	process - afterwards we see if it has any connections and if so
 		//	we add out transitions on every alphabet symbol.
     // REVIEW: <dbien>: pgnDead can be leaked on throw - until gets hooked up to graph.
+    CMFDtor1_void< _TyDfa, _TyGraphNodeDfa * > mfdtorDestroyDeadNode;
 		_TyGraphNodeDfa *	pgnDead = 0;
 		if ( m_fCreateDeadState )
 		{
 			// The dead state is the zeroth state for the DFA - we have it correspond to the set
 			//	of zero states in the NFA - this way no other DFA state can be in the same partition.
 			m_rDfa._NewStartState( &pgnDead );
-			//m_pssCur->setbit( m_sCur );
-			{
+      mfdtorDestroyDeadNode.Reset( &m_rDfa, &_TyDfa::DestroySubGraph, pgnDead );
+			{//B
 				_TySetStatesNfa ssTemp( *m_pssCur ); // Gcc doesnt like the inline temporary.
 				typename _TyLookupSS::value_type vtInsert( ssTemp, pgnDead ); // Insert a copy.
 				pair< typename _TyLookupSS::iterator, bool > pibInserted = m_ssLookup.insert( vtInsert );	
 				assert( pibInserted.second );
 				m_mapStateToSS.push_back( &(*pibInserted.first).first.RObject() );
-			}
-			//m_pssCur->clearbit( m_sCur );
+			}//EB
 			m_sCur++;  // We don't process the dead state.
 		}
 
@@ -260,6 +260,8 @@ public:
 					// If we have a "dead" state map to that here.
 					if ( m_fCreateDeadState )
 					{
+	          if ( mfdtorDestroyDeadNode.FIsActive() )
+	            mfdtorDestroyDeadNode.Reset(); // We are connecting to the dead node so it will be destroyed by graph destruction.
 						m_rDfa._NewTransition(	pgnCurDfa, aiCur, pgnDead, 
 																		pglFirstAdded ? 0 : &pglFirstAdded );
 					}
@@ -347,6 +349,8 @@ public:
 
 		if ( m_fCreateDeadState )
 		{
+      // Even if we didn't add any transitions from the dead state, we will indicate that the graph has a dead state so that optimizaion will not barf.
+      mfdtorDestroyDeadNode.Reset(); // From now on we let the DFA control the lifetime of the dead state.
 			m_rDfa.m_fHasDeadState = true;
 		}
 
