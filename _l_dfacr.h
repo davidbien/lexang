@@ -600,14 +600,14 @@ public:
 						//	triggers then allocate the respective objects:
 						if ( fFoundLookaheadAccept )
 						{
-							itAmbig->second.second.m_psrRelated.template construct2
+							itAmbig->second.second.m_psrRelated.template emplace
 								< typename _TyAcceptAction::_TySetActionIds::size_type,
 									typename _TyAcceptAction::_TySetActionIds::_TyAllocator const & >
 								( 0, srFoundLARelations.get_allocator() );
 						}
 						if ( fFoundTrigger )
 						{
-							itAmbig->second.second.m_psrTriggers.template construct2
+							itAmbig->second.second.m_psrTriggers.template emplace
 								< typename _TyAcceptAction::_TySetActionIds::size_type,
 									typename _TyAcceptAction::_TySetActionIds::_TyAllocator const & >
 								( 0, srFoundLARelations.get_allocator() );
@@ -826,7 +826,7 @@ public:
 		{
 			// Copy the trigger actions to a separate data structure - this ensures creation
 			//	even when ambiguity occurs:
-			m_rDfa.m_pMapTriggers.template construct2
+			m_rDfa.m_pMapTriggers.template emplace
 				< typename _TyDfa::_TyCompareAI const &, typename _TyDfa::_TyAllocator const & >
 				( typename _TyDfa::_TyCompareAI(), m_rDfa.get_allocator() );
 																	

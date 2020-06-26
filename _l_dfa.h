@@ -209,11 +209,11 @@ public:
 		assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
 		if ( !m_pSetCompCharRange )
 		{
-			m_pSetCompCharRange.template construct2< typename _TySetCompCharRange::key_compare const &,
+			m_pSetCompCharRange.template emplace< typename _TySetCompCharRange::key_compare const &,
 															t_TyAllocator const & >
 														( typename _TySetCompCharRange::key_compare(),
 															get_allocator() );
-			m_pCCRIndex.template construct1< t_TyAllocator const & >( get_allocator() );
+			m_pCCRIndex.template emplace< t_TyAllocator const & >( get_allocator() );
 
 			_CreateRangeLookup();	// Create if not already.
 
@@ -542,7 +542,7 @@ public:
 
 	void	CreateAcceptingNodeSet()
 	{
-		m_pssAccept.template construct2< _TyState, const t_TyAllocator & >
+		m_pssAccept.template emplace< _TyState, const t_TyAllocator & >
 			( RDfa().NStates(), RDfa().get_allocator() );
 		m_pssAccept->clear();
 	}
@@ -556,7 +556,7 @@ public:
 	void
 	CreateAcceptPartLookup()
 	{
-		m_pPartLookup.template construct4< typename _TyAcceptPartLookup::size_type,
+		m_pPartLookup.template emplace< typename _TyAcceptPartLookup::size_type,
 															const typename _TyAcceptPartLookup::hasher &,
 															const typename _TyAcceptPartLookup::key_equal &,
 															const t_TyAllocator & >

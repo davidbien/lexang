@@ -131,8 +131,9 @@ public:
 			m_fHasFreeActions( false ),
 			m_nUnsatisfiableTransitions( 0 )
 	{
-		m_pSetAcceptStates.template construct2< const _TyCompareStates &, const t_TyAllocator & >
-																	( _TyCompareStates(), get_allocator() );
+		m_pSetAcceptStates.template emplace< const _TyCompareStates &, const t_TyAllocator & >( _TyCompareStates(), get_allocator() );
+		// m_pSetAcceptStates.template emplace< const _TyCompareStates &, const t_TyAllocator & >
+		// 															( _TyCompareStates(), get_allocator() );
 	}
 
 	~_nfa()
@@ -140,7 +141,7 @@ public:
 		DeallocClosureCache();
 	}
 
-	t_TyAllocator	get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
+	t_TyAllocator get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
 
 	void	AllocClosureCache()
 	{
@@ -601,7 +602,7 @@ protected:	// accessed by _nfa_context:
 	{
 		if ( !m_pLookupActionID )
 		{
-			m_pLookupActionID.template construct2< const _TyCompareAI &, const t_TyAllocator & >
+			m_pLookupActionID.template emplace< const _TyCompareAI &, const t_TyAllocator & >
 												( _TyCompareAI(), get_allocator() );
 			_TySetAcceptIT itEnd = m_pSetAcceptStates->end();
 			for ( _TySetAcceptIT it = m_pSetAcceptStates->begin();
@@ -1101,8 +1102,7 @@ public:
 
 	void _CreateAcceptingNodeSet()
 	{
-		m_pssAccept.template construct2< _TyState, const t_TyAllocator & >
-			( RNfa().NStates(), RNfa().get_allocator() );
+		m_pssAccept.template emplace< _TyState, const t_TyAllocator & >( RNfa().NStates(), RNfa().get_allocator() );
 		m_pssAccept->clear();
 
 		// Copy the accepting states to the bit vector:

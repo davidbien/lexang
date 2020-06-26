@@ -81,17 +81,11 @@ public:
 			m_psrTriggers( _r.get_allocator() )
 	{
 		if ( !!_r.m_pSdpAction )
-		{
 			_r.m_pSdpAction->clone( &m_pSdpAction.PtrRef() );
-		}
 		if ( !!_r.m_psrRelated )
-		{
-			m_psrRelated.template construct1< _TySetActionIds const & >( *_r.m_psrRelated );
-		}
+			m_psrRelated.template emplace< _TySetActionIds const & >( *_r.m_psrRelated );
 		if ( !!_r.m_psrTriggers )
-		{
-			m_psrTriggers.template construct1< _TySetActionIds const & >( *_r.m_psrTriggers );
-		}
+			m_psrTriggers.template emplace< _TySetActionIds const & >( *_r.m_psrTriggers );
 	}
 
 	t_TyActionIdent	GetOriginalActionId() const
