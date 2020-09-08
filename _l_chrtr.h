@@ -58,21 +58,37 @@ struct _l_char_type_map< wchar_t >
 {
   typedef wchar_t       _TyChar;
   typedef wchar_t       _TyUnsigned;
-  typedef signed short  _TySigned;
-  //static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
-  typedef unsigned long _TyLarger;
+  typedef int32_t       _TySigned;
+  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
+  typedef uint64_t      _TyLarger;
+  static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
 
 #if 0 // These are defined incorrectly/differently under gcc, use USHRT_MAX
   static const wchar_t ms_kcMin = WCHAR_MIN;
   static const wchar_t ms_kcMax = WCHAR_MAX;
 #else //0
   static const wchar_t ms_kcMin = 0;
-  static const wchar_t ms_kcMax = USHRT_MAX;
+  static const wchar_t ms_kcMax = 0x10FFFF;
 #endif //0
 
-  static const _TyLarger ms_kucTrigger = USHRT_MAX + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = USHRT_MAX + 2;
+  static const _TyLarger ms_kucTrigger = ms_kcMax + 1;
+  static const _TyLarger ms_kucUnsatisfiableStart = ms_kcMax + 2;
 };
+#if 1
+template <>
+struct _l_char_type_map< int32_t >
+{
+  typedef wchar_t       _TyChar;
+  typedef wchar_t       _TyUnsigned;
+  typedef int32_t       _TySigned;
+  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
+  typedef int64_t      _TyLarger;
+  static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
+
+  static const int32_t ms_kcMin = INT32_MIN;
+  static const int32_t ms_kcMax = INT32_MAX;
+};
+#else //0
 template <>
 struct _l_char_type_map< signed short >
 {
@@ -113,7 +129,7 @@ struct _l_char_type_map< unsigned int >
   static const _TyLarger ms_kucUnsatisfiableStart = UINT_MAX - 1;
 #endif //0
 };
-
+#endif //0
 #else // LINUX/MAC
 template <>
 struct _l_char_type_map< wchar_t >

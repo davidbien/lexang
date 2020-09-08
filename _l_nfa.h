@@ -244,7 +244,7 @@ public:
 			_ros << "Accepting state : {" << _rCtxt.m_pgnAccept->RElConst() << "}.\n";
 		}
 
-		m_gNfa.dump_node( _ros, _rCtxt.m_pgnStart );
+		m_gNfa.dump_node( _ros, _rCtxt.m_pgnStart, __DGRAPH_NAMESPACE e_doMapPointers );
 	}
 
 	void ToJSONStream( JsonValueLifeAbstractBase< t_TyChar > & _jvl, _TyNfaCtxt const & _rCtxt ) const
