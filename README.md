@@ -1,4 +1,5 @@
-# lexang: A set of templates that allow generations of a lexicographical analyzer given a set of regular expression.
+# lexang: 
+### A set of templates that allow generation of a lexicographical analyzer given a set of regular expression.
 ### Meant to be somewhat of a replacement for the good old unix lex command.
 
 ## Regular Expressions:
