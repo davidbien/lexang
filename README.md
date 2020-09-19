@@ -11,6 +11,6 @@
   **Range of characters:** Represented by the method **litrange(char,char)**.  
   Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive. 
 #### Unary operations:
-  **Zero or more**: Represented by operator ~( regexp ).
-  Example: **~literal('a')** will match "", "a", "aa", etc.
+  **Zero or more**: Represented by operator ~( regexp ).  
+  Example: **~literal('a')** will match "", "a", "aa", etc.  
   
