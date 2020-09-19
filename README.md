@@ -20,5 +20,8 @@
 #### Binary operations:
   **Follows**: Represented by operator \*( regexp, regexp ).  
   Example: **literal('a') * literal('b')** will match "ab".  
-  **Or**: Represented by the bitwise OR operator |(regexp, regexp).  
+  **Or**: Represented by the bitwise OR operator |( regexp, regexp ).  
   Example: **literal('a') | literal('b')** will match "a" or "b".
+#### Special operations:
+  **Excludes**: Represented by operator -( regexp, regexp ).  
+  Example: **++literal('a') * ~literal('b') - litstr('ab')** will match any number of 'a's followed by 0 or more 'b's except for the string "ab".  
