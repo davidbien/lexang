@@ -13,4 +13,8 @@
 #### Unary operations:
   **Zero or more**: Represented by operator ~( regexp ).  
   Example: **~literal('a')** will match "", "a", "aa", etc.  
+  **One or more**: Represented by operator ++( regexp ).  
+  Example: **++literal('a')** will match "a", "aa", "aaa", etc.  
+  **Zero or one**: Represented by operator --( regexp ).  
+  Example: **--literal('a')** will match "" and "a" only.  
   
