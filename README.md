@@ -29,4 +29,4 @@
   **Completes**: Represented by the **operator +( regexp, regexp )**.  
   Example: **++litrange('a','z') + 'z'** will match any sequence of characters 'a' - 'z' but will stop at the first encountered 'z' character.  
   **Lookahead**: Represented by **operator /( regexp, regexp )**.  
-  Example: **++litrange('a','z') / litstr("--"** will match any sequence of characters 'a' to 'z' when followed by the string "--", not including the "--".
+  Example: **++litrange('a','z') / litstr("--")** will match any sequence of characters 'a' to 'z' when followed by the string "--", not including the "--".
