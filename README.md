@@ -8,5 +8,7 @@
   Example: **literal('x')** matches the character **'x'**, **literal(L'x')** matches the wchar_t **'x'**.  
   **String of characters:** Represented by the method **litstr(char)**.  
   Example: **litstr("string")** matches the string **"string"**, **litstr(L"string")** matches the wchar_t **"string"**.  
+  **Range of characters:** Represented by the method **litrange(char)**.  
+  Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive. 
 #### Unary operations:
   Zero or more: operator ~();
