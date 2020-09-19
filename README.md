@@ -4,7 +4,7 @@
 ## Regular Expressions:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
 #### Literals:
-  Single character: Represented by the method literal(char).
-  Example: literal('x') matches the character 'x', literal(L'x') matches the wchar_t 'x'.
+  Single character: Represented by the method literal(char).  
+  Example: literal('x') matches the character 'x', literal(L'x') matches the wchar_t 'x'.  
 #### Unary operations:
   Zero or more: operator ~();
