@@ -17,4 +17,8 @@
   Example: **++literal('a')** will match "a", "aa", "aaa", etc.  
   **Zero or one**: Represented by operator --( regexp ).  
   Example: **--literal('a')** will match "" and "a" only.  
-  
+#### Binary operations:
+  **Follows**: Represented by operator \*( regexp, regexp ).  
+  Example: **literal('a') * literal('b')** will match "ab".  
+  **Or**: Represented by the bitwise OR operator |(regexp, regexp).  
+  Example: **literal('a') | literal('b')** will match "a" or "b".
