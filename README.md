@@ -35,6 +35,7 @@ Currently the regular expression are written in C++ code via overridden global o
   Example: **++litrange('a','z') / litstr("--")** will match any sequence of characters 'a' to 'z' when followed by the string "--", not including the "--".
 
 ### Complex example of regular expression usage:
+This encodes the start of the XML regular expressions as specified some years ago (like 20 years ago).
 <pre>
 typedef wchar_t	_TyCharTokens;
 typedef _TyDefaultAllocator  _TyAllocator;
@@ -44,8 +45,49 @@ typedef _regexp_trigger< _TyCharTokens, _TyAllocator >	_TyTrigger;
 #define ls(x)	litstr< _TyCharTokens >(x)
 #define lr(x,y)	litrange< _TyCharTokens >(x,y)
 
+_TyFinal	Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x020,0xd7ff) | lr(0xe000,0xfffd); // [2].
 _TyFinal	S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); // [3]
 _TyFinal	Eq = --S * l(L'=') * --S; // [25].
+_TyFinal	BaseChar = lr(0x0041,0xd7a3);	// [85].
+_TyFinal	Ideographic = lr(0x4e00,0x9fa5) | l(0x3007) | lr(0x3021,0x3029); // [86]
+_TyFinal	CombiningChar = lr(0x0300,0x309a);	// [87]
+_TyFinal	Digit = lr(0x0030,0x0039) | lr(0x0660,0x0669); // [88]
+_TyFinal	Extender = l(0x00b7) | l(0x02d0);	// [89].
+_TyFinal	Letter = BaseChar | Ideographic;	// [84].
+_TyFinal	NameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | l(L':') | CombiningChar | Extender; // [4]
+
+_TyFinal	Name = ( Letter | l(L'_') | l(L':') ) * ~NameChar;	// [5]
+_TyFinal	PITarget = Name - ( ( ( l(L'x') | l(L'X') ) * ( l(L'm') | l(L'M') ) * ( l(L'l') | l(L'L') ) ) );
+_TyFinal	NCNameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | CombiningChar | Extender;	// namespace support
+_TyFinal	NCName = ( Letter | l(L'_') ) * ~NCNameChar;
+_TyFinal	Prefix = NCName;
+_TyFinal	LocalPart = NCName;
+
+_TyFinal QName = Prefix * --( l(L':') * LocalPart );
+_TyFinal DefaultAttName = ls(L"xmlns") * t( _TyAction104() );
+_TyFinal PrefixedAttName = ls(L"xmlns:") * t( _TyAction105() ) * NCName * t( _TyAction117() );
+_TyFinal NSAttName = PrefixedAttName | DefaultAttName;
+_TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
+_TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); // [66]
+_TyFinal Reference = EntityRef | CharRef;	// [67]
+_TyFinal AVCharNoAmperLessDouble =	l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '"'
+                                   lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff) 
+                                   | lr(0xe000,0xfffd);
+_TyFinal AVCharNoAmperLessSingle =	l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
+                                   lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
+                                   | lr(0xe000,0xfffd);
+_TyFinal AttValue =	l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"') |	// [10]
+                    l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
+_TyFinal Attribute = NSAttName * Eq * AttValue | // [41]
+                     QName * Eq * AttValue;
+
+_TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
+_TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) | // [2].
+                                    lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
+_TyFinal Comment = ls(L"<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
+_TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA") * t( _TyAction25() );
+_TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
+                 MixedBegin * --S * l(L')'); // [51].
 </pre>
   
 
