@@ -3,7 +3,8 @@
 ### Meant to be somewhat of a replacement for the good old unix lex command.
 
 ## Mechanism:
-Currently the regular expression are written in C++ code via overridden global operators. Compilation generates the type structure that describes a given regular expression. A set of such regular expressions are converted into an NFA (nondiscrete finite automata) and then this NFA is convered to a DFA and optionally optimized to the smallest possible DFA.
+Currently the regular expression are written in C++ code via overridden global operators declared in a namespace. Compilation generates the type structure that describes a given regular expression. A set of such regular expressions are converted into an NFA (nondiscrete finite automata) and then this NFA is convered to a DFA(discrete finite automata) and optionally optimized to the smallest possible DFA.
+Most if not all of the algorithms I gleaned from the Dragon Book ( https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools ).
 
 ## Regular Expressions:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
