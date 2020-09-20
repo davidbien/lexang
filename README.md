@@ -45,23 +45,23 @@ typedef _regexp_trigger< _TyCharTokens, _TyAllocator >	_TyTrigger;
 #define ls(x)	litstr< _TyCharTokens >(x)
 #define lr(x,y)	litrange< _TyCharTokens >(x,y)
 
-_TyFinal	Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x020,0xd7ff) | lr(0xe000,0xfffd); // [2].
-_TyFinal	S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); // [3]
-_TyFinal	Eq = --S * l(L'=') * --S; // [25].
-_TyFinal	BaseChar = lr(0x0041,0xd7a3);	// [85].
-_TyFinal	Ideographic = lr(0x4e00,0x9fa5) | l(0x3007) | lr(0x3021,0x3029); // [86]
-_TyFinal	CombiningChar = lr(0x0300,0x309a);	// [87]
-_TyFinal	Digit = lr(0x0030,0x0039) | lr(0x0660,0x0669); // [88]
-_TyFinal	Extender = l(0x00b7) | l(0x02d0);	// [89].
-_TyFinal	Letter = BaseChar | Ideographic;	// [84].
-_TyFinal	NameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | l(L':') | CombiningChar | Extender; // [4]
+_TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x020,0xd7ff) | lr(0xe000,0xfffd); // [2].
+_TyFinal S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); // [3]
+_TyFinal Eq = --S * l(L'=') * --S; // [25].
+_TyFinal BaseChar = lr(0x0041,0xd7a3);	// [85].
+_TyFinal Ideographic = lr(0x4e00,0x9fa5) | l(0x3007) | lr(0x3021,0x3029); // [86]
+_TyFinal CombiningChar = lr(0x0300,0x309a);	// [87]
+_TyFinal Digit = lr(0x0030,0x0039) | lr(0x0660,0x0669); // [88]
+_TyFinal Extender = l(0x00b7) | l(0x02d0);	// [89].
+_TyFinal Letter = BaseChar | Ideographic;	// [84].
+_TyFinal NameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | l(L':') | CombiningChar | Extender; // [4]
 
-_TyFinal	Name = ( Letter | l(L'_') | l(L':') ) * ~NameChar;	// [5]
-_TyFinal	PITarget = Name - ( ( ( l(L'x') | l(L'X') ) * ( l(L'm') | l(L'M') ) * ( l(L'l') | l(L'L') ) ) );
-_TyFinal	NCNameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | CombiningChar | Extender;	// namespace support
-_TyFinal	NCName = ( Letter | l(L'_') ) * ~NCNameChar;
-_TyFinal	Prefix = NCName;
-_TyFinal	LocalPart = NCName;
+_TyFinal Name = ( Letter | l(L'_') | l(L':') ) * ~NameChar;	// [5]
+_TyFinal PITarget = Name - ( ( ( l(L'x') | l(L'X') ) * ( l(L'm') | l(L'M') ) * ( l(L'l') | l(L'L') ) ) );
+_TyFinal NCNameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | CombiningChar | Extender;	// namespace support
+_TyFinal NCName = ( Letter | l(L'_') ) * ~NCNameChar;
+_TyFinal Prefix = NCName;
+_TyFinal LocalPart = NCName;
 
 _TyFinal QName = Prefix * --( l(L':') * LocalPart );
 _TyFinal DefaultAttName = ls(L"xmlns") * t( _TyAction104() );
