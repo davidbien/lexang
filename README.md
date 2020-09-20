@@ -85,7 +85,7 @@ _TyFinal Attribute = NSAttName * Eq * AttValue // [41]
 _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
 _TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
                      | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
-_TyFinal Comment = ls(L"<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
+_TyFinal Comment = ls(L"\<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
 _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA") * t( _TyAction25() );
 _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
                  MixedBegin * --S * l(L')'); // [51].
