@@ -37,10 +37,10 @@ Currently the regular expression are written in C++ code via overridden global o
 ### Complex example of regular expression usage:
 This encodes the start of the XML regular expressions as specified some years ago (like 20 years ago).
 <pre>
-typedef wchar_t	_TyCharTokens;
-typedef _TyDefaultAllocator  _TyAllocator;
-typedef _regexp_final< _TyCharTokens, _TyAllocator >		_TyFinal;
-typedef _regexp_trigger< _TyCharTokens, _TyAllocator >	_TyTrigger;
+typedef wchar_t _TyCharTokens;
+typedef _TyDefaultAllocator _TyAllocator;
+typedef _regexp_final< _TyCharTokens, _TyAllocator > _TyFinal;
+typedef _regexp_trigger< _TyCharTokens, _TyAllocator > _TyTrigger;
 #define l(x)	literal< _TyCharTokens >(x)
 #define ls(x)	litstr< _TyCharTokens >(x)
 #define lr(x,y)	litrange< _TyCharTokens >(x,y)
