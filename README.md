@@ -65,8 +65,8 @@ _TyFinal Prefix = NCName;
 _TyFinal LocalPart = NCName;
 
 _TyFinal QName = Prefix * --( l(L':') * LocalPart );
-_TyFinal DefaultAttName = ls(L"xmlns") * t( _TyAction104() );
-_TyFinal PrefixedAttName = ls(L"xmlns:") * t( _TyAction105() ) * NCName * t( _TyAction117() );
+_TyFinal DefaultAttName = ls(L"xmlns");
+_TyFinal PrefixedAttName = ls(L"xmlns:") * NCName;
 _TyFinal NSAttName = PrefixedAttName | DefaultAttName;
 _TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
 _TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
