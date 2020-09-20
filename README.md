@@ -77,14 +77,14 @@ _TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' -
 _TyFinal AVCharNoAmperLessSingle = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
                                    lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
                                    | lr(0xe000,0xfffd);
-_TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"') |	// [10]
-                    l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
+_TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	// [10]
+                  | l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
 _TyFinal Attribute = NSAttName * Eq * AttValue // [41]
                    | QName * Eq * AttValue;
 
 _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
-_TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) | // [2].
-                                    lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
+_TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
+                     | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
 _TyFinal Comment = ls(L"<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
 _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA") * t( _TyAction25() );
 _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
