@@ -8,6 +8,7 @@ Most if not all of the algorithms I gleaned from the Dragon Book ( https://en.wi
 
 ## Regular Expressions:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
+Note that the usual C++ operator precedence is enforced by the compiler. I have tried to map regular expression operations to C++ operators accordingly.
 #### Literals:
   **Single character:** Represented by the method **literal(char)**.  
   Example: **literal('x')** matches the character **'x'**, **literal(L'x')** matches the wchar_t **'x'**.  
