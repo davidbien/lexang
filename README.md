@@ -31,7 +31,7 @@ Most if not all of the algorithms I gleaned from the Dragon Book ( https://en.wi
   **Excludes**: Represented by **operator -( regexp, regexp )**.  
   Example: **++literal('a') * ~literal('b') - litstr('ab')** will match any number of 'a's followed by 0 or more 'b's except for the string "ab".  
   **Completes**: Represented by the **operator +( regexp, regexp )**.  
-  Example: **++litrange('a','z') + 'z'** will match any sequence of characters 'a' - 'z' but will stop at the first encountered 'z' character.  
+  Example: **++litrange('a','z') + "zzz"** will match any sequence of characters 'a' - 'z' but will stop when "zzz" is encountered.  
   **Lookahead**: Represented by **operator /( regexp, regexp )**.  
   Example: **++litrange('a','z') / litstr("--")** will match any sequence of characters 'a' to 'z' when followed by the string "--", not including the "--".
 
