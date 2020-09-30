@@ -403,7 +403,7 @@ public:
 		}
 
 		// First compress any trigger states that can be:
-		m_rDfaCtxt.CompressTriggerAcceptPartitions();
+//		m_rDfaCtxt.CompressTriggerAcceptPartitions();
 
 		// Create the initial partition of accepting/non-accepting:
 		_TySetStates	ssUtil( m_rDfa.NStates(), m_rDfa.get_allocator() );

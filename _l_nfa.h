@@ -116,9 +116,12 @@ public:
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
 	bool m_fHasLookaheads;
-	bool m_fHasTriggers;
+	bool m_nTriggers;
 	bool m_fHasFreeActions;
 	int m_nUnsatisfiableTransitions;
+
+	_nfa( _nfa const & ) = delete;
+	_nfa operator = ( _nfa const & ) = delete;
 
 	_nfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		:	 _TyBase( _rAlloc ),
@@ -132,7 +135,7 @@ public:
 			m_pSetAcceptStates( get_allocator() ),
 			m_pLookupActionID( get_allocator() ),
 			m_fHasLookaheads( false ),
-			m_fHasTriggers( false ),
+			m_nTriggers( 0 ),
 			m_fHasFreeActions( false ),
 			m_nUnsatisfiableTransitions( 0 )
 	{
@@ -490,8 +493,8 @@ protected:	// accessed by _nfa_context:
 	void	AddTrigger( _TyState _st, const _TySdpActionBase * _pSdpAction )
 	{
 		assert( _pSdpAction );
-		// Store the trigger accept state and its related action
-		m_fHasTriggers = true;
+		// Store the trigger accept state and its related action:
+		++m_nTriggers;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		aa.m_eaatType = e_aatTrigger;
 		_TySetAcceptVT	vtAcceptState( _st, aa );
@@ -505,7 +508,7 @@ protected:	// accessed by _nfa_context:
 	void	AddAction( _TyState _st, const _TySdpActionBase * _pSdpAction )
 	{
 		assert( _pSdpAction );
-		// Store the trigger accept state and its related action
+		// Store the accept state and its related action:
 		m_fHasFreeActions = true;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		_TySetAcceptVT	vtAcceptState( _st, aa );

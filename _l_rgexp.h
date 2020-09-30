@@ -926,7 +926,6 @@ public:
 	
 	size_t m_nUnsatisfiable;
 
-	// Construct from base - this copies the base object.
 	_regexp_unsatisfiable( size_t _nUnsatisfiable )
 		: m_nUnsatisfiable( _nUnsatisfiable )
 	{

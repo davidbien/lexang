@@ -142,7 +142,7 @@ struct _l_generator
 																		_pcStartStateName, 
                                     m_mapActions.get_allocator() ) );
 		m_fLookaheads = m_fLookaheads || _rDfa.m_fHasLookaheads;
-		m_fTriggers = m_fTriggers || _rDfa.m_fHasTriggers;
+		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers;
 	}
 
 	void	generate()

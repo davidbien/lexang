@@ -228,9 +228,9 @@ public:
 
 			// If we have a trigger or unsatisfiable transition then we want that/them to be first:
 			_TyGraphLinkDfa *	pglFirstAdded = 
-				( m_rNfa.m_fHasTriggers || m_rNfa.m_nUnsatisfiableTransitions ) ? 
+				( m_rNfa.m_nTriggers || m_rNfa.m_nUnsatisfiableTransitions ) ? 
 					0 : (_TyGraphLinkDfa*)1 ;
-			//assert( !m_rNfa.m_fHasTriggers || ( _TyNfa::ms_kreTrigger == itAlpha->first ) );
+			//assert( !m_rNfa.m_nTriggers || ( _TyNfa::ms_kreTrigger == itAlpha->first ) );
 
 			bool	fContLoop = true;
 			do
@@ -286,12 +286,11 @@ public:
 			}
 			while( fContLoop );
 
-			if ( pglFirstAdded && ( m_rNfa.m_fHasTriggers || m_rNfa.m_nUnsatisfiableTransitions ) )
-
+			if ( pglFirstAdded && ( m_rNfa.m_nTriggers || m_rNfa.m_nUnsatisfiableTransitions ) )
 			{
 				// Remove all trigger and unsatisfiable transition from the end of the child list
 				//	and place at the beginning - this eases further processing.
-				typename _TyDfa::_TyAlphaIndex	aiLimit = aiStart - ( m_rNfa.m_fHasTriggers + m_rNfa.m_nUnsatisfiableTransitions );
+				typename _TyDfa::_TyAlphaIndex	aiLimit = aiStart - ( m_rNfa.m_nTriggers + m_rNfa.m_nUnsatisfiableTransitions );
 				while( pglFirstAdded->RElConst() > aiLimit )
 				{
 					_TyGraphLinkDfa *	pglMove = pglFirstAdded;
@@ -329,7 +328,7 @@ public:
 		if ( m_fCreateDeadState && pgnDead->FParents() )
 		{			
 			typename _TyDfa::_TyAlphaIndex	aiCur = (typename _TyDfa::_TyAlphaIndex)m_rDfa.m_setAlphabet.size();
-			aiCur -= m_rNfa.m_fHasTriggers + m_rNfa.m_nUnsatisfiableTransitions;
+			aiCur -= m_rNfa.m_nTriggers + m_rNfa.m_nUnsatisfiableTransitions;
 
 			while (	aiCur )
 			{
@@ -343,10 +342,12 @@ public:
 				m_rDfa._NewTransition( pgnDead, (typename _TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-stUnsat ), pgnDead, 0 );
 			}
 
-			if ( m_rNfa.m_fHasTriggers )
+			for ( size_t stTrigger = 0;
+						stTrigger++ < m_rNfa.m_nTriggers;
+					)
 			{
 				// First transition should be trigger transition:
-				m_rDfa._NewTransition( pgnDead, (typename _TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-1-m_rNfa.m_nUnsatisfiableTransitions ), pgnDead, 0 );
+				m_rDfa._NewTransition( pgnDead, (typename _TyDfa::_TyAlphaIndex)( m_rDfa.m_setAlphabet.size()-stTrigger-m_rNfa.m_nUnsatisfiableTransitions ), pgnDead, 0 );
 			}
 		}
 
@@ -360,7 +361,7 @@ public:
 		}
 
 		m_rDfa.m_fHasLookaheads = m_rNfa.m_fHasLookaheads;
-		m_rDfa.m_fHasTriggers = m_rNfa.m_fHasTriggers;
+		m_rDfa.m_nTriggers = m_rNfa.m_nTriggers;
 		m_rDfa.m_nUnsatisfiableTransitions = m_rNfa.m_nUnsatisfiableTransitions;
 
 		return true;
@@ -712,33 +713,34 @@ public:
 			// If we have ambiguous anti-accepting states then we may have a trigger transition
 			//	from an anti-accepting state to another accepting state - so in that case remove -
 			//	or if creating a dead state move the head to the dead state.
-			if ( m_fAmbiguousAntiAccepting && m_rNfa.m_fHasTriggers )
+			if ( m_fAmbiguousAntiAccepting && m_rNfa.m_nTriggers )
 			{
 				typename _TyLocalMap::value_type & rvt = *itNfaState;
 				if ( e_aatAntiAccepting == rvt.second.second.m_eaatType )
 				{
 					_TyGraphNodeDfa *	pgn = m_rDfa.PGNGetNode( itL->second );
-					if ( m_fCreateDeadState )
+					typedef std::pair< _TyDfa::_TyAlphaIndex, _TyDfa::_TyAlphaIndex > _TyPrAI;
+					_TyPrAI praiTriggers;
+					RDfa().GetTriggerUnsatAIRanges( &praiTriggers, 0 );
+
+					_TyGraphNodeDfa *	pgnDead = m_fCreateDeadState ? m_rDfa.PGNGetNode( 0 ) : 0;
+					_TyGraphLinkDfa *	pgl = pgn->PPGLChildHead();
+					for ( ; ( pgl->RElConst() >= praiTriggers.first ) && ( pgl->RElConst() < praiTriggers.second ); pgl = *pgl->PPGLGetNextChild() )
 					{
-						// The first transition out is a trigger transition - ensure goes to dead state:
-						_TyGraphNodeDfa *	pgnDead;
-						_TyGraphLinkDfa *	pgl;
-						if (	(pgl = *pgn->PPGLChildHead())->PGNChild() != 
-									( pgnDead = m_rDfa.PGNGetNode( 0 ) ) )
+						if ( m_fCreateDeadState )
 						{
-							assert( pgl->PGNChild()->UParents() > 1 );
-							pgl->RemoveParent();
-							pgl->InsertParent( pgnDead->PPGLParentHead() );
-							pgl->SetChildNode( pgnDead );
+							// Ensure any triggers goe to dead state:
+							if ( pgl->PGNChild() != pgnDead )
+							{
+								assert( pgl->PGNChild()->UParents() > 1 );
+								pgl->RemoveParent();
+								pgl->InsertParent( pgnDead->PPGLParentHead() );
+								pgl->SetChildNode( pgnDead );
+							}
 						}
-					}
-					else
-					{
-						// Check if the first transition out is a trigger transition and if so remove:
-						_TyGraphLinkDfa *	pgl;
-						if (	( pgl = *pgn->PPGLChildHead() ) &&
-									( pgl->RElConst() == m_rDfa.m_setAlphabet.size()-1 ) )
+						else
 						{
+							// Remove all trigger transitions:
 							assert( pgl->PGNChild()->UParents() > 1 );
 							m_rDfa._RemoveLink( pgl );
 						}

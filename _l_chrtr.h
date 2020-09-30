@@ -41,10 +41,16 @@ struct _l_char_type_map< unsigned char >
   static const unsigned char ms_kcMin = 0;
   static const unsigned char ms_kcMax = UCHAR_MAX;
 
-  static const _TyLarger ms_kucTrigger = UCHAR_MAX + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = UCHAR_MAX + 2;
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static const _TyLarger ms_knTriggerStart = ms_kcMax + 1;
+  static const _TyLarger ms_knTriggerLast = ( USHRT_MAX - ( ms_knTriggerStart ) ) / 2; // inclusive.
+  static const _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static const _TyLarger ms_knUnsatisfiableLast = USHRT_MAX;
 };
 
+// REVIEW: <dbien>: Interesting that this override is here - it doesn't define ms_knTrigger or ms_knUnsatisfiableStart so it isn't used.
+// Removing for now.
+#if 0
 template <>
 struct _l_char_type_map< signed char >
 {
@@ -56,6 +62,7 @@ struct _l_char_type_map< signed char >
   static const signed char ms_kcMin = SCHAR_MIN;
   static const signed char ms_kcMax = SCHAR_MAX;
 };
+#endif //0
 
 #if 1 //def WIN32
 template <>
@@ -72,12 +79,19 @@ struct _l_char_type_map< wchar_t >
   static const wchar_t ms_kcMin = WCHAR_MIN;
   static const wchar_t ms_kcMax = WCHAR_MAX;
 #else //0
+  // REVIEW: <dbien>: Note that this is incorrect for windows.
+#ifdef WIN32
+#error Under Windows wchar_t is an unsigned short so these constants are wrong.
+#endif //WIN32
   static const wchar_t ms_kcMin = 0;
   static const wchar_t ms_kcMax = 0x10FFFF;
-#endif //0
+#endif //1
 
-  static const _TyLarger ms_kucTrigger = ms_kcMax + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = ms_kcMax + 2;
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static const _TyLarger ms_knTriggerStart = ms_kcMax + 1;
+  static const _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
+  static const _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static const _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
 };
 #if 1
 template <>
@@ -130,8 +144,8 @@ struct _l_char_type_map< unsigned int >
 	typedef unsigned long long  _TyLarger;
 
 #if 0 // This needs to be worked on - could just use a ulong - only need 3 non-characters
-  static const _TyLarger ms_kucTrigger = UINT_MAX - 2;
-  static const _TyLarger ms_kucUnsatisfiableStart = UINT_MAX - 1;
+  static const _TyLarger ms_knTrigger = UINT_MAX - 2;
+  static const _TyLarger ms_knUnsatisfiableStart = UINT_MAX - 1;
 #endif //0
 };
 #endif //0
@@ -153,8 +167,8 @@ struct _l_char_type_map< wchar_t >
   static const wchar_t ms_kcMax = UINT32_MAX;
 #endif //0
 
-  static const _TyLarger ms_kucTrigger = UINT32_MAX + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = UINT32_MAX + 2;
+  static const _TyLarger ms_knTrigger = UINT32_MAX + 1;
+  static const _TyLarger ms_knUnsatisfiableStart = UINT32_MAX + 2;
 };
 template <>
 struct _l_char_type_map< int32_t >

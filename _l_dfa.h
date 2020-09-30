@@ -96,7 +96,7 @@ public:
 	_sdpd< _TyDequeCCRIndex, t_TyAllocator > m_pCCRIndex;
 
 	bool m_fHasLookaheads;	// any lookaheads in the rules ?
-	bool m_fHasTriggers;		// triggers ?
+	size_type m_nTriggers;		// # of triggers
 	size_type m_nUnsatisfiableTransitions; // # of unsatisfiable.
 	_TyActionIdent m_iMaxActions;
 
@@ -114,7 +114,7 @@ public:
 			m_pSetCompCharRange( _rAlloc ),
 			m_pCCRIndex( _rAlloc ),
 			m_fHasLookaheads( false ),
-			m_fHasTriggers( false ),
+			m_nTriggers( 0 ),
 			m_nUnsatisfiableTransitions( 0 ),
 			m_pMapTriggers( _rAlloc )
 	{
@@ -154,9 +154,9 @@ public:
 
 		typedef _sort_dfa_link< _TyGraphLink >	_TySortDfaLinks;
 
-		bool	fCheckUnsat = ( m_fHasTriggers + m_nUnsatisfiableTransitions );
+		bool	fCheckUnsat = !!( m_nTriggers + m_nUnsatisfiableTransitions );
 		_TyAlphaIndex	aiLimit = (_TyAlphaIndex)( stAlphabet - 1 -
-			( m_fHasTriggers + m_nUnsatisfiableTransitions ) );
+			( m_nTriggers + m_nUnsatisfiableTransitions ) );
 
 		typename _TyGraph::_TyLinkPosIterNonConst lpi;
 		typename _TyNodeLookup::iterator itnlEnd = m_nodeLookup.end();
@@ -377,7 +377,7 @@ public:
 		}
 
 		// If we are at an accepting state:
-		return _rctxt.m_pssAccept->isbitset( pgnCur->RElConst() );
+		return pssAccepting->isbitset( pgnCur->RElConst() );
 	}
 
 	void	Dump( ostream & _ros, _TyDfaCtxt const & _rCtxt ) const
@@ -639,7 +639,9 @@ public:
 		// 4) Disconnect the child of (1) and destroy the subgraph at the parent.
 		// 5) search for more trailing contexts (1).
 
-		typename _TyDfa::_TyAlphaIndex	aiLimit = (typename _TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
+		typedef std::pair< _TyDfa::_TyAlphaIndex, _TyDfa::_TyAlphaIndex > _TyPrAI;
+		_TyPrAI praiTriggers, praiUnsatisfiable;
+		RDfa().GetTriggerUnsatAIRanges( &praiTriggers, &praiUnsatisfiable );
 
     typename _TySetStates::size_type stRemoved = 0;
 
@@ -652,14 +654,17 @@ public:
 			_TyGraphNode *	pgn = RDfa().PGNGetNode( nState );
 			if ( pgn )
 			{
-				// Then check for a single odd unsat out trans:
+				// Then check for a single odd numbered unsat out trans:
 				_TyGraphLink *	pglUnsat = *pgn->PPGLChildHead();
 				if (	pglUnsat && !*pglUnsat->PPGLBGetNextChild() &&
-							( pglUnsat->RElConst() > aiLimit ) &&
-							!( ( pglUnsat->RElConst() - aiLimit ) % 2 ) )
+							( pglUnsat->RElConst() >= praiUnsatisfiable.first ) &&
+							( pglUnsat->RElConst() < praiUnsatisfiable.second ) &&
+							!!( ( pglUnsat->RElConst() - praiUnsatisfiable.first ) % 2 ) )
 				{
 					// Then we have found the trailing context of a portion of the graph to be excised.
 					_TyGraphNode *	pgnReconnect = pglUnsat->PGNChild();
+
+					// We ignore all unsatisfiable transitions found that don't match pglUnsat->RElConst()-1 or pglUnsat->RElConst().
 
 					// Get a forward graph iterator iterating the parents:
 					typename _TyGraph::iterator	gfit( pgn, 0, true, false, RDfa().get_allocator() );
@@ -685,17 +690,16 @@ public:
 							// Then at a node - check to see if has any unsat out trans - they are at the beginning
 							//	- but after any trigger transitions:
 							_TyGraphLink *	pglFirst = *(gfit.PGNCur()->PPGLChildHead());
-							if ( RDfa().m_fHasTriggers )
-							{
-								if ( pglFirst && ( pglFirst->RElConst() == aiLimit ) )
-								{
-									pglFirst = *pglFirst->PPGLGetNextChild();
-								}
-							}
+							for ( ; !!pglFirst && ( pglFirst->RElConst() >= praiTriggers.first ) && ( pglFirst->RElConst() < praiTriggers.second ); 
+										pglFirst = *pglFirst->PPGLGetNextChild() )
+									;
 
-							if ( pglFirst && ( pglFirst->RElConst() > aiLimit ) )
+							if ( !!pglFirst && ( pglFirst->RElConst() >= praiUnsatisfiable.first ) && ( pglFirst->RElConst() < praiUnsatisfiable.second ) )
 							{
-								// Then found one - this node to be deleted:
+								// We don't expect to encounter any other unsatisfiables and we want to know even in release whether or not we do:
+								RuntimeCheck( ( pglFirst->RElConst() == pglUnsat->RElConst()-1 ) || ( pglFirst->RElConst() == pglUnsat->RElConst() ) );
+								// Then found one - this node to be deleted.
+								assert( !!stRemoved || ( gfit.PGNCur() == pgn ) ); // First time through we should remove the root.
 								RDfa().m_nodeLookup[ gfit.PGNCur()->RElConst() ] = 0;
 								++gfit;	// Move to next node or link.
 								++stRemoved;
@@ -715,10 +719,11 @@ public:
 								__DEBUG_STMT( pglEntered = 0 )
 							}
 						}
-					}
+					} // while ( !gfit.FAtEnd() )...
 					pglUnsat->RemoveParent();
 					pglUnsat->SetChildNode( 0 );
 					
+					assert( !RDfa().m_nodeLookup[ pgn->RElConst() ] ); // If not then when would we zero it? We're deleting the node below.
 					RDfa().m_gDfa.destroy_node( pgn );
 				}
 			}
