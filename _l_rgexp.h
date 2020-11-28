@@ -64,13 +64,13 @@ protected:
 
 	virtual char *	_CPAllocate( size_t )
 	{
-		assert( 0 );	// This should be overridden in final.
+		Assert( 0 );	// This should be overridden in final.
 		return 0;
 	}
 
 	void						_Deallocate( char * ) _BIEN_NOTHROW
 	{
-		assert( 0 );
+		Assert( 0 );
 	}
 
 	// Full clone:
@@ -1080,10 +1080,10 @@ public:
 		}
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return m_pbre->FIsLiteral(); }
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
+	bool FIsLiteral() const _BIEN_NOTHROW		{ return m_pbre->FIsLiteral(); }
+	bool FMatchesEmpty() const _BIEN_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	virtual void Dump( _TyOstream & _ros ) const
 	{
 		_ros << "Final : " << *m_pbre;
 	}
@@ -1091,7 +1091,7 @@ public:
 protected:
 
   // Clone this rule. 
-	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
 	{
 		// We will clone this - since we know ( cuz were in this method ) that
 		//	this final is not at the top level - use the partial copy:
@@ -1099,7 +1099,7 @@ protected:
 	}
 
 // Allocation virtuals:
-	char *	_CPAllocate( size_t _st )
+	char * _CPAllocate( size_t _st )
 	{
 		m_stFinalSize = _st;
 		char *	cpAllocated;
@@ -1107,7 +1107,7 @@ protected:
 		return cpAllocated;
 	}
 
-	void						_Deallocate( char * _cp, size_t _st ) _BIEN_NOTHROW
+	void _Deallocate( char * _cp, size_t _st ) _BIEN_NOTHROW
 	{
 		_TyAllocBase::deallocate_n( _cp, _st );
 	}

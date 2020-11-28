@@ -50,7 +50,7 @@ public:
 	{
 		if ( !first )
 		{
-			assert( !second );
+			Assert( !second );
 			return true;
 		}
 		return false;
@@ -97,7 +97,7 @@ public:
 	template < class t_TyJsonValueLife >
 	void ToJSONStream( t_TyJsonValueLife & _jvl  ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			if ( !first )

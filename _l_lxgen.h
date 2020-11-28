@@ -296,6 +296,7 @@ struct _l_generator
 		_ros << "// Generated DFA.\n";
 		_ros << "\n";
 		_ros << "#include \"" << m_sfnHeader << "\"\n";
+		_ros << "#include \"syslogmgr.inl\"\n";
 			_ros << "\n";
 		if ( m_fUseNamespaces )
 		{
@@ -407,7 +408,7 @@ struct _l_generator
 				_ros << ", ";
 				if ( pvtAction->second.m_psrTriggers )
 				{
-          assert(pvtAction->second.m_psrTriggers->countsetbits());
+          Assert(pvtAction->second.m_psrTriggers->countsetbits());
 					_ros << pvtAction->second.m_psrTriggers->countsetbits();
 				}
 				else
@@ -621,7 +622,7 @@ struct _l_generator
 	{
 		typename _TyMapActions::iterator itUnique = 
 			m_mapActions.find( _raob );
-		assert( itUnique != m_mapActions.end() );
+		Assert( itUnique != m_mapActions.end() );
 		typename _TyMapActions::value_type & rvtUnique = *itUnique;
 		rvtUnique.second.second = true;	// referenced this action.
 		
@@ -694,7 +695,7 @@ struct _l_generator
 				else
 				{
 					// Store the action id for the one and only related lookahead state.
-					assert( e_aatLookaheadAccept == 
+					Assert( e_aatLookaheadAccept == 
                   ( pvtAction->second.m_eaatType & ~e_aatTrigger ) );
 					_ros << ", " << pvtAction->second.m_aiRelated;
 				}

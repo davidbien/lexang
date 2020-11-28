@@ -10,6 +10,8 @@
 
 // This module declares DFA types.
 
+#include "_l_ns.h"
+
 __REGEXP_BEGIN_NAMESPACE
 
 class alpha_index_overflow : public _t__Named_exception< __L_DEFAULT_ALLOCATOR >
@@ -126,7 +128,14 @@ public:
   }
 #endif //_DEBUG
 
-	size_type	AlphabetSize() const	{ return m_setAlphabet.size(); }
+	size_type	AlphabetSize() const	
+	{ 
+		return m_setAlphabet.size(); 
+	}
+	_TyAlphaIndex AIGetLastSatisfiable() const
+	{
+		return (_TyAlphaIndex)( AlphabetSize() - 1 - ( m_nTriggers + m_nUnsatisfiableTransitions ) );
+	}
 
 	_TyGraphNode *	PGNGetNode( _TyState _iState )
 	{
@@ -146,6 +155,21 @@ public:
 		}
 	}
 
+	typedef std::pair< _TyAlphaIndex, _TyAlphaIndex > _TyPrAI;
+	void GetTriggerUnsatAIRanges( _TyPrAI * _prpraiTriggers, _TyPrAI * _praiUnsatisfiable ) const
+	{
+		if ( _prpraiTriggers )
+		{
+			_prpraiTriggers->first = AlphabetSize() - m_nTriggers - m_nUnsatisfiableTransitions;
+			_prpraiTriggers->second = _prpraiTriggers->first + m_nTriggers;
+		}
+		if ( _praiUnsatisfiable )
+		{
+			_praiUnsatisfiable->first = AlphabetSize() - m_nUnsatisfiableTransitions;
+			_praiUnsatisfiable->second = _praiUnsatisfiable->first + m_nUnsatisfiableTransitions;
+		}
+	}
+
 	void	SortTransitions()
 	{
 		_sdpn< _TyGraphLink *, _TyAllocator >	rgpgl( get_allocator() );
@@ -155,8 +179,7 @@ public:
 		typedef _sort_dfa_link< _TyGraphLink >	_TySortDfaLinks;
 
 		bool	fCheckUnsat = !!( m_nTriggers + m_nUnsatisfiableTransitions );
-		_TyAlphaIndex	aiLimit = (_TyAlphaIndex)( stAlphabet - 1 -
-			( m_nTriggers + m_nUnsatisfiableTransitions ) );
+		_TyAlphaIndex	aiLimit = AIGetLastSatisfiable();
 
 		typename _TyGraph::_TyLinkPosIterNonConst lpi;
 		typename _TyNodeLookup::iterator itnlEnd = m_nodeLookup.end();
@@ -204,14 +227,14 @@ public:
 			}
 			else
 			{
-				assert( pgn->FParents() );
+				Assert( pgn->FParents() );
 			}
 		}
 	}
 
 	void	CompressTransitions()
 	{
-		assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
+		Assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
 		if ( !m_pSetCompCharRange )
 		{
 			m_pSetCompCharRange.template emplace< typename _TySetCompCharRange::key_compare const &,
@@ -318,7 +341,7 @@ public:
 	{
 		if ( m_fHasDeadState )
 		{
-			assert( 0 );	// ni - though easy.
+			Assert( 0 );	// ni - though easy.
 		}
 
     // Set up the release of the pssAccepting. There are a lot of local variables required for this.
@@ -411,7 +434,7 @@ protected:
 	{
     *_ppgn = m_gDfa.create_node1( m_iCurState );
 		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgn );
-    assert(_TyState(stNodeAdded) == m_iCurState);
+    Assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	} 
 
@@ -451,7 +474,7 @@ protected:
 		}
 	
 		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgnAccept );
-    assert(_TyState(stNodeAdded) == m_iCurState);
+    Assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -554,7 +577,7 @@ public:
 
 	void	GetAcceptingNodeSet( _TySetStates & _rss ) const
 	{
-		assert( m_pssAccept );
+		Assert( m_pssAccept );
 		_rss = *m_pssAccept;
 	}
 
@@ -594,7 +617,7 @@ public:
 #endif //!NDEBUG
 				m_pPartLookup->insert( vt );
 #ifndef NDEBUG
-				assert( pib.second );
+				Assert( pib.second );
 #endif //!NDEBUG
 			}
 		}
@@ -620,12 +643,12 @@ public:
 
 	void	ProcessUnsatisfiableTranstitions()
 	{
-		assert( !RDfa().m_fHasDeadState );	// This should be removed first.
+		Assert( !RDfa().m_fHasDeadState );	// This should be removed first.
 
 		if ( !RDfa().m_nUnsatisfiableTransitions )
 			return;
 
-		assert( !( RDfa().m_nUnsatisfiableTransitions % 2 ) );	// Should have an even number of unsats.
+		Assert( !( RDfa().m_nUnsatisfiableTransitions % 2 ) );	// Should have an even number of unsats.
 
 		// The algorithm works like this:
 		// 1) Move through the states starting from zero looking for unsatifiable trailing contexts -
@@ -639,7 +662,7 @@ public:
 		// 4) Disconnect the child of (1) and destroy the subgraph at the parent.
 		// 5) search for more trailing contexts (1).
 
-		typedef std::pair< _TyDfa::_TyAlphaIndex, _TyDfa::_TyAlphaIndex > _TyPrAI;
+		typedef std::pair< typename _TyDfa::_TyAlphaIndex, typename _TyDfa::_TyAlphaIndex > _TyPrAI;
 		_TyPrAI praiTriggers, praiUnsatisfiable;
 		RDfa().GetTriggerUnsatAIRanges( &praiTriggers, &praiUnsatisfiable );
 
@@ -658,7 +681,7 @@ public:
 				_TyGraphLink *	pglUnsat = *pgn->PPGLChildHead();
 				if (	pglUnsat && !*pglUnsat->PPGLBGetNextChild() &&
 							( pglUnsat->RElConst() >= praiUnsatisfiable.first ) &&
-							( pglUnsat->RElConst() < praiUnsatisfiable.second ) &&
+							FVerifyInline( pglUnsat->RElConst() < praiUnsatisfiable.second ) &&
 							!!( ( pglUnsat->RElConst() - praiUnsatisfiable.first ) % 2 ) )
 				{
 					// Then we have found the trailing context of a portion of the graph to be excised.
@@ -694,20 +717,22 @@ public:
 										pglFirst = *pglFirst->PPGLGetNextChild() )
 									;
 
-							if ( !!pglFirst && ( pglFirst->RElConst() >= praiUnsatisfiable.first ) && ( pglFirst->RElConst() < praiUnsatisfiable.second ) )
+							if (	!!pglFirst && ( pglFirst->RElConst() >= praiUnsatisfiable.first ) && 
+										( pglFirst->RElConst() < praiUnsatisfiable.second ) )
 							{
 								// We don't expect to encounter any other unsatisfiables and we want to know even in release whether or not we do:
-								RuntimeCheck( ( pglFirst->RElConst() == pglUnsat->RElConst()-1 ) || ( pglFirst->RElConst() == pglUnsat->RElConst() ) );
+								VerifySz( ( ( pglFirst->RElConst() == pglUnsat->RElConst()-1 ) || ( pglFirst->RElConst() == pglUnsat->RElConst() ) ), 
+									"pglFirst->RElConst()[%lu] pglUnsat->RElConst()[%lu]", size_t(pglFirst->RElConst()), size_t(pglUnsat->RElConst()) );
 								// Then found one - this node to be deleted.
-								assert( !!stRemoved || ( gfit.PGNCur() == pgn ) ); // First time through we should remove the root.
+								Assert( !!stRemoved || ( gfit.PGNCur() == pgn ) ); // First time through we should remove the root.
 								RDfa().m_nodeLookup[ gfit.PGNCur()->RElConst() ] = 0;
 								++gfit;	// Move to next node or link.
 								++stRemoved;
 							}
 							else
 							{
-								assert( pglEntered );
-								assert( pglEntered->PGNParent() == gfit.PGNCur() );
+								Assert( pglEntered );
+								Assert( pglEntered->PGNParent() == gfit.PGNCur() );
 
 								// This node to remain in graph - record the state:
 								ssFoundNodes.setbit( gfit.PGNCur()->RElConst() );
@@ -723,7 +748,7 @@ public:
 					pglUnsat->RemoveParent();
 					pglUnsat->SetChildNode( 0 );
 					
-					assert( !RDfa().m_nodeLookup[ pgn->RElConst() ] ); // If not then when would we zero it? We're deleting the node below.
+					Assert( !RDfa().m_nodeLookup[ pgn->RElConst() ] ); // If not then when would we zero it? We're deleting the node below.
 					RDfa().m_gDfa.destroy_node( pgn );
 				}
 			}
@@ -807,7 +832,7 @@ public:
 					// Set the state in the appropriate accept partition:
 					typename _TyMapToNewAccept::iterator itPart = mapToNewAccept.find( 
 																									PVTGetAcceptPart( iState ) );
-					assert( mapToNewAccept.end() != itPart );
+					Assert( mapToNewAccept.end() != itPart );
 					itPart->second.RObject().setbit( iState - iEmptyNodes );
 				}
 				if ( iEmptyNodes )
@@ -864,7 +889,7 @@ public:
 			// Swap the bitvector in from <mapToNewAccept>:
 			typename _TyPartAcceptStates::value_type	vt( itMap->second, itMap->first->second );
 			pair< typename _TyPartAcceptStates::iterator, bool >	pibInsert = partAcceptNew.insert( vt );
-			assert( pibInsert.second );
+			Assert( pibInsert.second );
 		}
 
 		m_partAccept.swap( partAcceptNew );
@@ -873,12 +898,12 @@ public:
 		m_pssAccept->swap( ssNewAccept );
 
 		// Set the number of states in the DFA:
-		assert( RDfa().m_nodeLookup.size() == stNewStates );
+		Assert( RDfa().m_nodeLookup.size() == stNewStates );
 		RDfa().SetNumStates( stNewStates );
 
 		RDfa()._ClearSSCache();	// Clear any SS cache's - they are at the old size.
 
-		assert( RDfa().m_nodeLookup.size() == m_pssAccept->size() );
+		Assert( RDfa().m_nodeLookup.size() == m_pssAccept->size() );
 	}
 
 	// Compress accept paritions that correspond to the same trigger actions.
@@ -954,7 +979,7 @@ public:
 				pair< typename _TyPartAcceptStates::iterator, bool > pib =
 #endif //!NDEBUG
 				m_partAccept.insert( vtCopy );
-				assert( pib.second );
+				Assert( pib.second );
 			}
 		}
 	}

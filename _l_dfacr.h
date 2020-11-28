@@ -118,8 +118,8 @@ public:
 			m_fAmbiguousTriggers( false ),
 			m_fAmbiguousAntiAccepting( false )
 	{
-		assert( !_rDfa.NStates() );
-		assert( !_rDfaCtxt.m_pgnStart );
+		Assert( !_rDfa.NStates() );
+		Assert( !_rDfaCtxt.m_pgnStart );
 	}
 
 	// Returns false if we go over the node limit.
@@ -187,7 +187,7 @@ public:
 				_TySetStatesNfa ssTemp( *m_pssCur ); // Gcc doesnt like the inline temporary.
 				typename _TyLookupSS::value_type vtInsert( ssTemp, pgnDead ); // Insert a copy.
 				pair< typename _TyLookupSS::iterator, bool > pibInserted = m_ssLookup.insert( vtInsert );	
-				assert( pibInserted.second );
+				Assert( pibInserted.second );
 				m_mapStateToSS.push_back( &(*pibInserted.first).first.RObject() );
 			}//EB
 			m_sCur++;  // We don't process the dead state.
@@ -196,7 +196,7 @@ public:
 		m_rNfa.AllocClosureCache();
 		
 		// Create the initial state:
-		assert( m_pssCur->empty() );
+		Assert( m_pssCur->empty() );
 		m_rNfa.Closure( m_rNfaCtxt.m_pgnStart, *m_pssCur, true );
 		m_rDfa._NewStartState( &m_rDfaCtxt.m_pgnStart );
 		_TySetStatesNfa const * pssInLookup = _NewDfaState( m_rDfaCtxt.m_pgnStart );
@@ -230,15 +230,15 @@ public:
 			_TyGraphLinkDfa *	pglFirstAdded = 
 				( m_rNfa.m_nTriggers || m_rNfa.m_nUnsatisfiableTransitions ) ? 
 					0 : (_TyGraphLinkDfa*)1 ;
-			//assert( !m_rNfa.m_nTriggers || ( _TyNfa::ms_kreTrigger == itAlpha->first ) );
+			//Assert( !m_rNfa.m_nTriggers || ( _TyNfa::ms_kreTrigger == itAlpha->first ) );
 
 			bool	fContLoop = true;
 			do
 			{
 				m_rNfa.ComputeSetMoveStates( *m_pssCur, *itAlpha, *pssMove );
-				assert( m_pssCur->empty() );
+				Assert( m_pssCur->empty() );
 				m_rNfa.ComputeSetClosure( *pssMove, *m_pssCur );
-				assert( pssMove->empty() );
+				Assert( pssMove->empty() );
 
 				if ( !m_pssCur->empty() )
 				{
@@ -311,7 +311,7 @@ public:
 			{
 				// Then we need to update m_pssCur:
 				pssInLookup = m_mapStateToSS[ m_sCur ];
-				assert( !pssInLookup->empty() );
+				Assert( !pssInLookup->empty() );
 				*m_pssCur = *pssInLookup;
 				pgnCurDfa = m_rDfa.PGNGetNode( m_sCur );
 			}
@@ -375,12 +375,12 @@ public:
 		  _TySetStatesNfa ssTemp( *m_pssCur ); // gcc doesn't like the inline temporary.
 		  typename _TyLookupSS::value_type vtInsert( ssTemp, _pgn ); // Insert a copy.
 		  pibInserted = m_ssLookup.insert( vtInsert );
-		  assert( pibInserted.second );
+		  Assert( pibInserted.second );
     }
 
 		_TySetStatesNfa const *	pssInLookup;
 		m_mapStateToSS.push_back( pssInLookup = &(*pibInserted.first).first.RObject() );
-		assert( m_mapStateToSS.size() == m_rDfa.NStates() );
+		Assert( m_mapStateToSS.size() == m_rDfa.NStates() );
     typename _TySetStatesNfa::size_type stFirst = m_pssAcceptingNfa->FirstIntersection( *m_pssCur );
 		if ( m_pssAcceptingNfa->size() != stFirst )
 		{
@@ -435,10 +435,10 @@ public:
 							aiAction = (_TyActionIdent)srAction.getclearfirstset( aiAction )
 						)
 				{
-					assert( srAction.size() != aiAction );
+					Assert( srAction.size() != aiAction );
 					typename _TyNfa::_TySetASByActionID::iterator it = 
 						m_rNfa.m_pLookupActionID->find( aiAction );
-					assert( it != m_rNfa.m_pLookupActionID->end() );
+					Assert( it != m_rNfa.m_pLookupActionID->end() );
 					
 					switch( it->second->second.m_eaatType )
 					{
@@ -475,7 +475,7 @@ public:
 						break;
 						default:
 						{
-							assert( 0 );
+							Assert( 0 );
 						}
 						break;
 					}
@@ -565,7 +565,7 @@ public:
 						{
 							if ( pvtFirstAccept )
 							{
-								assert( e_aatAntiAccepting != aaNew.m_eaatType );
+								Assert( e_aatAntiAccepting != aaNew.m_eaatType );
 								aaNew.m_eaatType = e_aatLookahead == pvtFirstAccept->second.m_eaatType ? 
 									e_aatLookaheadAcceptAndLookahead : e_aatLookaheadAcceptAndAccept;
 							}
@@ -588,7 +588,7 @@ public:
 						// Now set the trigger flag if we found any:
 						if ( fFoundTrigger )
 						{
-              assert(!!srFoundTriggers.countsetbits());
+              Assert(!!srFoundTriggers.countsetbits());
                 m_fAmbiguousTriggers = true;	// We have ambiguous triggers.
 							(int&)aaNew.m_eaatType |= e_aatTrigger;
 						}
@@ -627,8 +627,8 @@ public:
 				}
 				else
 				{
-					assert( pvtFirstAccept );
-					assert( pvtFirstAccept->first == m_rNfa.m_pLookupActionID->find( aiActionMin )->second->first );
+					Assert( pvtFirstAccept );
+					Assert( pvtFirstAccept->first == m_rNfa.m_pLookupActionID->find( aiActionMin )->second->first );
 					// No need for a special diambiguating accepting state - just competition
 					//	among normal accepting states and lookahead states:
 					stFirst = pvtFirstAccept->first;
@@ -694,7 +694,7 @@ public:
 			{
 				// Find the action object if any:
 				typename _TyNfa::_TySetAcceptIT itNfaAccept = m_rNfa.m_pSetAcceptStates->find( itL->first );
-				assert( m_rNfa.m_pSetAcceptStates->end() != itNfaAccept );
+				Assert( m_rNfa.m_pSetAcceptStates->end() != itNfaAccept );
 				
 				_TySetStatesDfa	ssDfa(	static_cast< size_t >( m_rDfa.NStates() ), 
 																m_rDfa.get_allocator() );
@@ -715,36 +715,42 @@ public:
 			//	or if creating a dead state move the head to the dead state.
 			if ( m_fAmbiguousAntiAccepting && m_rNfa.m_nTriggers )
 			{
+				Trace( "Have m_fAmbiguousAntiAccepting and triggers." );
 				typename _TyLocalMap::value_type & rvt = *itNfaState;
 				if ( e_aatAntiAccepting == rvt.second.second.m_eaatType )
 				{
 					_TyGraphNodeDfa *	pgn = m_rDfa.PGNGetNode( itL->second );
-					typedef std::pair< _TyDfa::_TyAlphaIndex, _TyDfa::_TyAlphaIndex > _TyPrAI;
+					typedef std::pair< typename _TyDfa::_TyAlphaIndex, typename _TyDfa::_TyAlphaIndex > _TyPrAI;
 					_TyPrAI praiTriggers;
-					RDfa().GetTriggerUnsatAIRanges( &praiTriggers, 0 );
+					_TyPrAI praiUnsatisfiable;
+					m_rDfaCtxt.RDfa().GetTriggerUnsatAIRanges( &praiTriggers, &praiUnsatisfiable );
 
 					_TyGraphNodeDfa *	pgnDead = m_fCreateDeadState ? m_rDfa.PGNGetNode( 0 ) : 0;
-					_TyGraphLinkDfa *	pgl = pgn->PPGLChildHead();
-					for ( ; ( pgl->RElConst() >= praiTriggers.first ) && ( pgl->RElConst() < praiTriggers.second ); pgl = *pgl->PPGLGetNextChild() )
+					_TyGraphLinkDfa ** ppgl = pgn->PPGLChildHead();
+					for ( ; !!*ppgl && ( (*ppgl)->RElConst() >= praiTriggers.first ) && ( (*ppgl)->RElConst() < praiTriggers.second );  )
 					{
+						_TyGraphLinkDfa * pglCur = *ppgl;
+						ppgl = (*ppgl)->PPGLGetNextChild(); // Advance this here since we will be modifying it below.
 						if ( m_fCreateDeadState )
 						{
-							// Ensure any triggers goe to dead state:
-							if ( pgl->PGNChild() != pgnDead )
+							// Ensure any triggers go to dead state:
+							if ( pglCur->PGNChild() != pgnDead )
 							{
-								assert( pgl->PGNChild()->UParents() > 1 );
-								pgl->RemoveParent();
-								pgl->InsertParent( pgnDead->PPGLParentHead() );
-								pgl->SetChildNode( pgnDead );
+								Assert( pglCur->PGNChild()->UParents() > 1 );
+								pglCur->RemoveParent();
+								pglCur->InsertParent( pgnDead->PPGLParentHead() );
+								pglCur->SetChildNode( pgnDead );
 							}
 						}
 						else
 						{
 							// Remove all trigger transitions:
-							assert( pgl->PGNChild()->UParents() > 1 );
-							m_rDfa._RemoveLink( pgl );
+							Assert( pglCur->PGNChild()->UParents() > 1 );
+							m_rDfa._RemoveLink( pglCur );
 						}
 					}
+					// We don't expect to see unsatisfiable transtions after any triggers - may have to re-evaluate our strategy if we do.
+					Assert( !(*ppgl) || ( !( (*ppgl)->RElConst() >= praiUnsatisfiable.first ) && ( (*ppgl)->RElConst() < praiUnsatisfiable.second ) ) );
 				}
 			}
 		}
@@ -793,7 +799,7 @@ public:
 
 				typename _TyPartAcceptStates::value_type	vt( ssDfa, rvtAmbig.second.second );
 				pair< typename _TyPartAcceptStates::iterator, bool >	pib = m_rDfaCtxt.m_partAccept.insert( vt );
-				assert( pib.second );
+				Assert( pib.second );
 
 				// Get the related action id vector from the key:
 				if ( rvtAmbig.second.second.m_psrRelated )
@@ -825,7 +831,7 @@ public:
 	#endif //!NDEBUG
 			m_rDfaCtxt.m_partAccept.insert( vt );
 	#ifndef NDEBUG
-			assert( pibDebug.second );
+			Assert( pibDebug.second );
 	#endif //!NDEBUG
 		}
 

@@ -40,7 +40,7 @@ public:
 	typedef _fa_char_range< _TyRangeEl, t_TyChar > _TyRange;
 
 	// Now define the non-alphabet characters:
-	static const _TyRangeEl	ms_kreTrigger;
+	static const _TyRangeEl	ms_kreTriggerStart;
 	static const _TyRangeEl	ms_kreUnsatisfiableStart;
 
 #ifdef _MSC_VER
@@ -74,13 +74,13 @@ public:
 
 template < class t_TyChar >
 const typename _fa_base< t_TyChar >::_TyRangeEl
-_fa_base< t_TyChar >::ms_kreTrigger = 
-    _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_kucTrigger;
+_fa_base< t_TyChar >::ms_kreTriggerStart = 
+    _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_knTriggerStart;
 
 template < class t_TyChar >
 const typename _fa_base< t_TyChar >::_TyRangeEl
 _fa_base< t_TyChar >::ms_kreUnsatisfiableStart = 
-	  _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_kucUnsatisfiableStart;
+	  _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_knUnsatisfiableStart;
 
 template < class t_TyChar >
 class _context_base

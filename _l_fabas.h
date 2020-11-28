@@ -132,7 +132,7 @@ public:
 				default:
 				{
 					// For other actions we merely compare action ids:
-					assert( m_aiAction != _r.m_aiAction );
+					Assert( m_aiAction != _r.m_aiAction );
 					return m_aiAction < _r.m_aiAction;
 				}
 				break;
@@ -256,7 +256,7 @@ public:
 	template < class t_tyJsonValueLife >
 	void StatesToJSON( t_tyJsonValueLife & _jvl, _TySetStates const & _r ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			for ( typename _TySetStates::size_type stCur = 0;
@@ -270,7 +270,7 @@ public:
 	template < class t_tyJsonOutputStream >
 	void AlphabetToJSON( JsonValueLife< t_tyJsonOutputStream > & _jvl  ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
@@ -284,7 +284,7 @@ public:
 	}
 	void AlphabetToJSON( JsonValueLifeAbstractBase< t_TyChar > & _jvl  ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
@@ -303,7 +303,7 @@ protected:
 	{
 		m_ssCache.clear();
 		m_uiUnusedCacheBitVec = 0;
-		assert(	m_uiUnusedCacheBitVec == ( ( 1 << m_ssCache.size() ) - 1 ) );
+		Assert(	m_uiUnusedCacheBitVec == ( ( 1 << m_ssCache.size() ) - 1 ) );
 	}
 
   // So a deque invalidates all iterators when a push_back or push_front is performed.
@@ -322,7 +322,7 @@ protected:
 		else
 		{
 			// Need a new cache:
-			assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
+			Assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
 			_TySetStates ss( static_cast< size_t >( m_iCurState ), get_allocator() );
 			m_ssCache.push_back( ss );
 			_rpss = &m_ssCache.back().RObject();
@@ -333,8 +333,8 @@ protected:
   // Provide the element to be released. It is an exception situation if the element is outside of the range of current elements.
 	void _ReleaseSSCache(size_t _stRelease)
 	{
-		assert(_stRelease < m_ssCache.size());
-		assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
+		Assert(_stRelease < m_ssCache.size());
+		Assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
 		m_uiUnusedCacheBitVec |= ( 1 << _stRelease );
 	}
 

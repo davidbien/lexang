@@ -51,7 +51,7 @@ protected:
 	using _TyBase::m_iCurState;	
 	using _TyBase::m_setAlphabet;
 	using _TyBase::m_nodeLookup;
-	using _TyBase::ms_kreTrigger;
+	using _TyBase::ms_kreTriggerStart;
 	using _TyBase::ms_kreUnsatisfiableStart;
 	using _TyBase::_STUpdateNodeLookup;
 	using _TyBase::_STGetSSCache;
@@ -115,10 +115,10 @@ public:
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
+	size_type m_nTriggers;
+	size_type m_nUnsatisfiableTransitions;
 	bool m_fHasLookaheads;
-	bool m_nTriggers;
 	bool m_fHasFreeActions;
-	int m_nUnsatisfiableTransitions;
 
 	_nfa( _nfa const & ) = delete;
 	_nfa operator = ( _nfa const & ) = delete;
@@ -157,7 +157,7 @@ public:
 		m_ssClosureComputed.swap( ssComputed );
 		m_ssClosureComputed.clear();
 
-		assert( !m_cpClosureCache );
+		Assert( !m_cpClosureCache );
 
 		_TyCharAllocBase::allocate_n( m_cpClosureCache, 
 																	m_ssClosureComputed.size_bytes() * NStates() );
@@ -210,9 +210,9 @@ public:
 
 		while( *_pc && !pssCur->empty() )
 		{
-			assert( pssMove->empty() );
+			Assert( pssMove->empty() );
 			ComputeSetMoveStates( *pssCur, _TyRange( *_pc, *_pc ), *pssMove );
-			assert( pssCur->empty() );
+			Assert( pssCur->empty() );
 			ComputeSetClosure( *pssMove, *pssCur );
 			if ( !pssCur->empty() )
 			{
@@ -257,7 +257,7 @@ public:
 
 	void ToJSONStream( JsonValueLifeAbstractBase< t_TyChar > & _jvl, _TyNfaCtxt const & _rCtxt ) const
 	{
-		assert( _jvl.FAtObjectValue() ); // Will throw below if we aren't...
+		Assert( _jvl.FAtObjectValue() ); // Will throw below if we aren't...
 		// Dump the alphabet and the graph:
 		{//B
 			std::unique_ptr< JsonValueLifeAbstractBase< t_TyChar > > pjvlAlphabet;
@@ -293,7 +293,7 @@ protected:	// accessed by _nfa_context:
 
 	void	CreateRangeNFA( _TyNfaCtxt & _rctxt, _TyRange const & _rr )
 	{
-    	assert( !_rctxt.m_pgnStart ); // throw-safety.
+    	Assert( !_rctxt.m_pgnStart ); // throw-safety.
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, _rr, &_rctxt.m_pgnAccept );
 	}
@@ -302,7 +302,7 @@ protected:	// accessed by _nfa_context:
 	{
 		if ( *_pc )
 		{
-			assert( !_rctxt.m_pgnStart );
+			Assert( !_rctxt.m_pgnStart );
 			_NewStartState( &_rctxt.m_pgnStart );
 			_rctxt.m_pgnAccept = _rctxt.m_pgnStart;
 
@@ -322,8 +322,8 @@ protected:	// accessed by _nfa_context:
 	void	CreateFollowsNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
 	{
 		// Need to do a node-splice - easy since each has no siblings in the right direction:
-		assert( !_rctxt1_Result.m_pgnAccept->FChildren() );
-		assert( !_rctxt2.m_pgnStart->FParents() );
+		Assert( !_rctxt1_Result.m_pgnAccept->FChildren() );
+		Assert( !_rctxt2.m_pgnStart->FParents() );
 
 		(*(_rctxt2.m_pgnStart->PPGLChildHead()))->AppendChildListToTail( 
 			_rctxt1_Result.m_pgnAccept->PPGLBChildHead() );
@@ -389,7 +389,7 @@ protected:	// accessed by _nfa_context:
 		pair<_TySetAcceptIT,bool> pib =
 #endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
-		assert( pib.second );
+		Assert( pib.second );
 	}
 
 	void	_Renumber(	_TyGraphNode * _pgnNew, _TyState _stAcceptOld, 
@@ -406,7 +406,7 @@ protected:	// accessed by _nfa_context:
 					*_ppgnAcceptNew = pgn;
 				}
 				pgn->RElNonConst() = m_iCurState++;
-				assert( pgn->RElNonConst() == m_nodeLookup.size() );
+				Assert( pgn->RElNonConst() == m_nodeLookup.size() );
 				(void)_STUpdateNodeLookup( pgn );
 			}
 		}
@@ -467,7 +467,7 @@ protected:	// accessed by _nfa_context:
 
 	void	CreateTriggerNFA( _TyNfaCtxt & _rctxt )
 	{
-    assert( !_rctxt.m_pgnStart ); // throw-safety.
+    Assert( !_rctxt.m_pgnStart ); // throw-safety.
     // If the current state is 0 then we are starting all productions with a trigger. This doesn't seem to make much sense and indeed the trigger fires regardless
     //  so I am going to throw an error if the current state is 0 when this trigger is encountered.
     if (!m_iCurState)
@@ -477,24 +477,24 @@ protected:	// accessed by _nfa_context:
 		_NewAcceptingState( _rctxt.m_pgnStart, 
 												_TyRange( 0, 0 ), 
 												&_rctxt.m_pgnAltAccept );
+		// We increment m_nTriggers in AddTrigger() below.
 		_NewAcceptingState(	_rctxt.m_pgnAltAccept, 
-												_TyRange( ms_kreTrigger, ms_kreTrigger ), 
+												_TyRange( ms_kreTriggerStart + m_nTriggers, ms_kreTriggerStart + m_nTriggers ), 
 												&_rctxt.m_pgnAccept );
 	}
 
-	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_t _nUnsatisfiable )
+	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_type _nUnsatisfiable )
 	{
 		CreateRangeNFA( _rctxt, 
 			_TyRange( (_TyRangeEl)( ms_kreUnsatisfiableStart + _nUnsatisfiable ),
 								(_TyRangeEl)( ms_kreUnsatisfiableStart + _nUnsatisfiable ) ) );
-		m_nUnsatisfiableTransitions = max( int( _nUnsatisfiable+1 ), m_nUnsatisfiableTransitions );
+		m_nUnsatisfiableTransitions = max( size_type( _nUnsatisfiable+1 ), m_nUnsatisfiableTransitions );
 	}
 
 	void	AddTrigger( _TyState _st, const _TySdpActionBase * _pSdpAction )
 	{
-		assert( _pSdpAction );
+		Assert( _pSdpAction );
 		// Store the trigger accept state and its related action:
-		++m_nTriggers;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		aa.m_eaatType = e_aatTrigger;
 		_TySetAcceptVT	vtAcceptState( _st, aa );
@@ -502,12 +502,14 @@ protected:	// accessed by _nfa_context:
 		pair< _TySetAcceptIT, bool > pib =
 #endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
-		assert( pib.second );
+		Assert( pib.second );
+		if ( !m_nTriggers )
+			m_nTriggers = 1;
 	}
 
 	void	AddAction( _TyState _st, const _TySdpActionBase * _pSdpAction )
 	{
-		assert( _pSdpAction );
+		Assert( _pSdpAction );
 		// Store the accept state and its related action:
 		m_fHasFreeActions = true;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
@@ -516,7 +518,7 @@ protected:	// accessed by _nfa_context:
 		pair< _TySetAcceptIT, bool > pib =
 #endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
-		assert( pib.second );
+		Assert( pib.second );
 	}
 
 	void CreateAltRuleNFA( _TyNfaCtxt & _rctxt )
@@ -539,7 +541,7 @@ protected:	// accessed by _nfa_context:
 
 	void	_AddAccept( _TyNfaCtxt & _rCtxt )
 	{
-		assert( _rCtxt.m_pgnAccept );
+		Assert( _rCtxt.m_pgnAccept );
 		_TyAcceptAction	aa( m_iActionCur++, _rCtxt.m_pSdpAction );
 		// If this accept state has a related lookahead intermediate accept state
 		//	( the actual accept state for expression ) then relate the two
@@ -563,7 +565,7 @@ protected:	// accessed by _nfa_context:
 			_TySetAcceptVT	vtInter( _rCtxt.m_pgnAltAccept->RElConst(), aaInter );
 			_rCtxt.m_pgnAltAccept = 0;
 			pair< _TySetAcceptIT, bool >	pib = m_pSetAcceptStates->insert( vtInter );
-			assert( pib.second );	// If this assert fires then we need some code similar to that of below ( though not sure if it will work ).
+			Assert( pib.second );	// If this Assert fires then we need some code similar to that of below ( though not sure if it will work ).
 			itLookaheadAccept = pib.first;
 
 			// Also relate the lookahead state:
@@ -577,10 +579,10 @@ protected:	// accessed by _nfa_context:
 		pair< _TySetAcceptIT, bool >	pib = m_pSetAcceptStates->insert( vtAcceptState );
 		if ( !pib.second )
 		{
-			assert( !pib.first->second.m_pSdpAction );
+			Assert( !pib.first->second.m_pSdpAction );
 			// Then we have already set the action id for this action - use
 			//	the action id as set - it disambiguates accepting states:
-			assert( aa.m_eaatType != e_aatLookahead );	// This isn't currently supported ( i don't think ).
+			Assert( aa.m_eaatType != e_aatLookahead );	// This isn't currently supported ( i don't think ).
 
 			vtAcceptState.second.m_aiAction = pib.first->second.m_aiAction;
 			if ( aa.m_eaatType == e_aatLookahead )
@@ -595,7 +597,7 @@ protected:	// accessed by _nfa_context:
 			}
 			m_pSetAcceptStates->erase( pib.first );
 			pib = m_pSetAcceptStates->insert( vtAcceptState );
-			assert( pib.second );
+			Assert( pib.second );
 		}
 		_rCtxt.m_pgnAccept = 0;
 		_rCtxt.m_pSdpAction.Release();
@@ -630,7 +632,7 @@ protected:	// accessed by _nfa_context:
 	void	ComputeSetClosure(	_TySetStates & _rsetStart,
 														_TySetStates & _rsetResult )
 	{
-		assert( _rsetResult.empty() );
+		Assert( _rsetResult.empty() );
 		if ( _rsetStart.empty() )
 			return;
 
@@ -649,7 +651,7 @@ protected:	// accessed by _nfa_context:
 					_rsetStart.size() != nState;
 					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
 		{
-			assert( nState < (_TyState)m_nodeLookup.size() );
+			Assert( nState < (_TyState)m_nodeLookup.size() );
 
 			// We may have already computed the closure for this state:
 			if ( m_ssClosureComputed.isbitset( nState ) )
@@ -699,15 +701,15 @@ protected:	// accessed by _nfa_context:
 			}
 		}
 
-		assert( _rsetStart.empty() );
+		Assert( _rsetStart.empty() );
 	}
 
 	void	ComputeSetMoveStates(	_TySetStates & _rsetStart,
 															_TyRange const & _rInput,
 															_TySetStates & _rsetResult )
 	{
-		assert( !_rsetStart.empty() );
-		assert( _rsetResult.empty() );
+		Assert( !_rsetStart.empty() );
+		Assert( _rsetResult.empty() );
 
 		// Re-use the sets for efficiency:
 		_TySetStates * pssCur;
@@ -720,13 +722,13 @@ protected:	// accessed by _nfa_context:
 					_rsetStart.size() != nState;
 					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
 		{
-			assert( nState < (_TyState)m_nodeLookup.size() );
+			Assert( nState < (_TyState)m_nodeLookup.size() );
 			pssCur->clear();
 			ComputeMoveStates( PGNGetNode( nState ), _rInput, *pssCur );
 			_rsetResult |= *pssCur;
 		}
 
-		assert( _rsetStart.empty() );
+		Assert( _rsetStart.empty() );
 	}
 
 	// Sometimes get internal compiler errors when this is the method below:
@@ -735,7 +737,7 @@ protected:	// accessed by _nfa_context:
 									_TySetStates & _rsetResult,
 									bool _fUseClosureCache )
 	{
-		assert( _rsetResult.empty() );
+		Assert( _rsetResult.empty() );
 
 		m_selit.SetPGNBCur( const_cast< _TyGraphNode * >( _pgnStart ) );
 		m_selit.Reset();
@@ -783,7 +785,7 @@ protected:	// accessed by _nfa_context:
 	{
 		*_ppgn = m_gNfa.create_node1( m_iCurState );
     size_t stNodeNumAdded = _STUpdateNodeLookup( *_ppgn );
-    assert(_TyState(stNodeNumAdded) == m_iCurState);
+    Assert(_TyState(stNodeNumAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -817,7 +819,7 @@ protected:	// accessed by _nfa_context:
     // can throw after this.
 	
 		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgnAccept );
-    assert(_TyState(stNodeAdded) == m_iCurState);
+    Assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -849,7 +851,7 @@ protected:	// accessed by _nfa_context:
 		// Special case empty:
 		if ( !_r.first )
 		{
-			assert( !_r.second );
+			Assert( !_r.second );
 			if ( !m_fHaveEmpty )
 			{
 				m_setAlphabet.insert( m_setAlphabet.begin(), _r );
@@ -858,7 +860,7 @@ protected:	// accessed by _nfa_context:
 		}
 		else
 		{
-			assert( _r.first <= _r.second );
+			Assert( _r.first <= _r.second );
 			// Increase granularity and extent of alphabet set if required:
 			typename _TyAlphabet::iterator itLower = m_setAlphabet.lower_bound( _r );
 			typename _TyAlphabet::iterator itUpper = m_setAlphabet.upper_bound( _r );
@@ -867,7 +869,7 @@ protected:	// accessed by _nfa_context:
 			_TyRangeEl	cLow = _r.first;
 			for( ; itLower != itUpper; )
 			{
-				assert( cLow <= _r.second );
+				Assert( cLow <= _r.second );
 
 				typename _TyAlphabet::value_type const & rvt = *itLower;
 				if ( cLow < rvt.first )
@@ -877,7 +879,7 @@ protected:	// accessed by _nfa_context:
 				}
 				else
 				{
-					assert( cLow <= rvt.second );
+					Assert( cLow <= rvt.second );
 					// If the low splits the current range then need to split
 					if ( cLow > rvt.first )
 					{
@@ -888,7 +890,7 @@ protected:	// accessed by _nfa_context:
 							// Then we have split one range into three:
 							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, _r.second ) );
 							m_setAlphabet.insert( itLower, _TyRange( _r.second+1, cLow ) );
-							assert( itLower == itUpper );
+							Assert( itLower == itUpper );
 						}
 						else
 						{
@@ -978,7 +980,7 @@ public:
 				// NOTE: It is the start state of the trigger that is 
 				//	registered as the accepting state - this is because the trigger
 				//	is executed on the transition to the trigger accept state.
-				assert( _pSdp );
+				Assert( _pSdp );
 				RNfa().AddTrigger( m_pgnAltAccept->RElConst(), _pSdp );
 				m_pgnAltAccept = 0;
 			}
@@ -990,7 +992,7 @@ public:
 			break;
 			default:
 			{
-				assert( !m_pSdpAction.Ptr() );
+				Assert( !m_pSdpAction.Ptr() );
 				_pSdp->clone( &m_pSdpAction.PtrRef() ); // Copy the action.
 			}
 			break;
@@ -1161,7 +1163,7 @@ __REGEXP_END_NAMESPACE
 	void	MinusClosure(	const _TyGraphNode * _pgnStart,
 											_TySetStates & _rsetResult )
 	{
-		assert( _rsetResult.empty() );
+		Assert( _rsetResult.empty() );
 
 		typedef _select_minus_closure	_TyMinusSelect;
 		typedef typename _TyGraph::_TyGraphTraits:: 
@@ -1210,7 +1212,7 @@ __REGEXP_END_NAMESPACE
 		//	reverse closure then we have a bogus minus pattern.
 		if ( ssReverse.FIntersects( ssForward ) )
 		{
-			assert( 0 );
+			Assert( 0 );
 			//throw _bad_minus_pattern_exception();
 		}
 
