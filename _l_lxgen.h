@@ -67,7 +67,7 @@ struct _l_generator
   typedef typename _Alloc_traits< typename list< _TyGenDfa >::value_type, _TyAllocator >::allocator_type _TyDfaListAllocator;
 	typedef list< _TyGenDfa, _TyDfaListAllocator > _TyDfaList;
 	_TyDfaList m_lDfaGen;
-	typename _TyDfaList::value_type *	m_pvtDfaCur;
+	typename _TyDfaList::value_type *	m_pvtDfaCur{nullptr};
 
 	_TyString			m_sfnHeader;			// The header file we are generating.
 	_TyString			m_sfnImp;					// The implementation file we are generating.
@@ -178,7 +178,7 @@ struct _l_generator
 
 	void	_unique_actions()
 	{
-		m_aiStart = 0;
+		_TyActionIdent aiStart = 0;
 		for ( typename _TyDfaList::iterator lit = m_lDfaGen.begin();
 					lit != m_lDfaGen.end(); ++lit )
 		{
@@ -194,7 +194,7 @@ struct _l_generator
 					{
 						m_mapActions.insert( 
 							typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
-									typename _TyMapActions::mapped_type( m_aiStart + rvt.second.GetOriginalActionId(), false ) ) );
+									typename _TyMapActions::mapped_type( aiStart + rvt.second.GetOriginalActionId(), false ) ) );
 					}
 				}
 			}
@@ -210,11 +210,11 @@ struct _l_generator
 					typename _TyDfa::_TyMapTriggers::value_type & rvt = *itTrigger;
 					m_mapActions.insert( 
 						typename _TyMapActions::value_type(	**rvt.second.m_pSdpAction,
-								typename _TyMapActions::mapped_type( m_aiStart + rvt.second.GetOriginalActionId(), false ) ) );
+								typename _TyMapActions::mapped_type( aiStart + rvt.second.GetOriginalActionId(), false ) ) );
 				}
 			}
 
-			m_aiStart += m_pvtDfaCur->m_rDfa.m_iMaxActions;
+			aiStart += m_pvtDfaCur->m_rDfa.m_iMaxActions;
 		}
 	}
 
@@ -273,13 +273,13 @@ struct _l_generator
 			typename _TyMapActions::value_type & rvt = *itMA;
 			if ( rvt.second.second )
 			{
-				_ros << "\tbool	Action" << rvt.second.first << "();\n";
+				_ros << "\tbool Action" << rvt.second.first << "();\n";
 			}
 		}
 
 		_ros << "};\n\n";
 		_ros << "typedef _lexical_analyzer	_TyAnalyzer;\n";
-		_ros << "typedef " << m_sMDAnalyzer <<  "\t_TyMDAnalyzer;\n";
+		_ros << "typedef " << m_sMDAnalyzer <<  " _TyMDAnalyzer;\n";
 		_ros << "\n";
 		if ( m_fUseNamespaces )
 		{
@@ -453,50 +453,14 @@ struct _l_generator
 		if ( _fAccept )
 		{
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
-			if ( pvtAction->second.m_eaatType & e_aatTrigger )
+			Assert( !!pvtAction );
+			if ( !!pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
 			{
 				--_nOuts;	// The zeroth transition is the trigger.
 			}
 
-			switch( pvtAction->second.m_eaatType & ~e_aatTrigger )
-			{
-				case e_aatAccept:
-				{
-					_ros << "kucAccept";
-				}
-				break;
-				case e_aatLookahead:
-				{
-					_ros << "kucLookahead";
-				}
-				break;
-				case e_aatLookaheadAccept:
-				{
-					_ros << "kucLookaheadAccept";
-				}
-				break;
-				case e_aatLookaheadAcceptAndAccept:
-				{
-					_ros << "kucLookaheadAcceptAndAccept";
-				}
-				break;
-				case e_aatLookaheadAcceptAndLookahead:
-				{
-					_ros << "kucLookaheadAcceptAndLookahead";
-				}
-				break;
-				default:
-				{
-					_ros << "0";
-				}
-				break;
-			}
 		}
-		else
-		{
-			_ros << "0";
-		}
-		_ros	<< ", " << _nOuts << ", ";
+		_ros	<< _nOuts << ", ";
 		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
 		{
 			if ( pvtAction->second.m_psrTriggers )
@@ -508,6 +472,54 @@ struct _l_generator
 				_ros << "1";
 			}
 			_ros << ", ";
+		}
+		else
+		{
+			_ros << "0, ";
+		}
+
+		if ( _fAccept )
+		{
+			switch( pvtAction->second.m_eaatType & ~e_aatTrigger )
+			{
+				case e_aatAccept:
+				{
+					_ros << "kucAccept, ";
+				}
+				break;
+				case e_aatLookahead:
+				{
+					_ros << "kucLookahead, ";
+				}
+				break;
+				case e_aatLookaheadAccept:
+				{
+					_ros << "kucLookaheadAccept, ";
+				}
+				break;
+				case e_aatLookaheadAcceptAndAccept:
+				{
+					_ros << "kucLookaheadAcceptAndAccept, ";
+				}
+				break;
+				case e_aatLookaheadAcceptAndLookahead:
+				{
+					_ros << "kucLookaheadAcceptAndLookahead, ";
+				}
+				break;
+				default:
+				{
+					_ros << "0, ";
+				}
+				break;
+			}
+		}
+		else
+		{
+			_ros << "0, ";
+		}
+		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
+		{
 			// Then the first transition is the trigger:
 			_ros << "(_TyStateProto*)( & ";
 			if ( (*(_pgn->PPGLChildHead()))->PGNChild() == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
@@ -523,7 +535,7 @@ struct _l_generator
 		}
 		else
 		{
-			_ros << "0, 0, ";
+			_ros << "0, ";
 		}
 
 		// Offsets for accept and trigger transitions in the variable length struct:
@@ -535,7 +547,7 @@ struct _l_generator
 			{
 				_ros << "\n\toffsetof( ";
 				_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart );
-				_ros << ", m_pmfnAccept ),";
+				_ros << ", m_pmfnAccept ), ";
 			}
 			else
 			{
