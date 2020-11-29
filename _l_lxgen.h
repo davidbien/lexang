@@ -10,6 +10,9 @@
 
 // Lexical analyzer generator.
 
+// testing.
+//#define LXGEN_OUTPUT_TRIGGERS
+
 #include <ios>
 #include <string>
 #include <fstream>
@@ -363,10 +366,12 @@ struct _l_generator
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
 		}
 		
+#ifndef LXGEN_OUTPUT_TRIGGERS
 		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
 		{
 			--_nOuts;	// The zeroth transition is the trigger.
 		}
+#endif // !LXGEN_OUTPUT_TRIGGERS
 
 		_ros	<< "_l_state< " << m_sCharTypeName << ", " 
 					<< _nOuts << ", ";
@@ -454,11 +459,12 @@ struct _l_generator
 		{
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
 			Assert( !!pvtAction );
+#ifndef LXGEN_OUTPUT_TRIGGERS
 			if ( !!pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
 			{
 				--_nOuts;	// The zeroth transition is the trigger.
 			}
-
+#endif //!LXGEN_OUTPUT_TRIGGERS
 		}
 		_ros	<< _nOuts << ", ";
 		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
@@ -574,10 +580,12 @@ struct _l_generator
 			_ros << ",\n";
 			_ros << "\t{\n";
 			typename _TyGraph::_TyLinkPosIterNonConst	lpi( _pgn->PPGLChildHead() );
+#ifndef LXGEN_OUTPUT_TRIGGERS
 			if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
 			{
 				lpi.NextChild();	// Skip the trigger transition.
 			}
+#endif // !LXGEN_OUTPUT_TRIGGERS
 
 			while ( !lpi.FIsLast() )
 			{

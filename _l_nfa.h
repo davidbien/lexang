@@ -479,7 +479,11 @@ protected:	// accessed by _nfa_context:
 												&_rctxt.m_pgnAltAccept );
 		// We increment m_nTriggers in AddTrigger() below.
 		_NewAcceptingState(	_rctxt.m_pgnAltAccept, 
+	#ifndef _L_NFA_UNIQUETRIGGERS
+												_TyRange( ms_kreTriggerStart, ms_kreTriggerStart ), 
+	#else //!_L_NFA_UNIQUETRIGGERS
 												_TyRange( ms_kreTriggerStart + m_nTriggers, ms_kreTriggerStart + m_nTriggers ), 
+	#endif //!_L_NFA_UNIQUETRIGGERS
 												&_rctxt.m_pgnAccept );
 	}
 
@@ -503,8 +507,13 @@ protected:	// accessed by _nfa_context:
 #endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
 		Assert( pib.second );
+	
+	#ifndef _L_NFA_UNIQUETRIGGERS
 		if ( !m_nTriggers )
 			m_nTriggers = 1;
+	#else //!_L_NFA_UNIQUETRIGGERS
+		++m_nTriggers;
+	#endif//!_L_NFA_UNIQUETRIGGERS
 	}
 
 	void	AddAction( _TyState _st, const _TySdpActionBase * _pSdpAction )
@@ -846,36 +855,36 @@ protected:	// accessed by _nfa_context:
 		endLink.Reset();
 	}
 
-	void _UpdateAlphabet( _TyRange const & _r )
+	void _UpdateAlphabet( _TyRange const & _rArg )
 	{
 		// Special case empty:
-		if ( !_r.first )
+		_TyRange rUpdate = _rArg;
+		if ( !rUpdate.first )
 		{
-			Assert( !_r.second );
+			Assert( !rUpdate.second );
 			if ( !m_fHaveEmpty )
 			{
-				m_setAlphabet.insert( m_setAlphabet.begin(), _r );
+				m_setAlphabet.insert( m_setAlphabet.begin(), rUpdate );
 				m_fHaveEmpty = true;
 			}
 		}
 		else
 		{
-			Assert( _r.first <= _r.second );
+			Assert( rUpdate.first <= rUpdate.second );
 			// Increase granularity and extent of alphabet set if required:
-			typename _TyAlphabet::iterator itLower = m_setAlphabet.lower_bound( _r );
-			typename _TyAlphabet::iterator itUpper = m_setAlphabet.upper_bound( _r );
+			std::pair< typename _TyAlphabet::iterator, typename _TyAlphabet::iterator > pritER = m_setAlphabet.equal_range( rUpdate );
 
 			// Move from the low to the high, inserting records in the spaces:
-			_TyRangeEl	cLow = _r.first;
-			for( ; itLower != itUpper; )
+			_TyRangeEl cLow = rUpdate.first;
+			for( ; pritER.first != pritER.second; )
 			{
-				Assert( cLow <= _r.second );
+				Assert( cLow <= rUpdate.second );
 
-				typename _TyAlphabet::value_type const & rvt = *itLower;
+				const typename _TyAlphabet::value_type & rvt = *pritER.first;
 				if ( cLow < rvt.first )
 				{
-					m_setAlphabet.insert( itLower++, _TyRange( cLow, rvt.first-1 ) );
-					cLow = rvt.second+1;
+					m_setAlphabet.insert( pritER.first, _TyRange( cLow, rvt.first-1 ) );
+					cLow = rvt.first;
 				}
 				else
 				{
@@ -885,29 +894,40 @@ protected:	// accessed by _nfa_context:
 					{
 						swap( const_cast< _TyRange& >( rvt ).second, cLow );
 						const_cast< _TyRange& >( rvt ).second--;
-						if ( cLow > _r.second )
+						if ( cLow > rUpdate.second )
 						{
 							// Then we have split one range into three:
-							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, _r.second ) );
-							m_setAlphabet.insert( itLower, _TyRange( _r.second+1, cLow ) );
-							Assert( itLower == itUpper );
+							m_setAlphabet.insert( ++pritER.first, _TyRange( rvt.second+1, rUpdate.second ) );
+							m_setAlphabet.insert( pritER.first, _TyRange( rUpdate.second+1, cLow ) );
+							Assert( pritER.first == pritER.second );
 						}
 						else
 						{
-							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, cLow++ ) );
+							m_setAlphabet.insert( ++pritER.first, _TyRange( rvt.second+1, cLow++ ) );
 						}
 					}
 					else
 					{
-						cLow = rvt.second+1;
-						++itLower;
+						assert( cLow == rvt.first );
+						if ( rUpdate.second < rvt.second )
+						{
+							swap( const_cast< _TyRange& >( rvt ).second, rUpdate.second );
+							cLow = rvt.second+1;
+							++pritER.first;
+							assert( pritER.first == pritER.second );
+						}
+						else
+						{
+							cLow = rvt.second+1;
+							++pritER.first;
+						}
 					}
 				}
 			}
 
-			if ( cLow <= _r.second )
+			if ( cLow <= rUpdate.second )
 			{
-				m_setAlphabet.insert( itLower, _TyRange( cLow, _r.second ) );
+				m_setAlphabet.insert( pritER.first, _TyRange( cLow, rUpdate.second ) );
 			}
 		}
 	}
