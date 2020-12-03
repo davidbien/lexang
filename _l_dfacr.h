@@ -429,10 +429,10 @@ public:
 
 				// The first accepting or lookahead state found:
 				typename _TyNfa::_TySetAcceptStates::value_type * pvtFirstAccept = 0;
-				_TyActionIdent	aiActionMin = (_TyActionIdent)srAction.getclearfirstset();
-				for ( _TyActionIdent aiAction = aiActionMin;
+				vTyActionIdent	aiActionMin = (vTyActionIdent)srAction.getclearfirstset();
+				for ( vTyActionIdent aiAction = aiActionMin;
 							srAction.size() != aiAction;
-							aiAction = (_TyActionIdent)srAction.getclearfirstset( aiAction )
+							aiAction = (vTyActionIdent)srAction.getclearfirstset( aiAction )
 						)
 				{
 					Assert( srAction.size() != aiAction );
@@ -500,7 +500,7 @@ public:
 					//	action - coalesce unique trigger actions at each state:
 					if ( fFoundTrigger )
 					{
-						_TyActionIdent aiFirst = (_TyActionIdent)srFoundTriggers.getfirstset();
+						vTyActionIdent aiFirst = (vTyActionIdent)srFoundTriggers.getfirstset();
 						bool	fMultiTrigger = false;
 						if ( srFoundTriggers.getnextset( aiFirst ) != srFoundTriggers.size() )
 						{
@@ -511,8 +511,8 @@ public:
 								typename _TyNfa::_TySetASByActionID::value_type & rvtFirst = 
 									*m_rNfa.m_pLookupActionID->find( aiFirst );
 									
-								for ( _TyActionIdent aiNext = aiFirst; 
-											srTriggers.size() != ( aiNext = (_TyActionIdent)srTriggers.getnextset( aiNext ) ); )
+								for ( vTyActionIdent aiNext = aiFirst; 
+											srTriggers.size() != ( aiNext = (vTyActionIdent)srTriggers.getnextset( aiNext ) ); )
 								{
 									if ( m_rNfa.m_pLookupActionID->
 												find( aiNext )->second->second.m_pSdpAction->GetBaseP()->FIsSameAs(
@@ -529,14 +529,14 @@ public:
 								}
 							}
 							while( srTriggers.size() != 
-											( aiFirst = (_TyActionIdent)srTriggers.getclearfirstset( aiFirst ) ) );
+											( aiFirst = (vTyActionIdent)srTriggers.getclearfirstset( aiFirst ) ) );
 						}
 						// Now if we coalesced a number of the same triggers into one trigger
 						//	and we have no associated (lookahead)/accepting states then we can 
 						//	just use the first state:
 						if ( !fFoundLookaheadAccept && !fMultiTrigger && !pvtFirstAccept )
 						{
-							_TyActionIdent aiMin = (_TyActionIdent)srFoundTriggers.getfirstset();
+							vTyActionIdent aiMin = (vTyActionIdent)srFoundTriggers.getfirstset();
 							typename _TyNfa::_TySetASByActionID::value_type & rvtMin = 
 								*m_rNfa.m_pLookupActionID->find( aiMin );
 							m_lDfaAccepting.push_front(

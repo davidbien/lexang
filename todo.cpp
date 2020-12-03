@@ -26,5 +26,7 @@
 //  graph we we will understand that 
 
 
-
-
+// 1) Rename the actions according to the token that is activated by the action. Also rename the action object. This is less confusing.
+// 2) Make the action object members of the LexAnal - not static members.
+// 3) Code up some stream objects for general use with in the LexAnal.
+// 4) Output any actions/triggers that are not referenced in the resultant DFA so that this can be used to debug any problems with the reg exps.

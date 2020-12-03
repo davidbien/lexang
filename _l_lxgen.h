@@ -19,12 +19,24 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
+// _l_gen_action_info: Describes a given action token id.
+template < class t_TyCharOut, class t_TyAllocator >
+struct _l_gen_action_info
+{
+	typedef std::basic_string< t_TyCharOut, char_traits<t_TyCharOut>, _TyAllocator > _tyStdStrOut;
+	_l_gen_action_info() = default;
+	_l_gen_action_info( _l_gen_action_info const & ) = deafult;
+	_tyStdStrOut m_strActionName;	// Human readable name for the action.
+	_tyStdStrOut m_strComment; // Comment to be placed in the generated code.
+};
+
 template < class t_TyDfa, class t_TyCharOut >
 struct _l_gen_dfa
 {
-	typedef t_TyDfa								_TyDfa;
-	typedef typename _TyDfa::_TyDfaCtxt		_TyDfaCtxt;
-	typedef typename _TyDfa::_TyAllocator	_TyAllocator;
+	typedef t_TyDfa _TyDfa;
+	typedef t_TyCharOut	_TyCharOut;
+	typedef typename _TyDfa::_TyDfaCtxt _TyDfaCtxt;
+	typedef typename _TyDfa::_TyAllocator _TyAllocator;
 	typedef basic_string< t_TyCharOut, char_traits<t_TyCharOut>, _TyAllocator >	_TyString;
 
 	_l_gen_dfa( _TyDfa & _rDfa,
@@ -72,33 +84,38 @@ struct _l_generator
 	_TyDfaList m_lDfaGen;
 	typename _TyDfaList::value_type *	m_pvtDfaCur{nullptr};
 
-	_TyString			m_sfnHeader;			// The header file we are generating.
-	_TyString			m_sfnImp;					// The implementation file we are generating.
-	_TyString			m_sPpBase;				// Preprocessor base name ( for #defines ).
-	bool					m_fUseNamespaces;	// Whether to use namespaces when generating.
-	_TyString			m_sNamespace;			// The namespace into which we generate.
-	_TyString			m_sMDAnalyzer;		// The type for the most-derived lexical analyzer.
-	_TyString			m_sBaseStateName;	// The base name for state variables.
-	_TyString			m_sBaseActionName;	// The base name for action variables.
-	_TyString			m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
-	_TyString			m_sVisibleCharPrefix;	// Prefix for a visible character const.
-	_TyString			m_sVisibleCharSuffix;	// Suffix for a visible character const.
-	_TyActionIdent			m_aiStart;
-	typename _TyDfa::_TyState		m_stStart;
+	_TyString m_sfnHeader;			// The header file we are generating.
+	_TyString m_sfnImp;					// The implementation file we are generating.
+	_TyString m_sPpBase;				// Preprocessor base name ( for #defines ).
+	bool m_fUseNamespaces;	// Whether to use namespaces when generating.
+	_TyString m_sNamespace;			// The namespace into which we generate.
+	_TyString m_sMDAnalyzer;		// The type for the most-derived lexical analyzer.
+	_TyString m_sBaseStateName;	// The base name for state variables.
+	_TyString m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
+	_TyString m_sVisibleCharPrefix;	// Prefix for a visible character const.
+	_TyString m_sVisibleCharSuffix;	// Suffix for a visible character const.
+	vTyActionIdent m_aiStart;
+	typename _TyDfa::_TyState m_stStart;
 
-	bool					m_fLookaheads;
-	bool					m_fTriggers;
+	bool m_fLookaheads;
+	bool m_fTriggers;
 
-	// We insert the actions into a map. They are ordered first by the typeinfo collating order
-	//	and second by data in the action. We map to the unique action number for the given action,
-	//	and whether the action has been referenced by any DFA.
-	typedef pair< _TyActionIdent, bool >				_TyMAValue;
-	typedef _ref< const _TyActionObjectBase >		_TyRefActionObjectBase;
+	typedef _l_gen_action_info< _TyCharOut, _TyAllocator > _TyGenActionInfo;
+
+	// We insert the actions into a map. They are ordered by the unique token/trigger id.
+	// We map to the _TyGenActionInfo (name,comment,etc.) for the given action, and whether the action has been referenced by any DFA.
+	typedef pair< _TyGenActionInfo, bool > _TyMAValue;
+	typedef _ref< const _TyActionObjectBase > _TyRefActionObjectBase;
   typedef typename _Alloc_traits< typename map< _TyRefActionObjectBase, _TyMAValue,
                                                 less< _TyRefActionObjectBase > >::value_type, _TyAllocator >::allocator_type _TyMapActionsAllocator;
 	typedef map< _TyRefActionObjectBase, _TyMAValue, 
-								less< _TyRefActionObjectBase >,_TyMapActionsAllocator >	_TyMapActions;
+								less< _TyRefActionObjectBase >,_TyMapActionsAllocator > _TyMapActions;
 	_TyMapActions	m_mapActions;	
+
+	// Action info map - provide human readable identifiers instead of just numbers.
+  typedef typename _Alloc_traits< typename map< vTyTokenIdent, _TyGenActionInfo >::value_type, _TyAllocator >::allocator_type _TyMapActionsAllocator;
+	typedef std::map< vTyTokenIdent, _TyGenActionInfo, _TyMapActionsAllocator > _TyMapActionInfo;
+	_TyMapActionInfo m_mapActionInfo;
 
 	_l_generator( const t_TyCharOut * _pcfnHeader,
 								const t_TyCharOut * _pcfnImp,
@@ -120,7 +137,6 @@ struct _l_generator
 			m_sNamespace( _pcNamespace, _rA ),
 			m_sMDAnalyzer( _pcMDAnalyzer, _rA ),
 			m_sBaseStateName( _pcBaseStateName, _rA ),
-			m_sBaseActionName( _pcBaseActionName, _rA ),
 			m_sCharTypeName( _pcCharTypeName, _rA ),
 			m_sVisibleCharPrefix( _pcVisibleCharPrefix, _rA ),
 			m_sVisibleCharSuffix( _pcVisibleCharSuffix, _rA ),
@@ -128,7 +144,8 @@ struct _l_generator
 			m_stStart( 0 ),
 			m_fLookaheads( false ),
 			m_fTriggers( false ),
-      m_mapActions( typename _TyMapActions::key_compare(), _rA )  
+      m_mapActions( typename _TyMapActions::key_compare(), _rA ),
+			m_mapActionInfo( typename _TyMapActionInfo::key_compare(), _rA )
 	{
 	}
 
@@ -137,15 +154,22 @@ struct _l_generator
     return m_mapActions.get_allocator();
   }
 
-	void	add_dfa(	_TyDfa & _rDfa,
-									_TyDfaCtxt & _rDfaCtxt,
-									const t_TyCharOut * _pcStartStateName )
+	void add_dfa(	_TyDfa & _rDfa,
+								_TyDfaCtxt & _rDfaCtxt,
+								const t_TyCharOut * _pcStartStateName )
 	{
 		m_lDfaGen.push_back( _TyGenDfa( _rDfa, _rDfaCtxt, 
 																		_pcStartStateName, 
                                     m_mapActions.get_allocator() ) );
 		m_fLookaheads = m_fLookaheads || _rDfa.m_fHasLookaheads;
 		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers;
+	}
+
+	void add_action_info( vTyTokenIdent _tid, _TyGenActionInfo const & _rgai )
+	{
+		pair< _TyMapActionInfo::iterator, bool > pib = m_mapActionInfo.insert( _TyMapActionInfo::value_type( _tid, _rgai ) );
+		VerifyThrowSz( pib.second, "TokenId[%d] has already been populated in the map.", _tid );
+		// There is the possibility that the caller has duplicated a m_strActionName but if so the resultant code won't compile so no worries there.
 	}
 
 	void	generate()
@@ -179,9 +203,12 @@ struct _l_generator
     m_lDfaGen.clear();
 	}
 
+	// We expect completely unique actions at least at this point as we are translating to trigger/token numbers
+	//	and using these trigger/token numbers in the implementation rather than the action ids. There are no action IDs
+	//	in the impl - only trigger/token numbers/ids.
+	// As we peruse the actions we look up any human-readable names that they might have been given.
 	void	_unique_actions()
 	{
-		_TyActionIdent aiStart = 0;
 		for ( typename _TyDfaList::iterator lit = m_lDfaGen.begin();
 					lit != m_lDfaGen.end(); ++lit )
 		{
@@ -193,11 +220,24 @@ struct _l_generator
 				for ( ; itAction != itActionEnd; ++itAction )
 				{
 					typename _TyPartAcceptStates::value_type & rvt = *itAction;
+					Assert( !!rvt.second.m_pSdpAction || ( e_aatAntiAccepting == rvt.second.m_eaatType ) || ( rvt.second.m_eaatType ) );
 					if ( rvt.second.m_pSdpAction )
 					{
-						m_mapActions.insert( 
-							typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
-									typename _TyMapActions::mapped_type( aiStart + rvt.second.GetOriginalActionId(), false ) ) );
+						Assert( !( e_aatTrigger & rvt.second.m_eaatType ) ); // Should see only non-trigger actions here.
+						_TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->GetTokenId() );
+						_TyGenActionInfo gaiInfo;
+						if ( m_mapActionInfo.end() == citAxnInfo )
+						{
+							// Just use the action id - leave the comment empty.
+							PrintfStdStr( gaiInfo.m_strActionName, "Token%d", (*rvt.second.m_pSdpAction)->GetTokenId() );
+						}
+						else
+						{
+							gaiInfo = citInfo->second;
+						}
+						std::pair< _TyMapActions::iterator, bool > pib = m_mapActions.insert(  typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
+							typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
+						VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->GetTokenId() );
 					}
 				}
 			}
@@ -211,13 +251,24 @@ struct _l_generator
 							++itTrigger )
 				{
 					typename _TyDfa::_TyMapTriggers::value_type & rvt = *itTrigger;
-					m_mapActions.insert( 
-						typename _TyMapActions::value_type(	**rvt.second.m_pSdpAction,
-								typename _TyMapActions::mapped_type( aiStart + rvt.second.GetOriginalActionId(), false ) ) );
+					Assert( e_aatTrigger == rvt.second.m_eaatType ); // Should see only triggers here.
+					Assert( !!rvt.second.m_pSdpAction );
+					_TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->GetTokenId() );
+					_TyGenActionInfo gaiInfo;
+					if ( m_mapActionInfo.end() == citAxnInfo )
+					{
+						// Just use the action id - leave the comment empty.
+						PrintfStdStr( gaiInfo.m_strActionName, "Trigger%d", (*rvt.second.m_pSdpAction)->GetTokenId() );
+					}
+					else
+					{
+						gaiInfo = citInfo->second;
+					}
+					std::pair< _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type(	**rvt.second.m_pSdpAction, 
+						typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
+					VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->GetTokenId() );
 				}
 			}
-
-			aiStart += m_pvtDfaCur->m_rDfa.m_iMaxActions;
 		}
 	}
 
@@ -268,6 +319,9 @@ struct _l_generator
 		_ros << "\t\t: _TyBase( (_TyStateProto*) & " << m_pvtDfaCur->m_sStartStateName << " )\n";
 		_ros << "\t{ }\n";
 
+		// Declare the base GetActionObject() template that is not implemented.
+		_ros << "\ntemplate < const int t_iAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();";
+
 		// We generate all referenced unique actions:
 		typename _TyMapActions::iterator itMAEnd = m_mapActions.end();
 		typename _TyMapActions::iterator itMA = m_mapActions.begin();
@@ -276,7 +330,15 @@ struct _l_generator
 			typename _TyMapActions::value_type & rvt = *itMA;
 			if ( rvt.second.second )
 			{
-				_ros << "\tbool Action" << rvt.second.first << "();\n";
+				// Get a typedef for the action object for ease of use:
+				_ros << "\tusing _tyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
+				rvt.first->Render( _ros, m_sCharTypeName.c_str() );
+				_ros << ";\n";
+				// Define the object as a member of the lexical analyzer class:
+				_ros << "\t_tyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
+				_ros << "\ntemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< " << rvt.first->GetTokenId() << " >()"
+							" { return m_axn" << rvt.second.first.m_strActionName.c_str() << "; }\n";
+				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "();\n";
 			}
 		}
 
@@ -396,7 +458,7 @@ struct _l_generator
 				{
 					_ros << "true, true, " 
 						<< ( pvtAction->second.m_psrRelated ? 
-									( pvtAction->second.m_psrRelated->size_bytes() / sizeof( _TyLookaheadVector ) ) :
+									( pvtAction->second.m_psrRelated->size_bytes() / sizeof( vTyLookaheadVector ) ) :
 									0 );
 				}
 				break;
@@ -453,7 +515,7 @@ struct _l_generator
 		{
 			_ros	<< m_sBaseStateName << "_" << ( _pgn->RElConst() + m_stStart );
 		}
-		_ros << " = { ";
+		_ros << " = {\n#ifdef LXOBJ_STATENUMBERS\n\t" << ( _pgn->RElConst() + m_stStart ) << ",\n#endif //LXOBJ_STATENUMBERS\n\t";
 		int _nOuts = _nOutsOrig;
 		if ( _fAccept )
 		{
@@ -640,8 +702,7 @@ struct _l_generator
 
 	void	_PrintActionMFnP( ostream & _ros, _TyActionObjectBase const & _raob )
 	{
-		typename _TyMapActions::iterator itUnique = 
-			m_mapActions.find( _raob );
+		typename _TyMapActions::iterator itUnique = m_mapActions.find( _raob );
 		Assert( itUnique != m_mapActions.end() );
 		typename _TyMapActions::value_type & rvtUnique = *itUnique;
 		rvtUnique.second.second = true;	// referenced this action.
@@ -657,8 +718,7 @@ struct _l_generator
 
 		// Generate the accepting action, if any:
 		if ( ( pvtAction->second.m_eaatType & ~e_aatTrigger ) &&
-				 ( e_aatAntiAccepting != 
-					 ( pvtAction->second.m_eaatType & ~e_aatTrigger ) ) )
+				 ( e_aatAntiAccepting != ( pvtAction->second.m_eaatType & ~e_aatTrigger ) ) )
 		{
 			_ros << ", ";
 			if ( pvtAction->second.m_pSdpAction )
@@ -702,9 +762,9 @@ struct _l_generator
 					}
 					_ros << ",\n\t{0x0" << hex;
 
-					_TyLookaheadVector * pelRelated = pvtAction->second.m_psrRelated->begin();
-					_TyLookaheadVector * pelEnd = pelRelated + 
-						pvtAction->second.m_psrRelated->size_bytes() / sizeof( _TyLookaheadVector );
+					vTyLookaheadVector * pelRelated = pvtAction->second.m_psrRelated->begin();
+					vTyLookaheadVector * pelEnd = pelRelated + 
+						pvtAction->second.m_psrRelated->size_bytes() / sizeof( vTyLookaheadVector );
 					for ( ; pelEnd != pelRelated; 
 								( ++pelRelated == pelEnd ) || ( _ros << ", 0x0" ) )
 					{
@@ -736,7 +796,7 @@ struct _l_generator
 						)
 				{
 					typename _TyDfa::_TyMapTriggers::iterator itTrigger = 
-						m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (_TyActionIdent)stTrigger );
+						m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (vTyActionIdent)stTrigger );
 					
 					_PrintActionMFnP( _ros, **( itTrigger->second.m_pSdpAction ) );
 
@@ -787,11 +847,9 @@ struct _l_generator
 			typename _TyMapActions::value_type & rvt = *itMA;
 			if ( rvt.second.second )
 			{
-					rvt.first->Render( _rosImp, m_sCharTypeName.c_str() );
-					_rosImp << "\t" << m_sBaseActionName << rvt.second.first << ";\n";
-					_rosImp << "bool\t_TyAnalyzer::Action" << rvt.second.first << "()\n";
+					_rosImp << "bool\t_TyAnalyzer::Action" << rvt.second.first.m_strActionName.c_str() << "()\n";
 					_rosImp << "{\n";
-					_rosImp << "\treturn " << m_sBaseActionName << rvt.second.first
+					_rosImp << "\treturn " << "m_axn" << rvt.second.first.m_strActionName.c_str()
 									<< ".action< _TyMDAnalyzer >( static_cast< _TyMDAnalyzer & >( *this ) );\n";
 					_rosImp << "}\n\n";
 			}

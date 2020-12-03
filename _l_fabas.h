@@ -53,7 +53,7 @@ private:
 	typedef _fa_accept_action _TyThis;
 public:
 
-	typedef _simple_bitvec< _TyLookaheadVector, t_TyAllocator > _TySetActionIds;
+	typedef _simple_bitvec< vTyLookaheadVector, t_TyAllocator > _TySetActionIds;
 
 	EActionActionType m_eaatType;
 	t_TyActionIdent m_aiAction;
@@ -97,6 +97,7 @@ public:
 	{
 		return m_eaatType == e_aatLookahead ? m_aiAction : m_aiRelated;
 	}
+
 
 	t_TyAllocator get_allocator() const _BIEN_NOTHROW
 	{
@@ -170,7 +171,7 @@ public:
 	typedef typename _Alloc_traits< typename set < _TyRange, _TyCompareRange >::value_type, t_TyAllocator >::allocator_type _TyAlphabetAllocator;
 	typedef set< _TyRange, _TyCompareRange, _TyAlphabetAllocator >	_TyAlphabet;
 
-	typedef _fa_accept_action< _TyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
+	typedef _fa_accept_action< vTyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
 
   // REVIEW: <dbien>: This is kind of bogus - shouldn't really 
   //  reference an internal impll class.

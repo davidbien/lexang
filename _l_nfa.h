@@ -109,9 +109,9 @@ public:
 	typedef typename _TySetAcceptStates::value_type _TySetAcceptVT;
 
 	// Sometimes need to order the accept actions by action identifier:
-	typedef less< _TyActionIdent > _TyCompareAI;
-	typedef typename _Alloc_traits< typename map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
-	typedef map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
+	typedef less< vTyActionIdent > _TyCompareAI;
+	typedef typename _Alloc_traits< typename map< vTyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
+	typedef map< vTyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
