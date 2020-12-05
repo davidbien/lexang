@@ -107,11 +107,12 @@ public:
 	typedef map< _TyState, _TyAcceptAction, _TyCompareStates, _TySetAcceptStatesAllocator > _TySetAcceptStates;
 	typedef typename _TySetAcceptStates::iterator _TySetAcceptIT;
 	typedef typename _TySetAcceptStates::value_type _TySetAcceptVT;
+	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
 
 	// Sometimes need to order the accept actions by action identifier:
-	typedef less< vTyActionIdent > _TyCompareAI;
-	typedef typename _Alloc_traits< typename map< vTyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
-	typedef map< vTyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
+	typedef less< vtyActionIdent > _TyCompareAI;
+	typedef typename _Alloc_traits< typename map< vtyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
+	typedef map< vtyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
@@ -284,20 +285,17 @@ public:
 	}
 
 protected:	// accessed by _nfa_context:
-
 	void	DestroySubGraph( _TyGraphNode * _pgn )
 	{
 		if ( !!_pgn )
 			m_gNfa.destroy_node( _pgn );
 	}
-
 	void	CreateRangeNFA( _TyNfaCtxt & _rctxt, _TyRange const & _rr )
 	{
     	Assert( !_rctxt.m_pgnStart ); // throw-safety.
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, _rr, &_rctxt.m_pgnAccept );
 	}
-
 	void	CreateStringNFA( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
 	{
 		if ( *_pc )
@@ -317,6 +315,58 @@ protected:	// accessed by _nfa_context:
 		{
 			// Create an empty NFA:
 			CreateRangeNFA( _rctxt, _TyRange( 0, 0 ) );
+		}
+	}
+	void CreateLiteralNotInSetNFA( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
+	{
+		Assert( !_rctxt.m_pgnStart );
+		if ( *_pc )
+		{
+			_TyString str( _pc );
+			std::sort( str.begin(), str.end() );
+			// If we see duplicate characters specified then we will throw an exception because it shouldn't be intended and may indicate a bug in the specification.
+			{//B
+				const _TyUnsignedChar * pcDupe;
+				VerifyThrowSz( str.end() == ( pcDupe = adjacent_find( str.begin(), str.end() ) ), 
+					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *pcDupe ) );
+			}//EB
+			// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
+			{//B
+				const _TyUnsignedChar * pcMax = max_element( str.begin(), str.end() );
+				VerifyThrowSz( *pcMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
+					"Found character with value [%lu] beyond the maximum value of [%lu]." size_t( *pcMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) )
+			}//EB
+
+			const _TyUnsignedChar * pcCur = str.c_str();
+			_TyUnsignedChar ucLast = 0;
+			do
+			{
+				++ucLast;
+				while( *pcCur == ucLast )
+				{
+					++pcCur;
+					++ucLast;
+				}
+				if ( !ucLast ) // check for overflow for unsigned char type.
+					break;
+				if ( ucLast <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax )
+				{
+					_TyUnsignedChar ucNewLast = !*pcCur ? _l_char_type_map< _TyUnsignedChar >::ms_kcMax : ( *pcCur++ - 1 );
+					_TyRange rgNew( ucLast, ucNewLast );
+					ucLast = ucNewLast;
+					if ( !_rctxt.m_pgnStart )
+						CreateRangeNFA( _rctxt, rgNew );
+					else
+						_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+				}
+			}
+			while ( _l_char_type_map< _TyUnsignedChar >::ms_kcMax > ucLast );
+		}
+		else
+		{
+			// Create an NFA that accepts everything. This could be used with "completed by" to allow freeform data to be parsed. 
+			//	(i.e. it isn't necessarily a bug to specify this though it certainly might be)
+			CreateRangeNFA( _rctxt, _TyRange( 1, _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
 		}
 	}
 	void	CreateFollowsNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
@@ -352,7 +402,7 @@ protected:	// accessed by _nfa_context:
 		_NewAcceptingState( _rctxt2.m_pgnAccept, 
 												_TyRange( 0, 0 ), &_rctxt2.m_pgnAccept );
 		_NewTransition( pgnStart, _TyRange( 0, 0 ), _rctxt2.m_pgnStart );
-		dtorSubGraph.Reset();
+		dtorSubGraph.Reset(); // pgnStart is now connected to a lifetime-managed graph and won't be leaked upon throw.
 		_rctxt2.m_pgnStart = pgnStart;
 
 		_NewTransition( pgnStart, _TyRange( 0, 0 ), _rctxt1_Result.m_pgnStart );
@@ -363,7 +413,6 @@ protected:	// accessed by _nfa_context:
 										_TyRange( 0, 0 ), _rctxt2.m_pgnAccept );
 		_rctxt1_Result.m_pgnAccept = _rctxt2.m_pgnAccept;
 	}
-
 	void	CreateExcludesNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
 	{
 	// Just like the or except don't connect the accepting states together:
@@ -1077,6 +1126,10 @@ public:
 	void CreateRangeNFA( _TyRange const & _rr )
 	{
 		RNfa().CreateRangeNFA( *this, _rr );
+	}
+	void CreateLiteralNotInSetNFA( t_TyChar const * _pc )
+	{
+		RNfa().CreateLiteralNotInSetNFA( *this, (_TyUnsignedChar*)_pc );
 	}
 	void CreateFollowsNFA( _TyBase & _rcb )
 	{

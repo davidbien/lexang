@@ -100,12 +100,12 @@ public:
 	bool m_fHasLookaheads;	// any lookaheads in the rules ?
 	size_type m_nTriggers;		// # of triggers
 	size_type m_nUnsatisfiableTransitions; // # of unsatisfiable.
-	vTyActionIdent m_iMaxActions;
+	vtyActionIdent m_iMaxActions;
 
 	// Triggers - we need an extra copy since ambiguity may have occurred:
-	typedef less< vTyActionIdent > _TyCompareAI;
-  typedef typename _Alloc_traits< typename map< vTyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
-  typedef map< vTyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
+	typedef less< vtyActionIdent > _TyCompareAI;
+  typedef typename _Alloc_traits< typename map< vtyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
+  typedef map< vtyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
 
 	_dfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )

@@ -30,3 +30,10 @@
 // 2) Make the action object members of the LexAnal - not static members.
 // 3) Code up some stream objects for general use with in the LexAnal.
 // 4) Output any actions/triggers that are not referenced in the resultant DFA so that this can be used to debug any problems with the reg exps.
+// 5) Data associated with a given token needs to be packetized and stored with the token on a stack that the parser thread can then pop from.
+//    My guess is that the parser thread would be waiting a lot since most of the work would be done by the lexicographical analyzer.
+//    So this may not increase the speed of parsing and if no perhaps not by much.
+
+// 1) Add regexp_not_set and regexp_not_range to add "everything but what is in this set" functionality.
+// 2) Add the ability to have utility action objects. These don't have a trigger point but they can be used for data storage by other objects. They must have unique token ids.
+//    They should be in the trigger range - i.e. they have a bit in the trigger bits. Tokens are not allocated bits in the trigger bits since only one can be returned at any given time.

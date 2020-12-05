@@ -94,7 +94,7 @@ struct _l_generator
 	_TyString m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
 	_TyString m_sVisibleCharPrefix;	// Prefix for a visible character const.
 	_TyString m_sVisibleCharSuffix;	// Suffix for a visible character const.
-	vTyActionIdent m_aiStart;
+	vtyActionIdent m_aiStart;
 	typename _TyDfa::_TyState m_stStart;
 
 	bool m_fLookaheads;
@@ -113,8 +113,8 @@ struct _l_generator
 	_TyMapActions	m_mapActions;	
 
 	// Action info map - provide human readable identifiers instead of just numbers.
-  typedef typename _Alloc_traits< typename map< vTyTokenIdent, _TyGenActionInfo >::value_type, _TyAllocator >::allocator_type _TyMapActionsAllocator;
-	typedef std::map< vTyTokenIdent, _TyGenActionInfo, _TyMapActionsAllocator > _TyMapActionInfo;
+  typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyGenActionInfo >::value_type, _TyAllocator >::allocator_type _TyMapActionsAllocator;
+	typedef std::map< vtyTokenIdent, _TyGenActionInfo, _TyMapActionsAllocator > _TyMapActionInfo;
 	_TyMapActionInfo m_mapActionInfo;
 
 	_l_generator( const t_TyCharOut * _pcfnHeader,
@@ -165,7 +165,7 @@ struct _l_generator
 		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers;
 	}
 
-	void add_action_info( vTyTokenIdent _tid, _TyGenActionInfo const & _rgai )
+	void add_action_info( vtyTokenIdent _tid, _TyGenActionInfo const & _rgai )
 	{
 		pair< _TyMapActionInfo::iterator, bool > pib = m_mapActionInfo.insert( _TyMapActionInfo::value_type( _tid, _rgai ) );
 		VerifyThrowSz( pib.second, "TokenId[%d] has already been populated in the map.", _tid );
@@ -330,6 +330,8 @@ struct _l_generator
 			typename _TyMapActions::value_type & rvt = *itMA;
 			if ( rvt.second.second )
 			{
+				// Define a constant so that we don't just have raw numbers lying around as much:
+				_ros << "\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << ";\n"
 				// Get a typedef for the action object for ease of use:
 				_ros << "\tusing _tyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
 				rvt.first->Render( _ros, m_sCharTypeName.c_str() );
@@ -458,7 +460,7 @@ struct _l_generator
 				{
 					_ros << "true, true, " 
 						<< ( pvtAction->second.m_psrRelated ? 
-									( pvtAction->second.m_psrRelated->size_bytes() / sizeof( vTyLookaheadVector ) ) :
+									( pvtAction->second.m_psrRelated->size_bytes() / sizeof( vtyLookaheadVector ) ) :
 									0 );
 				}
 				break;
@@ -762,9 +764,9 @@ struct _l_generator
 					}
 					_ros << ",\n\t{0x0" << hex;
 
-					vTyLookaheadVector * pelRelated = pvtAction->second.m_psrRelated->begin();
-					vTyLookaheadVector * pelEnd = pelRelated + 
-						pvtAction->second.m_psrRelated->size_bytes() / sizeof( vTyLookaheadVector );
+					vtyLookaheadVector * pelRelated = pvtAction->second.m_psrRelated->begin();
+					vtyLookaheadVector * pelEnd = pelRelated + 
+						pvtAction->second.m_psrRelated->size_bytes() / sizeof( vtyLookaheadVector );
 					for ( ; pelEnd != pelRelated; 
 								( ++pelRelated == pelEnd ) || ( _ros << ", 0x0" ) )
 					{
@@ -796,7 +798,7 @@ struct _l_generator
 						)
 				{
 					typename _TyDfa::_TyMapTriggers::iterator itTrigger = 
-						m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (vTyActionIdent)stTrigger );
+						m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (vtyActionIdent)stTrigger );
 					
 					_PrintActionMFnP( _ros, **( itTrigger->second.m_pSdpAction ) );
 

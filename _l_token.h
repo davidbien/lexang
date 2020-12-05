@@ -1,92 +1,173 @@
 #pragma once
 
 // _l_token.h
-// The representation of a single token.
+// The representation of a data of part of a token.
 // dbien : 30NOV2020
 
-// We want this token to hold various representations of a token:
-// 1) A stream and (beg,end) positions within that stream.
-// 2) A pointer and (beg,end) positions within that memory.
-// 3) An in-memory stream - i.e. segmented array (segarray).
-// It would also be nice if there were reference counting so that token could
-//  be shared read-only.
-// It should be able to transform from (1) or (2) to (3) when information is added to the existing token.
-// Would like to templatize by allocator but I have to propagate it and it's annoying right now. Later.
-
+// A token contains either:
+// 1) A (beg,end,datamarker) tuple. <or>
+// 2) A set of such tuples in positional order.
+// That's it. No translation is performed from input data as that process is beyond the scope of the token data itself.
 
 #include <stdint.h>
+#include "_assert.h"
 #include "segarray.h"
+#include "_l_inc.h"
+
+__REGEXP_BEGIN_NAMESPACE
+
+typedef size_t vtyTokenPosition;
+typedef size_t vtyDataType;
+
+// _l_token_range_pod: A simple token range in a token stream.
+// We want this to be a POD struct so we can use it in a anonymous union.
+class _l_token_range_pod
+{
+  vtyTokenPosition m_posBegin;
+  vtyTokenPosition m_posEnd;
+};
+// _l_token_range_pod: A simple token range in a token stream.
+// We want this to be a POD struct so we can use it in a anonymous union.
+class _l_token_typed_range_pod : public _l_token_range_pod
+{
+  vtyDataType m_nType;
+};
+
+// l_token_range: Non-pod version.
+class _l_token_range
+{
+  typedef _l_token_range _TyThis;
+public: 
+  _l_token_range() = default;
+  _l_token_range( _l_token_range const & ) = default;
+  _l_token_range( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd )
+    : m_posBegin( _posBegin ),
+      m_posEnd( _posEnd )
+  {
+  }
+  _l_token_range & operator =( _TyThis const & _r ) = default;
+  
+// Make these accessible.
+  vtyTokenPosition m_posBegin{ numeric_limits< vtyTokenPosition >::max() };
+  vtyTokenPosition m_posEnd{ numeric_limits< vtyTokenPosition >::max() };
+};
+
+// _l_token_typed_range: Use protected inheritance to hide conversion to base.
+class _l_token_typed_range : protected _l_token_range
+{
+  typedef _l_token_typed_range _TyThis;
+  typedef _l_token_range _TyBase;
+public:
+  _l_token_typed_range() = default;
+  _l_token_typed_range( _l_token_typed_range const & ) = default;
+  _l_token_typed_range & operator = ( _l_token_typed_range const & ) = default;
+
+  // Provide access to base class via explicit accessor:
+  _TyBase const & GetRangeBase() const
+  {
+    return *this;
+  }
+  _TyBase & GetRangeBase()
+  {
+    return *this;
+  }
+
+  using _TyBase::m_posBegin;
+  using _TyBase::m_posEnd;
+  vtyDataType m_nType{0}; // the 0th type always signifies "plain text".
+};
 
 // by default we will keep the segment size small but large enough that most strings will fit in it.
-template <  class t_tyStream, class t_TyChar, class t_TyPosition = size_t, uint32_t s_knbySegSize = 4096 >
+template <  class t_TyStream, class t_TyChar, uint32_t s_knbySegSize = 512 >
 class _l_token
 {
   typedef _l_token _TyThis;
 public:
-  typedef t_tyStream _tyStream;
+  typedef t_TyStream _TyStream;
   typedef t_TyChar _TyChar;
-  typedef t_TyPosition _TyPosition;
-  typedef SegArray< t_TyChar, false, t_TyPosition > _TySegArray;
-  static constexpr s_knSegArrayInit = s_knbySegSize / sizeof( _TyChar );
-  typedef std::basic_string< _TyChar > 
+  typedef SegArray< _l_token_typed_range, false, vtyTokenPosition > _TySegArray;
+  static constexpr s_knSegArrayInitTypedRange = s_knbySegSize / sizeof( _l_token_typed_range );
+  static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
+  typedef std::basic_string< _TyChar > _TyStdStr;
 
   union
   {
     struct
     {
-      uint64_t m_u64Marker; // When m_u64Marker is 0xffffffffffffffff then (m_psStream,m_posBegin,m_posEnd) are valid, else m_rgbySegArray is populated.
-      const _tyStream * m_psStream;
-      t_TyPosition m_posBegin;
-      t_TyPosition m_posEnd; // Not inclusive.
+      uint64_t m_u64Marker; // When m_u64Marker is 0xffffffffffffffff then m_ttrData contains valid data, else m_rgbySegArray is populated.
+      _l_token_typed_range_pod m_ttrData;
     };
-    unsigned char m_rgbySegArray[ _TySegArray ];
+    unsigned char m_rgbySegArray[ sizeof( _TySegArray ) ];
   };
 
-  _l_token()
+  void AssertValid() const
+#if ASSERTSENABLED
   {
-    SetContainsPositions();
-    m_psStream = nullptr;
-  }
-  _l_token( const _tyStream * _psStream, t_TyPosition _posBegin, t_TyPosition _posEnd )
-  {
-    SetContainsPositions();
-    m_psStream = _psStream;
-    m_posBegin = _posBegin;
-    m_posEnd = _posEnd;
-  }
-  _l_token( const t_TyChar * _pc, t_TyPosition _nChars )
-  {
-    // Nullify in case of throw.
-    SetContainsPositions();
-    m_psStream = nullptr;
-    Append( _pc, _nChars );
-  }
-  _l_token( const _l_token & _r )
-  {
-    SetContainsPositions();
-    if ( _r.FContainsPositions() )
+    if ( FContainsSinglePos() )
     {
-      m_psStream = _r.m_psStream;
-      m_posBegin = _r.m_posBegin;
-      m_posEnd = _r.m_posEnd;
+      Assert( ( numeric_limits< vtyTokenPosition >::max() != m_ttrData.m_posBegin ) || ( numeric_limits< vtyTokenPosition >::max() == m_ttrData.m_posEnd ) );
+      Assert( ( numeric_limits< vtyTokenPosition >::max() != m_ttrData.m_posBegin ) || !m_ttrData.m_nType );
+      Assert( m_ttrData.m_posEnd >= m_ttrData.m_posBegin );
     }
     else
     {
-      m_psStream = nullptr; // nullify in case of throw.
+      _PSegArray()->AssertValid();
+    }
+  }
+#else //!ASSERTSENABLED
+  { }
+#endif //!ASSERTSENABLED
+
+  _l_token()
+  {
+    _SetMembersNull();
+  }
+  _l_token( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd )
+  {
+    _SetContainsSinglePos();
+    m_ttrData.m_posBegin = _posBegin;
+    m_ttrData.m_posEnd = _posEnd;
+    m_ttrData.m_nType = 0;
+    AssertValid(); // We don't expect someone to set in invalid members but it is possible.
+  }
+  _l_token( _l_token_range const & _rtr )
+  {
+    _SetContainsSinglePos();
+    m_ttrData.m_posBegin = _rtr.m_posBegin;
+    m_ttrData.m_posEnd = _rtr.m_posEnd;
+    m_ttrData.m_nType = 0;
+    AssertValid(); // We don't expect someone to set in invalid members but it is possible.
+  }
+  _l_token( _l_token_typed_range const & _rttr )
+  {
+    static_assert( sizeof( _l_token_typed_range ) == sizeof( _l_token_typed_range_pod ) );
+    _SetContainsSinglePos();
+    memcpy( &m_ttrData, &_rttr, sizeof m_ttrData );
+    AssertValid(); // We don't expect someone to set in invalid members but it is possible.
+  }
+  _l_token( const _l_token & _r )
+  {
+    _r.AssertValid();
+    if ( _r.FContainsSinglePos() )
+    {
+      memcpy( this, &_r, sizeof *this );
+    }
+    else
+    {
+      _SetMembersNull(); // nullify in case of throw.
       _TySegArray saCopy( *_r._PSegArray() );
       new ( m_rgbySegArray ) _TySegArray( std::move( saCopy ) );
-      Assert( !FContainsPositions() );
+      AssertValid();
     }
   }
   _l_token( _l_token && _rr )
   {
-    SetContainsPositions();
-    m_psStream = nullptr;
+    _SetMembersNull(); // Leave the caller in a valid state.
     swap( _rr );
   }
   ~_l_token()
   {
-    if ( !FContainsPositions() )
+    if ( !FContainsSinglePos() )
       _ClearSegArray();
   }
   void swap( _l_token & _r )
@@ -109,108 +190,116 @@ public:
     return *this;
   }
 
-  void SetContainsPositions()
+  bool FContainsSinglePos() const
   {
-    m_u64Marker = 0xffffffffffffffff;
-  }
-  bool FContainsPositions() const
-  {
+    AssertValid();
     return m_u64Marker == 0xffffffffffffffff;
   }
-  bool FHasStream() const
+  size_t NPositions() const
   {
-    return FContainsPositions() && !!m_psStream;
+    AssertValid();
+    if ( FIsNull() )
+      return 0;
+    else
+    if ( FContainsSinglePos() )
+      return 1;
+    else
+      return _PSegArray()->NElements();
   }
-  _TyPosition NLengthChars() const
+  bool FContainsData() const
   {
-    Assert( !FContainsPositions() || !m_psStream || ( m_posEnd >= m_posBegin ) );
-    return FContainsPositions() ? ( m_psStream ? ( m_posEnd - m_posBegin ) : 0 ) : _PSegArray()->NElements();
+    AssertValid();
+    if ( FContainsSinglePos() )
+      return !!( m_posEnd > m_posBegin );
+    else
+      return !!_PSegArray()->NElements(); // Assuming we don't put empty elements in the segarray.
   }
   bool FIsNull() const
   {
-    return FContainsPositions() && ( m_psStream == nullptr );
+    AssertValid();
+    return FContainsSinglePos() && ( numeric_limits< vtyTokenPosition >::max() == m_ttrData.m_posBegin );
   }
   void SetNull()
   {
-    if ( !FContainsPositions() )
+    if ( !FContainsSinglePos() )
       _ClearSegArray();
-    SetContainsPositions();
-    m_psStream = nullptr;
+    _SetMembersNull();
+  }
+  void Clear()
+  {
+    SetNull();
   }
 
-  void SetBeginEnd( _tyStream & _rsStream, vtyTokenPosition _posBegin, vtyTokenPosition _posEnd )
+  void Set( _l_token_range const & _rtr )
+  {
+    Set( _rtr.m_posBegin, _rtr.m_posEnd );
+  }
+  void Set( _l_token_typed_range const & _rttr )
+  {
+    Set( _rttr.m_posBegin, _rttr.m_posEnd, _rttr.m_nType );
+  }
+  void Set( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd, vtyDataType _nType = 0 )
   {
     Assert( _posEnd >= _posBegin );
-    if ( !FContainsPositions() )
+    if ( !FContainsSinglePos() )
       _ClearSegArray();
-    SetContainsPositions();
-    m_psStream = &_rsStream;
-    if ( _posEnd >= _posBegin )
-    {
-      m_posBegin = _posBegin;
-      m_posEnd = _posEnd;
-    }
-    else
-    {
-      m_posEnd = m_posBegin = 0;
-    }
+    _SetContainsSinglePos();
+    m_ttrData.m_posBegin = _posBegin;
+    m_ttrData.m_posEnd = _posEnd;
+    m_ttrData.m_nType = _nType;
+    AssertValid();
   }
-
-  // Append a set of characters to the end of any data.
-  void Append( const t_TyChar * _pc, t_TyPosition _nChars ) noexcept(false)
+  void Append( _l_token_range const & _rtr )
   {
-    Assert( _nChars == StrNLen(_pc) ); // We don't expect to be writing embedded nulls - at least at this point.
-    if ( _nChars > 0 )
-    {
-      if ( FContainsPositions() )
-        _ConvertToSegArray();
-      _PSegArray()->Overwrite( _PSegArray()->NElements(), _pc, _nChars );
-    }
+    Append( _rtr.m_posBegin, _rtr.m_posEnd );
   }
-  void ToString( _TyStdStr & _rstr ) const
+  void Append( _l_token_typed_range const & _rttr )
   {
-    Assert( !_rstr.length() ); // we expect an empty string.
-    _TyPosition nLen = NLengthChars();
-    _rstr.resize( nLen ); // reserves nLen+1 memory.
-    if ( !nLen )
-      return;
-    if ( FContainsPositions() )
-    {
-      m_psStream->ReadAtPos( &_rstr[0], m_posBegin * sizeof(_TyChar), nLen * sizeof(_TyChar) );
-    }
+    Append( _rttr.m_posBegin, _rttr.m_posEnd, _rttr.m_nType );
+  }
+  void Append( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd, vtyDataType _nType = 0 )
+  {
+    if ( FIsNull() )
+      return Set( _posBegin, _posEnd, _nType );
     else
+    if ( FContainsSinglePos() )
     {
-      _PSegArray()->Read( 0, &_rstr[0], nLen );
+      _TySegArray saNew( s_knSegArrayInit );
+      saNew.Overwrite( 0, &m_ttrData, sizeof m_ttrData );
+      new ( m_rgbySegArray ) _TySegArray( std::move( saNew ) );
+      AssertValid();
     }
-    Assert( !_rstr[nLen] ); // set by resize().
+    _l_token_typed_range_pod ttrWrite = { _posBegin, _posEnd, _nType };
+    _PSegArray()->Overwrite( _PSegArray()->NElements(), &ttrWrite, sizeof ttrWrite );
+    AssertValid();
   }
 protected:
+  void _SetContainsSinglePos()
+  {
+    m_u64Marker = 0xffffffffffffffff;
+  }
+  void _SetMembersNull()
+  {
+    _SetContainsSinglePos();
+    m_ttrData.m_posBegin = numeric_limits< vtyTokenPosition >::max();
+    m_ttrData.m_posEnd = numeric_limits< vtyTokenPosition >::max();
+    m_ttrData.m_nType = 0;
+  }
   _TySegArray * _PSegArray()
   {
-    Assert( !FContainsPositions() );
+    Assert( !FContainsSinglePos() );
     return (_TySegArray*)m_rgbySegArray;
   }
   const _TySegArray * _PSegArray() const
   {
-    Assert( !FContainsPositions() );
+    Assert( !FContainsSinglePos() );
     return (_TySegArray*)m_rgbySegArray;
-  }
-  void _ConvertToSegArray() noexcept(false)
-  {
-    Assert( FContainsPositions() );
-    Assert( FHasStream() );
-    if ( FContainsPositions() && NLengthChars() )
-    {
-      _TySegArray saNew( s_knSegArrayInit );
-      saNew.OverwriteFromStream( 0, *m_psStream, m_posBegin, m_posEnd - m_posBegin );
-      new( m_rgbySegArray ) _TySegArray( std::move( saNew ) ); // swap it in.
-      Assert( !FContainsPositions() );
-    }
   }
   void _ClearSegArray()
   {
-    Assert( !FContainsPositions() );
+    Assert( !FContainsSinglePos() );
     _PSegArray()->~_TySegArray();
-    SetContainsPositions();
   }
 };
+
+__REGEXP_END_NAMESPACE

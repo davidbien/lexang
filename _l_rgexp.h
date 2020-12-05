@@ -232,7 +232,7 @@ public:
 
 	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
 	{
-		_rNfaCtxt.CreateStringNFA( &m_s.begin()[0] );
+		_rNfaCtxt.CreateStringNFA( m_s.c_str() );
 	}
 
 	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
@@ -311,6 +311,68 @@ __INLINE _regexp_litrange< t_TyChar >
 litrange( t_TyChar _cFirst, t_TyChar _cLast )
 {
 	return _regexp_litrange< t_TyChar >( _cFirst, _cLast );
+}
+
+// _regexp_litnotset: a single literal not in the set given in the string.
+template < class t_TyChar, class t_TyAllocator = __L_DEFAULT_ALLOCATOR >
+class _regexp_litnotset 
+	: public _regexp_base< t_TyChar >
+{
+private:
+	typedef _regexp_base< t_TyChar > _TyBase;
+	typedef _regexp_litnotset _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
+public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+
+	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
+	typedef typename _TyBase::_TyOstream _TyOstream;
+	
+	_TyString	m_s;
+
+	_regexp_litnotset(	const t_TyChar * _pc,
+											t_TyAllocator const & _alloc = t_TyAllocator() )
+		: m_s( _pc, _alloc )
+	{
+	}
+	// REVIEW:<dbien>: Don't remember why I have this for the copy constructor...
+	_regexp_litnotset( _TyThis const & _r, std::false_type = std::false_type() )
+    : m_s( _r.m_s )
+  {
+  }
+
+	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	{
+		_rNfaCtxt.CreateLiteralNotInSetNFA( m_s.c_str() );
+	}
+
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; } // assuming false here... the fact is that if it does matches empty then it only matches nothing...
+
+	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	{
+		_CloneHelper( this, _prbCopier, _pprbStorage );
+	}
+
+	virtual void	Dump( _TyOstream & _ros ) const
+	{
+		_ros << "[^" << m_s << "]";
+	}
+};
+
+template < class t_TyChar >
+__INLINE _regexp_litnotset< t_TyChar >
+litnotset( const t_TyChar * _pc )
+{
+	return _regexp_litnotset< t_TyChar >( _pc );
+}
+
+template < class t_TyChar, class t_TyAllocator >
+__INLINE _regexp_litnotset< t_TyChar, t_TyAllocator >
+litnotset( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
+{
+	return _regexp_litnotset< t_TyChar >( _pc, _rAlloc );
 }
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
@@ -762,17 +824,6 @@ public:
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
 		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, _TyAllocBase::get_allocator() );
-#if 1 //ndef __GNUC__ 
-		(*m_pSdpAction)->m_pmfnRenderChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::Render );
-		(*m_pSdpAction)->m_pmfnRenderWideChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::Render );
-#else //!__GNUC__
-		(*m_pSdpAction)->m_pmfnRenderChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderChar >( &t_TyActionObject::RenderChar );
-		(*m_pSdpAction)->m_pmfnRenderWideChar = 
-      static_cast< typename _TyActionObjectBase::_TyPMFnRenderWideChar >( &t_TyActionObject::RenderWChar );
-#endif //!__GNUC__
 	}
 
 	// We always clone the action actions.

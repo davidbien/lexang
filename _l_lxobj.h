@@ -122,8 +122,8 @@ struct _l_state_proto
   _TyTransition m_rgt[7]; // You can access the transitions.
 private:                            // Variable length structure - use accessors.
   _TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;             // The associated lookahead action id.
-  vTyLookaheadVector m_rgValidLookahead[2]; // bit vector for valid associated lookahead actions.
+  vtyActionIdent m_aiLookahead;             // The associated lookahead action id.
+  vtyLookaheadVector m_rgValidLookahead[2]; // bit vector for valid associated lookahead actions.
   _TyPMFnAccept m_rgpmfnTriggers[7];        // Array of pointers to trigger functions.
 public:
   _TyPMFnAccept PMFnGetAction()
@@ -131,19 +131,19 @@ public:
     Assert(m_flAccept);
     return *(_TyPMFnAccept *)((char *)this + m_usOffsetAccept);
   }
-  vTyActionIdent AIGetLookahead()
+  vtyActionIdent AIGetLookahead()
   {
     typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
-    return *(vTyActionIdent *)((char *)this + m_usOffsetAccept +
+    return *(vtyActionIdent *)((char *)this + m_usOffsetAccept +
                                (offsetof(_TyStateAccept1Trans, m_aiLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
   }
-  vTyLookaheadVector *PBeginValidLookahead()
+  vtyLookaheadVector *PBeginValidLookahead()
   {
     Assert(m_flAccept == kucLookaheadAccept ||
            m_flAccept == kucLookaheadAcceptAndAccept ||
            m_flAccept == kucLookaheadAcceptAndLookahead);
     typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
-    return (vTyLookaheadVector *)((char *)this + m_usOffsetAccept +
+    return (vtyLookaheadVector *)((char *)this + m_usOffsetAccept +
                                   (offsetof(_TyStateAccept1Trans, m_rgValidLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
   }
   _TyPMFnAccept *PPMFnGetTriggerBegin()
@@ -272,7 +272,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, t_iTriggers>
   unsigned short m_usOffsetTriggers;
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
+  vtyActionIdent m_aiLookahead;
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -292,7 +292,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, 0>
   unsigned short m_usOffsetTriggers;
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
+  vtyActionIdent m_aiLookahead;
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -312,8 +312,8 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_i
   unsigned short m_usOffsetTriggers;
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
-  vTyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
+  vtyActionIdent m_aiLookahead;
+  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -333,8 +333,8 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0>
   unsigned short m_usOffsetTriggers;
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
-  vTyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
+  vtyActionIdent m_aiLookahead;
+  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -423,7 +423,7 @@ struct _l_state<t_TyChar, 0, true, true, 0, t_iTriggers>
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
+  vtyActionIdent m_aiLookahead;
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -442,7 +442,7 @@ struct _l_state<t_TyChar, 0, true, true, 0, 0>
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
+  vtyActionIdent m_aiLookahead;
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -461,8 +461,8 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers>
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
-  vTyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
+  vtyActionIdent m_aiLookahead;
+  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -481,8 +481,8 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0>
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vTyActionIdent m_aiLookahead;
-  vTyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
+  vtyActionIdent m_aiLookahead;
+  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -670,12 +670,12 @@ public:
               if (m_pspLookaheadAccept)
               {
                 // Then might not be the associated accept state:
-                vTyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
-                vTyActionIdent aiCur = m_pspCur->AIGetLookahead();
+                vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
+                vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
                 if (((aiLA < 0) &&
                      (*(m_pspLookaheadAccept->PBeginValidLookahead() +
-                        aiCur / (CHAR_BIT * sizeof(vTyLookaheadVector))) &
-                      (1 << aiCur % (CHAR_BIT * sizeof(vTyLookaheadVector))))) ||
+                        aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
+                      (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
                     (aiLA == aiCur))
                 {
                   // REVIEW: May be no need for {m_pspLookahead}.
@@ -715,12 +715,12 @@ public:
               if (m_pspLookaheadAccept)
               {
                 // Then might not be the associated accept state:
-                vTyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
-                vTyActionIdent aiCur = m_pspCur->AIGetLookahead();
+                vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
+                vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
                 if (((aiLA < 0) &&
                      (*(m_pspLookaheadAccept->PBeginValidLookahead() +
-                        aiCur / (CHAR_BIT * sizeof(vTyLookaheadVector))) &
-                      (1 << aiCur % (CHAR_BIT * sizeof(vTyLookaheadVector))))) ||
+                        aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
+                      (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
                     (aiLA == aiCur))
                 {
                   // REVIEW: May be no need for {m_pspLookahead}.
