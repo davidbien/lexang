@@ -930,7 +930,7 @@ public:
       {
         stringstream strstr;
         strstr << _rexc.what() << ":";
-        (*m_pSdpAction)->Render(strstr, "Unknown");
+        (*m_pSdpAction)->RenderActionType(strstr, "Unknown");
         string strAction = strstr.str();
         _rexc.SetWhat(strAction);
         throw;

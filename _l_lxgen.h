@@ -334,7 +334,7 @@ struct _l_generator
 				_ros << "\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << ";\n"
 				// Get a typedef for the action object for ease of use:
 				_ros << "\tusing _tyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
-				rvt.first->Render( _ros, m_sCharTypeName.c_str() );
+				rvt.first->RenderActionType( _ros, m_sCharTypeName.c_str() );
 				_ros << ";\n";
 				// Define the object as a member of the lexical analyzer class:
 				_ros << "\t_tyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
