@@ -14,14 +14,13 @@
 #include <iostream>
 #include <tuple>
 #include "_aloctrt.h"
+#include "_l_data.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
 typedef int	vtyActionIdent;
 typedef int	vtyTokenIdent;
 typedef size_t vtyDataType;
-typedef size_t vtyTokenPosition;
-static constexpr vtyTokenPosition vtpNullTokenPosition = numeric_limits< vtyTokenPosition >::max();
 typedef unsigned long vtyLookaheadVector;
 
 // _l_action_object_base:
@@ -310,7 +309,7 @@ public:
 	_l_trigger_position( _TyThis const & _r ) = default;
 	bool FIsNull() const
 	{
-		return ( m_tpPos == vtpNullTokenPosition );
+		return ( m_tpPos == vtpNullDataPosition );
 	}
 	// Return the unique token ID associated with this object.
 	static constexpr vtyTokenIdent GetTokenId()
@@ -344,10 +343,10 @@ public:
 		return true;
 	}
 	// "consume" a token position. This should keep all action objects clear after usage with no additional work.
-	vtyTokenPosition GetClearPosition()
+	vtyDataPosition GetClearPosition()
 	{
-		vtyTokenPosition tpPos = m_tpPos;
-		m_tpPos = vtpNullTokenPosition;
+		vtyDataPosition tpPos = m_tpPos;
+		m_tpPos = vtpNullDataPosition;
 		return tpPos;
 	}
 	// The parser might want to just save a single position in the stream so implement this.
@@ -356,7 +355,7 @@ public:
 		std::swap( m_tpPos, _r.m_tpPos );
 	}
 protected:
-	vtyTokenPosition m_tpPos{ vtpNullTokenPosition };
+	vtyDataPosition m_tpPos{ vtpNullDataPosition };
 };
 
 // Trigger to record an ending position in a stream.
@@ -375,8 +374,8 @@ public:
 	_l_trigger_position_end( _TyThis const & _r ) = default;
 	// Return the unique token ID associated with this object.
 	using _TyBase::FIsNull;
-	using _TyBase::GetTokenId();
-	using _TyBase::VGetTokenId();
+	using _TyBase::GetTokenId;
+	using _TyBase::VGetTokenId;
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -418,7 +417,7 @@ private:
 public:
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiTriggerBegin;
-	typedef _l_token< t_TyChar > _TyToken;
+	typedef _l_data< t_TyChar > _TyToken;
 	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	_l_trigger_strings() = default;
 	_l_trigger_strings( _TyThis const & _r ) = default;
@@ -427,8 +426,8 @@ public:
 		return _TyBase::FIsNull() && m_tkStrings.FIsNull();
 	}
 	// Return the unique token ID associated with this object.
-	using _TyBase::GetTokenId();
-	using _TyBase::VGetTokenId();
+	using _TyBase::GetTokenId;
+	using _TyBase::VGetTokenId;
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -450,14 +449,14 @@ public:
 		if ( fRet )
 		{
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
-			vtyTokenPosition posBegin = rtBegin.GetClearPosition();
+			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			Assert( _rA.FGotTrigger( s_kiTrigger ) ); // We just got it!
-			vtyTokenPosition posEnd = GetClearPosition();
-			Assert(	( vtpNullTokenPosition != posBegin ) &&
-						( vtpNullTokenPosition != posEnd ) &&
+			vtyDataPosition posEnd = GetClearPosition();
+			Assert(	( vtpNullDataPosition != posBegin ) &&
+						( vtpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) );
-			if (	( vtpNullTokenPosition != posBegin ) &&
-						( vtpNullTokenPosition != posEnd ) &&
+			if (	( vtpNullDataPosition != posBegin ) &&
+						( vtpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
 				m_tkStrings.Append( posBegin, posEnd );
@@ -466,7 +465,7 @@ public:
 		return true;
 	}
 	template < class t_TyAnalyzer >
-	void Append( t_TyAnalyzer & _rA, vtyTokenPosition _posBegin, vtyTokenPosition _posEnd, vtyDataType _nType = 0 )
+	void Append( t_TyAnalyzer & _rA, vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
 	{
 		m_tkStrings.Append( posBegin, posEnd, _nType );
 	}
@@ -496,10 +495,9 @@ private:
 	typedef _l_trigger_position_end< _TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
 	static constexpr vtyDataType s_kdtType = t_kdtType;
-	using _TyBase::FIsNull;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiTriggerBegin;
-	typedef _l_token< t_TyChar > _TyToken;
+	typedef _l_data< _TyChar > _TyToken;
 	typedef _l_trigger_position< _TyChar, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	typedef t_TyActionStoreData _tyActionStoreData;
 	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
@@ -507,8 +505,8 @@ public:
 	_l_trigger_string_typed_range( _TyThis const & _r ) = default;
 	using _TyBase::FIsNull;
 	// Return the unique token ID associated with this object.
-	using _TyBase::GetTokenId();
-	using _TyBase::VGetTokenId();
+	using _TyBase::GetTokenId;
+	using _TyBase::VGetTokenId;
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -532,14 +530,14 @@ public:
 		if ( fRet )
 		{
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
-			vtyTokenPosition posBegin = rtBegin.GetClearPosition();
+			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			Assert( _rA.FGotTrigger( s_kiTrigger ) ); // We just got it!
-			vtyTokenPosition posEnd = GetClearPosition();
-			Assert(	( vtpNullTokenPosition != posBegin ) &&
-						( vtpNullTokenPosition != posEnd ) &&
+			vtyDataPosition posEnd = GetClearPosition();
+			Assert(	( vtpNullDataPosition != posBegin ) &&
+						( vtpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) );
-			if (	( vtpNullTokenPosition != posBegin ) &&
-						( vtpNullTokenPosition != posEnd ) &&
+			if (	( vtpNullDataPosition != posBegin ) &&
+						( vtpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
 				_tyActionStoreData & raxnStoreData = static_cast< _tyActionStoreData & >( _rA.GetActionObj< s_kiActionStoreData >() );
@@ -567,13 +565,13 @@ private:
 public:
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiTriggerBegin;
-	typedef _l_token< t_TyChar > _TyToken;
+	typedef _l_data< t_TyChar > _TyToken;
 	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	_l_trigger_string_list() = default;
 	_l_trigger_string_list( _TyThis const & _r ) = default;
 	// Return the unique token ID associated with this object.
-	using _TyBase::GetTokenId();
-	using _TyBase::VGetTokenId();
+	using _TyBase::GetTokenId;
+	using _TyBase::VGetTokenId;
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -595,11 +593,11 @@ public:
 		if ( fRet )
 		{
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
-			vtyTokenPosition posBegin = rtBegin.GetClearPosition();
+			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			Assert( _rA.FGotTrigger( s_kiTriggerEnd ) ); // We just got it!
-			vtyTokenPosition posEnd = rtEnd.GetClearPosition();
-			Assert( ( vtpNullTokenPosition != posBegin ) && ( vtpNullTokenPosition != posEnd ) && ( posEnd >= posBegin ) ); // This may fire and then we should investigate why and/or perhaps comment it out.
-			if ( ( vtpNullTokenPosition != posBegin ) && ( vtpNullTokenPosition != posEnd ) && ( posEnd >= posBegin ) )
+			vtyDataPosition posEnd = rtEnd.GetClearPosition();
+			Assert( ( vtpNullDataPosition != posBegin ) && ( vtpNullDataPosition != posEnd ) && ( posEnd >= posBegin ) ); // This may fire and then we should investigate why and/or perhaps comment it out.
+			if ( ( vtpNullDataPosition != posBegin ) && ( vtpNullDataPosition != posEnd ) && ( posEnd >= posBegin ) )
 				m_rgsTokens.emplaceAtEnd( _rA.GetStream(), posBegin, posEnd ); // Add to the "list".
 		}
 		return true;
@@ -616,18 +614,18 @@ protected:
 // It only contains the ability to hold a single vector of constituent trigger data.
 // These trigger objects may be aggregate contained _l_action_save_data_single objects.
 template < vtyTokenIdent t_kiTriggerOrToken, bool t_fInLexGen, class... t_TysTriggers >
-class _l_action_save_data_single : public _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>::type::_TyChar, t_fInLexGen >
+class _l_action_save_data_single : public _l_action_object_base< typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen >
 {
 public:
-	typedef typename tuple_element<0,std::tuple< t_TysTriggers...>::type::_TyChar _TyChar;
+	typedef typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyChar _TyChar;
 private:
 	typedef _l_action_save_data_single _TyThis;
 	typedef _l_action_object_base< _TyChar, t_fInLexGen > _TyBase;
 public:
 	typedef tuple< t_TysTriggers...> _TyTuple;
 	static constexpr vtyTokenIdent s_kiTriggerOrToken = t_kiTriggerOrToken;
-	_l_trigger_position() = default;
-	_l_trigger_position( _TyThis const & _r ) = default;
+	_l_action_save_data_single() = default;
+	_l_action_save_data_single( _TyThis const & _r ) = default;
 	bool FIsNull() const
 	{
 		return std::apply
@@ -663,7 +661,7 @@ public:
 		_ros << "_l_action_save_data_single< " << s_kiTriggerOrToken << ", " << ", false, ";
 		std::apply
     (
-        [ &_ros ]( t_TysTriggers const &... _tuple )
+        [ _pcCharName, &_ros ]( t_TysTriggers const &... _tuple )
         {
             std::size_t n = sizeof...(t_TysTriggers);
             ( ( _tuple.RenderActionType(_ros,_pcCharName), ( _ros << (!--n ? "" : ", ") ) ), ...);
@@ -706,18 +704,18 @@ protected:
 // It only contains the ability to hold a single vector of constituent trigger data.
 // These trigger objects may be aggregate contained _l_action_save_data_multiple objects.
 template < vtyTokenIdent t_kiTriggerOrToken, bool t_fInLexGen, class... t_TysTriggers >
-class _l_action_save_data_multiple : public _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>::type::_TyChar, t_fInLexGen >
+class _l_action_save_data_multiple : public _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen >
 {
 public:
-	typedef typename tuple_element<0,std::tuple< t_TysTriggers...>::type::_TyChar _TyChar;
+	typedef typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar _TyChar;
 private:
 	typedef _l_action_save_data_multiple _TyThis;
 	typedef _l_action_object_base< _TyChar, t_fInLexGen > _TyBase;
 public:
 	typedef tuple< t_TysTriggers...> _TyTuple;
 	static constexpr vtyTokenIdent s_kiTriggerOrToken = t_kiTriggerOrToken;
-	_l_trigger_position() = default;
-	_l_trigger_position( _TyThis const & _r ) = default;
+	_l_action_save_data_multiple() = default;
+	_l_action_save_data_multiple( _TyThis const & _r ) = default;
 	bool FIsNull() const
 	{
 		return !m_saTuples.NElements();
@@ -746,7 +744,7 @@ public:
 		_ros << "_l_action_save_data_multiple< " << s_kiTriggerOrToken << ", " << ", false, ";
 		std::apply
     (
-        [ &_ros ]( t_TysTriggers const &... _tuple )
+        [ _pcCharName, &_ros ]( t_TysTriggers const &... _tuple )
         {
             std::size_t n = sizeof...(t_TysTriggers);
             ( ( _tuple.RenderActionType(_ros,_pcCharName), ( _ros << (!--n ? "" : ", ") ) ), ...);
@@ -785,10 +783,11 @@ public:
 	}
 protected:
 	// We save multiple sets of tuple values in a SegArray.
-	typedef SegArray< _TyTuple, true > _TySegArrayTuples;
+	typedef SegArray< _TyTuple, std::true_type > _TySegArrayTuples;
 	_TySegArrayTuples m_saTuples; // ya got yer tuples.
 };
 
+#if 0 // unused code.
 // _l_token_simple_string:
 // This is a token that is a simple, untranslated, string with a beginning position and an end position.
 template < class t_TyTriggerBegin, class t_TyTriggerEnd, vtyTokenIdent s_kiToken, bool t_fInLexGen >
@@ -797,13 +796,13 @@ class _l_token_simple_string : public _l_action_object_base< t_TyChar, t_fInLexG
 public:
 	typedef typename t_TyTriggerBegin::_TyChar _TyChar;
 private:
-	typedef _l_token_simple_string	_TyThis;
-	typedef _l_action_object_base< _TyChar, t_fInLexGen >			_TyBase;
+	typedef _l_token_simple_string _TyThis;
+	typedef _l_action_object_base< _TyChar, t_fInLexGen > _TyBase;
 public:
 	static constexpr vtyTokenIdent s_kiToken = t_kiToken;
 	static constexpr vtyTokenIdent s_kiTriggerBegin = t_TyTriggerBegin::t_kiToken;
 	static constexpr vtyTokenIdent s_kiTriggerEnd = t_TyTriggerEnd::t_kiToken;
-	typedef _l_token< t_TyChar > _TyToken;
+	typedef _l_data< t_TyChar > _TyToken;
 
 	_l_token_simple_string() = default;
 	_l_token_simple_string( _l_token_simple_string const & ) = default;
@@ -850,12 +849,12 @@ public:
 		if ( _rA.FGotTrigger( s_kiTriggerBegin ) )
 		{
 			t_TyTriggerBegin & rtBegin = static_cast< t_TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
-			vtyTokenPosition posBegin = rtBegin.GetClearPosition();
+			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			Assert( _rA.FGotTrigger( s_kiTriggerEnd ) ); // How would we have otherwise completed the production?
 			if ( _rA.FGotTrigger( s_kiTriggerEnd ) )
 			{
 				t_TyTriggerEnd & rtEnd = static_cast< t_TyTriggerEnd & >( _rA.GetActionObj< s_kiTriggerEnd >() );
-				vtyTokenPosition posEnd = rtEnd.GetClearPosition();
+				vtyDataPosition posEnd = rtEnd.GetClearPosition();
 				m_tkStrings.SetBeginEnd( _rA.GetStream(), posBegin, posEnd );
 			}
 		}
@@ -879,6 +878,7 @@ public:
 protected:
 	_TyToken m_tkStrings;
 };
+#endif //0 - unused code
 
 __REGEXP_END_NAMESPACE
 
@@ -899,10 +899,40 @@ struct __map_to_base_class< _l_action_print< t_TyChar, t_kiToken, t_fInLexGen > 
 	typedef _l_action_object_base< t_TyChar, t_fInLexGen >	_TyBase;
 };
 
-template < class t_TyChar, int t_kiToken, bool t_fInLexGen >
-struct __map_to_base_class< _l_action_print< t_TyChar, t_kiToken, t_fInLexGen > >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen  >
+struct __map_to_base_class< _l_trigger_bool< t_TyChar, t_kiTrigger, t_fInLexGen > >
 {
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen >	_TyBase;
+	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+};
+
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen  >
+struct __map_to_base_class< _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLexGen > >
+{
+	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+};
+
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
+struct __map_to_base_class< _l_trigger_strings< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
+{
+	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+};
+
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen  >
+struct __map_to_base_class< _l_trigger_string_typed_range< t_kdtType, t_TyActionStoreData, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
+{
+	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_fInLexGen > _TyBase;
+};
+
+template < vtyTokenIdent t_kiTriggerOrToken, bool t_fInLexGen, class... t_TysTriggers >
+struct __map_to_base_class< _l_action_save_data_single< t_kiTriggerOrToken, t_fInLexGen, t_TysTriggers... > >
+{
+	typedef _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen > _TyBase;
+};
+
+template < vtyTokenIdent t_kiTriggerOrToken, bool t_fInLexGen, class... t_TysTriggers >
+struct __map_to_base_class< _l_action_save_data_multiple< t_kiTriggerOrToken, t_fInLexGen, t_TysTriggers... > >
+{
+	typedef _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen > _TyBase;
 };
 
 __BIENUTIL_END_NAMESPACE

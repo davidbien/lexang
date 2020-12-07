@@ -1,6 +1,6 @@
 #pragma once
 
-// _l_token.h
+// _l_data.h
 // The representation of a data of part of a token.
 // dbien : 30NOV2020
 
@@ -16,51 +16,52 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
-typedef size_t vtyTokenPosition;
+typedef size_t vtyDataPosition;
+static constexpr vtyDataPosition vtpNullDataPosition = numeric_limits< vtyDataPosition >::max();
 typedef size_t vtyDataType;
 
-// _l_token_range_pod: A simple token range in a token stream.
+// _l_data_range_pod: A simple token range in a token stream.
 // We want this to be a POD struct so we can use it in a anonymous union.
-class _l_token_range_pod
+struct _l_data_range_pod
 {
-  vtyTokenPosition m_posBegin;
-  vtyTokenPosition m_posEnd;
+  vtyDataPosition m_posBegin;
+  vtyDataPosition m_posEnd;
 };
-// _l_token_range_pod: A simple token range in a token stream.
+// _l_data_range_pod: A simple token range in a token stream.
 // We want this to be a POD struct so we can use it in a anonymous union.
-class _l_token_typed_range_pod : public _l_token_range_pod
+struct _l_data_typed_range_pod : public _l_data_range_pod
 {
   vtyDataType m_nType;
 };
 
 // l_token_range: Non-pod version.
-class _l_token_range
+class _l_data_range
 {
-  typedef _l_token_range _TyThis;
+  typedef _l_data_range _TyThis;
 public: 
-  _l_token_range() = default;
-  _l_token_range( _l_token_range const & ) = default;
-  _l_token_range( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd )
+  _l_data_range() = default;
+  _l_data_range( _l_data_range const & ) = default;
+  _l_data_range( vtyDataPosition _posBegin, vtyDataPosition _posEnd )
     : m_posBegin( _posBegin ),
       m_posEnd( _posEnd )
   {
   }
-  _l_token_range & operator =( _TyThis const & _r ) = default;
+  _l_data_range & operator =( _TyThis const & _r ) = default;
   
 // Make these accessible.
-  vtyTokenPosition m_posBegin{ numeric_limits< vtyTokenPosition >::max() };
-  vtyTokenPosition m_posEnd{ numeric_limits< vtyTokenPosition >::max() };
+  vtyDataPosition m_posBegin{ numeric_limits< vtyDataPosition >::max() };
+  vtyDataPosition m_posEnd{ numeric_limits< vtyDataPosition >::max() };
 };
 
-// _l_token_typed_range: Use protected inheritance to hide conversion to base.
-class _l_token_typed_range : protected _l_token_range
+// _l_data_typed_range: Use protected inheritance to hide conversion to base.
+class _l_data_typed_range : protected _l_data_range
 {
-  typedef _l_token_typed_range _TyThis;
-  typedef _l_token_range _TyBase;
+  typedef _l_data_typed_range _TyThis;
+  typedef _l_data_range _TyBase;
 public:
-  _l_token_typed_range() = default;
-  _l_token_typed_range( _l_token_typed_range const & ) = default;
-  _l_token_typed_range & operator = ( _l_token_typed_range const & ) = default;
+  _l_data_typed_range() = default;
+  _l_data_typed_range( _l_data_typed_range const & ) = default;
+  _l_data_typed_range & operator = ( _l_data_typed_range const & ) = default;
 
   // Provide access to base class via explicit accessor:
   _TyBase const & GetRangeBase() const
@@ -78,15 +79,14 @@ public:
 };
 
 // by default we will keep the segment size small but large enough that most strings will fit in it.
-template <  class t_TyStream, class t_TyChar, uint32_t s_knbySegSize = 512 >
-class _l_token
+template < class t_TyChar, size_t s_knbySegSize = 512 >
+class _l_data
 {
-  typedef _l_token _TyThis;
+  typedef _l_data _TyThis;
 public:
-  typedef t_TyStream _TyStream;
   typedef t_TyChar _TyChar;
-  typedef SegArray< _l_token_typed_range, false, vtyTokenPosition > _TySegArray;
-  static constexpr s_knSegArrayInitTypedRange = s_knbySegSize / sizeof( _l_token_typed_range );
+  typedef SegArray< _l_data_typed_range, std::false_type, vtyDataPosition > _TySegArray;
+  static constexpr size_t s_knSegArrayInitTypedRange = s_knbySegSize / sizeof( _l_data_typed_range );
   static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
   typedef std::basic_string< _TyChar > _TyStdStr;
 
@@ -94,8 +94,8 @@ public:
   {
     struct
     {
-      uint64_t m_u64Marker; // When m_u64Marker is 0xffffffffffffffff then m_ttrData contains valid data, else m_rgbySegArray is populated.
-      _l_token_typed_range_pod m_ttrData;
+      uint64_t m_u64Marker; // When m_u64Marker is 0xffffffffffffffff then m_dtrData contains valid data, else m_rgbySegArray is populated.
+      _l_data_typed_range_pod m_dtrData;
     };
     unsigned char m_rgbySegArray[ sizeof( _TySegArray ) ];
   };
@@ -105,9 +105,9 @@ public:
   {
     if ( FContainsSinglePos() )
     {
-      Assert( ( numeric_limits< vtyTokenPosition >::max() != m_ttrData.m_posBegin ) || ( numeric_limits< vtyTokenPosition >::max() == m_ttrData.m_posEnd ) );
-      Assert( ( numeric_limits< vtyTokenPosition >::max() != m_ttrData.m_posBegin ) || !m_ttrData.m_nType );
-      Assert( m_ttrData.m_posEnd >= m_ttrData.m_posBegin );
+      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posEnd ) );
+      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || !m_dtrData.m_nType );
+      Assert( m_dtrData.m_posEnd >= m_dtrData.m_posBegin );
     }
     else
     {
@@ -118,34 +118,34 @@ public:
   { }
 #endif //!ASSERTSENABLED
 
-  _l_token()
+  _l_data()
   {
     _SetMembersNull();
   }
-  _l_token( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd )
+  _l_data( vtyDataPosition _posBegin, vtyDataPosition _posEnd )
   {
     _SetContainsSinglePos();
-    m_ttrData.m_posBegin = _posBegin;
-    m_ttrData.m_posEnd = _posEnd;
-    m_ttrData.m_nType = 0;
+    m_dtrData.m_posBegin = _posBegin;
+    m_dtrData.m_posEnd = _posEnd;
+    m_dtrData.m_nType = 0;
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
-  _l_token( _l_token_range const & _rtr )
+  _l_data( _l_data_range const & _rdr )
   {
     _SetContainsSinglePos();
-    m_ttrData.m_posBegin = _rtr.m_posBegin;
-    m_ttrData.m_posEnd = _rtr.m_posEnd;
-    m_ttrData.m_nType = 0;
+    m_dtrData.m_posBegin = _rdr.m_posBegin;
+    m_dtrData.m_posEnd = _rdr.m_posEnd;
+    m_dtrData.m_nType = 0;
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
-  _l_token( _l_token_typed_range const & _rttr )
+  _l_data( _l_data_typed_range const & _rttr )
   {
-    static_assert( sizeof( _l_token_typed_range ) == sizeof( _l_token_typed_range_pod ) );
+    static_assert( sizeof( _l_data_typed_range ) == sizeof( _l_data_typed_range_pod ) );
     _SetContainsSinglePos();
-    memcpy( &m_ttrData, &_rttr, sizeof m_ttrData );
+    memcpy( &m_dtrData, &_rttr, sizeof m_dtrData );
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
-  _l_token( const _l_token & _r )
+  _l_data( const _l_data & _r )
   {
     _r.AssertValid();
     if ( _r.FContainsSinglePos() )
@@ -160,30 +160,30 @@ public:
       AssertValid();
     }
   }
-  _l_token( _l_token && _rr )
+  _l_data( _l_data && _rr )
   {
     _SetMembersNull(); // Leave the caller in a valid state.
     swap( _rr );
   }
-  ~_l_token()
+  ~_l_data()
   {
     if ( !FContainsSinglePos() )
       _ClearSegArray();
   }
-  void swap( _l_token & _r )
+  void swap( _l_data & _r )
   {
     unsigned char rgucSwap[ sizeof(*this) ];
     memcpy( rgucSwap, this, sizeof(*this) );
     memcpy( this, &_r, sizeof(*this) );
     memcpy( &_r, rgucSwap, sizeof(*this) );
   }
-  _l_token & operator =( _l_token const & _r )
+  _l_data & operator =( _l_data const & _r )
   {
-    _l_token copy( _r );
+    _l_data copy( _r );
     swap( copy );
     return *this;
   }
-  _l_token & operator =( _l_token && _rr )
+  _l_data & operator =( _l_data && _rr )
   {
     SetNull();
     swap( _rr );
@@ -192,7 +192,6 @@ public:
 
   bool FContainsSinglePos() const
   {
-    AssertValid();
     return m_u64Marker == 0xffffffffffffffff;
   }
   size_t NPositions() const
@@ -217,7 +216,7 @@ public:
   bool FIsNull() const
   {
     AssertValid();
-    return FContainsSinglePos() && ( numeric_limits< vtyTokenPosition >::max() == m_ttrData.m_posBegin );
+    return FContainsSinglePos() && ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posBegin );
   }
   void SetNull()
   {
@@ -230,34 +229,34 @@ public:
     SetNull();
   }
 
-  void Set( _l_token_range const & _rtr )
+  void Set( _l_data_range const & _rdr )
   {
-    Set( _rtr.m_posBegin, _rtr.m_posEnd );
+    Set( _rdr.m_posBegin, _rdr.m_posEnd );
   }
-  void Set( _l_token_typed_range const & _rttr )
+  void Set( _l_data_typed_range const & _rttr )
   {
     Set( _rttr.m_posBegin, _rttr.m_posEnd, _rttr.m_nType );
   }
-  void Set( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd, vtyDataType _nType = 0 )
+  void Set( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
   {
     Assert( _posEnd >= _posBegin );
     if ( !FContainsSinglePos() )
       _ClearSegArray();
     _SetContainsSinglePos();
-    m_ttrData.m_posBegin = _posBegin;
-    m_ttrData.m_posEnd = _posEnd;
-    m_ttrData.m_nType = _nType;
+    m_dtrData.m_posBegin = _posBegin;
+    m_dtrData.m_posEnd = _posEnd;
+    m_dtrData.m_nType = _nType;
     AssertValid();
   }
-  void Append( _l_token_range const & _rtr )
+  void Append( _l_data_range const & _rdr )
   {
-    Append( _rtr.m_posBegin, _rtr.m_posEnd );
+    Append( _rdr.m_posBegin, _rdr.m_posEnd );
   }
-  void Append( _l_token_typed_range const & _rttr )
+  void Append( _l_data_typed_range const & _rttr )
   {
     Append( _rttr.m_posBegin, _rttr.m_posEnd, _rttr.m_nType );
   }
-  void Append( vtyTokenPosition _posBegin, vtyTokenPosition _posEnd, vtyDataType _nType = 0 )
+  void Append( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
   {
     if ( FIsNull() )
       return Set( _posBegin, _posEnd, _nType );
@@ -265,12 +264,12 @@ public:
     if ( FContainsSinglePos() )
     {
       _TySegArray saNew( s_knSegArrayInit );
-      saNew.Overwrite( 0, &m_ttrData, sizeof m_ttrData );
+      saNew.Overwrite( 0, &m_dtrData, 1 );
       new ( m_rgbySegArray ) _TySegArray( std::move( saNew ) );
       AssertValid();
     }
-    _l_token_typed_range_pod ttrWrite = { _posBegin, _posEnd, _nType };
-    _PSegArray()->Overwrite( _PSegArray()->NElements(), &ttrWrite, sizeof ttrWrite );
+    _l_data_typed_range_pod ttrWrite = { _posBegin, _posEnd, _nType };
+    _PSegArray()->Overwrite( _PSegArray()->NElements(), &ttrWrite, 1 );
     AssertValid();
   }
 protected:
@@ -281,9 +280,9 @@ protected:
   void _SetMembersNull()
   {
     _SetContainsSinglePos();
-    m_ttrData.m_posBegin = numeric_limits< vtyTokenPosition >::max();
-    m_ttrData.m_posEnd = numeric_limits< vtyTokenPosition >::max();
-    m_ttrData.m_nType = 0;
+    m_dtrData.m_posBegin = numeric_limits< vtyDataPosition >::max();
+    m_dtrData.m_posEnd = numeric_limits< vtyDataPosition >::max();
+    m_dtrData.m_nType = 0;
   }
   _TySegArray * _PSegArray()
   {

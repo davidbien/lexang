@@ -142,6 +142,7 @@ public:
 	virtual void CreateLiteralNFA( t_TyChar const & _rc ) = 0;
 	virtual void CreateStringNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateRangeNFA( _TyRange const & _rr ) = 0;
+	virtual void CreateLiteralNotInSetNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateTriggerNFA( ) = 0;

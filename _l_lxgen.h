@@ -23,9 +23,9 @@ __REGEXP_BEGIN_NAMESPACE
 template < class t_TyCharOut, class t_TyAllocator >
 struct _l_gen_action_info
 {
-	typedef std::basic_string< t_TyCharOut, char_traits<t_TyCharOut>, _TyAllocator > _tyStdStrOut;
+	typedef std::basic_string< t_TyCharOut, char_traits<t_TyCharOut>, t_TyAllocator > _tyStdStrOut;
 	_l_gen_action_info() = default;
-	_l_gen_action_info( _l_gen_action_info const & ) = deafult;
+	_l_gen_action_info( _l_gen_action_info const & ) = default;
 	_tyStdStrOut m_strActionName;	// Human readable name for the action.
 	_tyStdStrOut m_strComment; // Comment to be placed in the generated code.
 };
@@ -61,6 +61,7 @@ template < class t_TyDfa, class t_TyCharOut >
 struct _l_generator
 {
 	typedef t_TyDfa	_TyDfa;
+	typedef t_TyCharOut _TyCharOut;
 	typedef typename _TyDfa::_TyState				_TyState;
 	typedef typename _TyDfa::_TyDfaCtxt			_TyDfaCtxt;
 	typedef typename _TyDfa::_TyAllocator		_TyAllocator;
@@ -113,8 +114,8 @@ struct _l_generator
 	_TyMapActions	m_mapActions;	
 
 	// Action info map - provide human readable identifiers instead of just numbers.
-  typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyGenActionInfo >::value_type, _TyAllocator >::allocator_type _TyMapActionsAllocator;
-	typedef std::map< vtyTokenIdent, _TyGenActionInfo, _TyMapActionsAllocator > _TyMapActionInfo;
+  typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyGenActionInfo >::value_type, _TyAllocator >::allocator_type _TyMapActionInfoAllocator;
+	typedef std::map< vtyTokenIdent, _TyGenActionInfo, less< vtyTokenIdent >, _TyMapActionInfoAllocator > _TyMapActionInfo;
 	_TyMapActionInfo m_mapActionInfo;
 
 	_l_generator( const t_TyCharOut * _pcfnHeader,
@@ -124,7 +125,6 @@ struct _l_generator
 								const t_TyCharOut * _pcNamespace,
 								const t_TyCharOut *	_pcMDAnalyzer,
 								const t_TyCharOut * _pcBaseStateName,
-								const t_TyCharOut * _pcBaseActionName,
 								const t_TyCharOut * _pcCharTypeName,
 								const t_TyCharOut * _pcVisibleCharPrefix,
 								const t_TyCharOut * _pcVisibleCharSuffix,
@@ -224,20 +224,20 @@ struct _l_generator
 					if ( rvt.second.m_pSdpAction )
 					{
 						Assert( !( e_aatTrigger & rvt.second.m_eaatType ) ); // Should see only non-trigger actions here.
-						_TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->GetTokenId() );
+						typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
 						_TyGenActionInfo gaiInfo;
 						if ( m_mapActionInfo.end() == citAxnInfo )
 						{
 							// Just use the action id - leave the comment empty.
-							PrintfStdStr( gaiInfo.m_strActionName, "Token%d", (*rvt.second.m_pSdpAction)->GetTokenId() );
+							PrintfStdStr( gaiInfo.m_strActionName, "Token%d", (*rvt.second.m_pSdpAction)->VGetTokenId() );
 						}
 						else
 						{
-							gaiInfo = citInfo->second;
+							gaiInfo = citAxnInfo->second;
 						}
-						std::pair< _TyMapActions::iterator, bool > pib = m_mapActions.insert(  typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
+						std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
 							typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
-						VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->GetTokenId() );
+						VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					}
 				}
 			}
@@ -253,20 +253,20 @@ struct _l_generator
 					typename _TyDfa::_TyMapTriggers::value_type & rvt = *itTrigger;
 					Assert( e_aatTrigger == rvt.second.m_eaatType ); // Should see only triggers here.
 					Assert( !!rvt.second.m_pSdpAction );
-					_TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->GetTokenId() );
+					typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					_TyGenActionInfo gaiInfo;
 					if ( m_mapActionInfo.end() == citAxnInfo )
 					{
 						// Just use the action id - leave the comment empty.
-						PrintfStdStr( gaiInfo.m_strActionName, "Trigger%d", (*rvt.second.m_pSdpAction)->GetTokenId() );
+						PrintfStdStr( gaiInfo.m_strActionName, "Trigger%d", (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					}
 					else
 					{
-						gaiInfo = citInfo->second;
+						gaiInfo = citAxnInfo->second;
 					}
-					std::pair< _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type(	**rvt.second.m_pSdpAction, 
+					std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type(	**rvt.second.m_pSdpAction, 
 						typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
-					VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->GetTokenId() );
+					VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 				}
 			}
 		}
@@ -320,7 +320,7 @@ struct _l_generator
 		_ros << "\t{ }\n";
 
 		// Declare the base GetActionObject() template that is not implemented.
-		_ros << "\ntemplate < const int t_iAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();";
+		_ros << "\ntemplate < const int t_kiAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();";
 
 		// We generate all referenced unique actions:
 		typename _TyMapActions::iterator itMAEnd = m_mapActions.end();
@@ -331,14 +331,14 @@ struct _l_generator
 			if ( rvt.second.second )
 			{
 				// Define a constant so that we don't just have raw numbers lying around as much:
-				_ros << "\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << ";\n"
+				_ros << "\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << " = " << rvt.first->VGetTokenId() << ";\n";
 				// Get a typedef for the action object for ease of use:
 				_ros << "\tusing _tyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
 				rvt.first->RenderActionType( _ros, m_sCharTypeName.c_str() );
 				_ros << ";\n";
 				// Define the object as a member of the lexical analyzer class:
 				_ros << "\t_tyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
-				_ros << "\ntemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< " << rvt.first->GetTokenId() << " >()"
+				_ros << "\ntemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
 							" { return m_axn" << rvt.second.first.m_strActionName.c_str() << "; }\n";
 				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "();\n";
 			}
@@ -710,7 +710,7 @@ struct _l_generator
 		rvtUnique.second.second = true;	// referenced this action.
 		
 		_ros	<< "\n\tstatic_cast< _TyAnalyzerBase::_TyPMFnAccept >( &_TyAnalyzer::Action" 
-					<< rvtUnique.second.first << " )";
+					<< rvtUnique.second.first.m_strActionName.c_str() << " )";
 	}
 
 	// Generate the accept function pointer:
@@ -740,7 +740,7 @@ struct _l_generator
 				// We store the action identifier for the lookahead state -
 				//	after disambiguation the mapping from lookahead suffixes to lookahead
 				//	accepting states may be many to one.
-				_ros << ", " << pvtAction->second.GetOriginalActionId();
+				_ros << ", " << pvtAction->second.GetOriginalActionId() + m_aiStart;
 			}
 			break;
 			case e_aatLookaheadAcceptAndAccept:
@@ -755,7 +755,7 @@ struct _l_generator
 								( pvtAction->second.m_eaatType & ~e_aatTrigger ) )
 					{
 						// Then we need to store the action identifier:
-						_ros << ", " << pvtAction->second.GetOriginalActionId();
+						_ros << ", " << ( pvtAction->second.GetOriginalActionId() + m_aiStart );
 					}
 					else
 					{
@@ -779,7 +779,7 @@ struct _l_generator
 					// Store the action id for the one and only related lookahead state.
 					Assert( e_aatLookaheadAccept == 
                   ( pvtAction->second.m_eaatType & ~e_aatTrigger ) );
-					_ros << ", " << pvtAction->second.m_aiRelated;
+					_ros << ", " << ( pvtAction->second.m_aiRelated + m_aiStart );
 				}
 			}
 			break;

@@ -326,15 +326,15 @@ protected:	// accessed by _nfa_context:
 			std::sort( str.begin(), str.end() );
 			// If we see duplicate characters specified then we will throw an exception because it shouldn't be intended and may indicate a bug in the specification.
 			{//B
-				const _TyUnsignedChar * pcDupe;
-				VerifyThrowSz( str.end() == ( pcDupe = adjacent_find( str.begin(), str.end() ) ), 
-					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *pcDupe ) );
+				typename _TyString::const_iterator citDupe;
+				VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
+					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
 			}//EB
 			// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
 			{//B
-				const _TyUnsignedChar * pcMax = max_element( str.begin(), str.end() );
-				VerifyThrowSz( *pcMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
-					"Found character with value [%lu] beyond the maximum value of [%lu]." size_t( *pcMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) )
+				typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
+				VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
+					"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
 			}//EB
 
 			const _TyUnsignedChar * pcCur = str.c_str();
