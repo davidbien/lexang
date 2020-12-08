@@ -1,5 +1,4 @@
-#ifndef __L_AXION_H
-#define __L_AXION_H
+#pragma once
 
 //          Copyright David Lawrence Bien 1997 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
@@ -17,11 +16,6 @@
 #include "_l_data.h"
 
 __REGEXP_BEGIN_NAMESPACE
-
-typedef int	vtyActionIdent;
-typedef int	vtyTokenIdent;
-typedef size_t vtyDataType;
-typedef unsigned long vtyLookaheadVector;
 
 // _l_action_object_base:
 // This base class is only used when we are in the gneration stage.
@@ -49,12 +43,7 @@ public:
 	{
 	}
 
-	// I think that this returns the mangled name - making it less than useful. If it returned the non-mangled
-	//	name it could be used for code generation.
-	const char * SzTypeName() const
-	{
-		return typeid( *this ).name();
-	}
+	virtual string VStrTypeName( const char * _pcCharName ) const = 0;
 
 	// Return the unique token ID associated with this object.
 	// This is the virtual call. The non-virtual call is defined at most-derived class level.
@@ -186,9 +175,19 @@ public:
 	{
 		_ros << "_l_action_token< " << _pcCharName << ", " << t_kiToken << ", false >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_action_token< %s, %u, false >", _pcCharName, t_kiToken );
+		return str;
+	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
-	bool	action( t_TyAnalyzer & _rA )
+	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Token[%d], Position[%ld].", s_kiToken, _rA.GetCurrentPosition() );
 		return true;
@@ -229,9 +228,19 @@ public:
 	{
 		_ros << "_l_action_print< " << _pcCharName << ", " << s_kiTrigger << ", false >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_action_print< %s, %u, false >", _pcCharName, s_kiTrigger );
+		return str;
+	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
-	bool	action( t_TyAnalyzer & _rA )
+	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
 		return true;
@@ -248,6 +257,7 @@ private:
 	typedef _l_trigger_bool	_TyThis;
 	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
 public:
+	typedef t_TyChar _TyChar;
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 
 	_l_trigger_bool() = default;
@@ -278,12 +288,24 @@ public:
 	{
 		_ros << "_l_trigger_bool< " << _pcCharName << ", " << s_kiTrigger << ", false >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_trigger_bool< %s, %u, false >", _pcCharName, s_kiTrigger );
+		return str;
+	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
-	bool	action( t_TyAnalyzer & _rA )
+	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+#ifdef AXION_USE_TRIGGER_BITVEC
 		_rA.SetGotTrigger( s_kiTrigger ); // The only thing we do is record that we got the trigger.
+#endif //AXION_USE_TRIGGER_BITVEC
 		m_f = true;
 		return true;
 	}
@@ -304,6 +326,7 @@ private:
 	typedef _l_trigger_position	_TyThis;
 	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
 public:
+	typedef t_TyChar _TyChar;
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	_l_trigger_position() = default;
 	_l_trigger_position( _TyThis const & _r ) = default;
@@ -333,12 +356,24 @@ public:
 	{
 		_ros << "_l_trigger_position< " << _pcCharName << ", " << s_kiTrigger << ", false >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_trigger_position< %s, %u, false >", _pcCharName, s_kiTrigger );
+		return str;
+	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+#ifdef AXION_USE_TRIGGER_BITVEC
 		_rA.SetGotTrigger( t_kiTrigger );
+#endif //AXION_USE_TRIGGER_BITVEC
 		m_tpPos = _rA.GetCurrentPosition();
 		return true;
 	}
@@ -368,6 +403,7 @@ private:
 	typedef _l_trigger_position_end	_TyThis;
 	typedef _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLexGen > _TyBase;
 public:
+	typedef t_TyChar _TyChar;
 	using _TyBase::s_kiTrigger;
 	static constexpr vtyTokenIdent s_kiTriggerBegin = t_kiTriggerBegin;
 	_l_trigger_position_end() = default;
@@ -389,12 +425,26 @@ public:
 	{
 		_ros << "_l_trigger_position_end< " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_trigger_position< %s, %u, %u, false >", _pcCharName, s_kiTrigger, s_kiTriggerBegin );
+		return str;
+	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
+#ifdef AXION_USE_TRIGGER_BITVEC
 		Assert( _rA.FGotTrigger( s_kiTriggerBegin ) ); // Should have seen this first.
 		return _rA.FGotTrigger( s_kiTriggerBegin ) && _TyBase::action( _rA );
+#else //!AXION_USE_TRIGGER_BITVEC
+		return _TyBase::action( _rA );
+#endif //!AXION_USE_TRIGGER_BITVEC
 	}
 	using _TyBase::GetClearPosition;
 	// Unlikely this ever gets called but we imeplement it.
@@ -415,6 +465,7 @@ private:
 	typedef _l_trigger_strings	_TyThis;
 	typedef _l_trigger_position_end< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
+	typedef t_TyChar _TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiTriggerBegin;
 	typedef _l_data< t_TyChar > _TyToken;
@@ -441,16 +492,29 @@ public:
 	{
 		_ros << "_l_trigger_strings< " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_trigger_strings< %s, %u, %u, false >", _pcCharName, s_kiTrigger, s_kiTriggerBegin );
+		return str;
+	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
+		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
-			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
+			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
+#ifdef AXION_USE_TRIGGER_BITVEC
 			Assert( _rA.FGotTrigger( s_kiTrigger ) ); // We just got it!
+#endif //AXION_USE_TRIGGER_BITVEC
 			vtyDataPosition posEnd = GetClearPosition();
 			Assert(	( vtpNullDataPosition != posBegin ) &&
 						( vtpNullDataPosition != posEnd ) &&
@@ -467,7 +531,7 @@ public:
 	template < class t_TyAnalyzer >
 	void Append( t_TyAnalyzer & _rA, vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
 	{
-		m_tkStrings.Append( posBegin, posEnd, _nType );
+		m_tkStrings.Append( _posBegin, _posEnd, _nType );
 	}
 	void swap( _TyThis & _r )
 	{
@@ -477,6 +541,7 @@ public:
 		m_tkStrings.swap( _r.m_tkStrings );
 	}
 protected:
+	using _TyBase::GetClearPosition;
 	_TyToken m_tkStrings;
 };
 
@@ -520,18 +585,32 @@ public:
 	{
 		_ros << "_l_trigger_string_typed_range< " << s_kdtType << ", ";
 		_tyActionStoreData::StaticRenderActionType( _ros, _pcCharName );
-		_ros << ", " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
+		_ros << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
+	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string strActionStoreData( _tyActionStoreData::StaticStrTypeName( _pcCharName ) );
+		string str;
+		PrintfStdStr( str, "_l_trigger_strings< %u, %s, %u, %u, false >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
+		return str;
 	}
 	// We pass the action object the most derived analyzer.
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
+		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
-			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
+			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
+#ifdef AXION_USE_TRIGGER_BITVEC
 			Assert( _rA.FGotTrigger( s_kiTrigger ) ); // We just got it!
+#endif //AXION_USE_TRIGGER_BITVEC
 			vtyDataPosition posEnd = GetClearPosition();
 			Assert(	( vtpNullDataPosition != posBegin ) &&
 						( vtpNullDataPosition != posEnd ) &&
@@ -540,7 +619,7 @@ public:
 						( vtpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
-				_tyActionStoreData & raxnStoreData = static_cast< _tyActionStoreData & >( _rA.GetActionObj< s_kiActionStoreData >() );
+				_tyActionStoreData & raxnStoreData = static_cast< _tyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
 				raxnStoreData.Append( _rA, posBegin, posEnd, s_kdtType );
 			}
 		}
@@ -551,6 +630,8 @@ public:
 	{
 		_TyBase::swap( _r );
 	}
+protected:
+	using _TyBase::GetClearPosition;
 };
 
 #if 0 // This is redundant code - just use _l_trigger_strings.
@@ -658,7 +739,7 @@ public:
 	{
 		// Just used for rendering the types. We'd call a static method on each type in the tuple but I haven't figured out how to do that yet.
 		_TyTuple tupleLocal; 
-		_ros << "_l_action_save_data_single< " << s_kiTriggerOrToken << ", " << ", false, ";
+		_ros << "_l_action_save_data_single< " << s_kiTriggerOrToken << ", false, ";
 		std::apply
     (
         [ _pcCharName, &_ros ]( t_TysTriggers const &... _tuple )
@@ -669,16 +750,27 @@ public:
     );
 		_ros << " >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		stringstream ss;
+		StaticRenderActionType( ss, _pcCharName );
+		return ss.str();
+	}
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
+		Trace( "TriggerOrToken[%d], Position[%ld].", s_kiTriggerOrToken, _rA.GetCurrentPosition() );
 		// We copy data from all constituent triggers regardless if that trigger fired. We may change this later.
 		Assert( FIsNull() ); // Should be left in a null state because should have been "eaten" by the parser, or by another token, etc.
 		std::apply
     (
-        []( t_TysTriggers &... _tuple )
+        [&_rA]( t_TysTriggers &... _tuple )
         {
-					return ( ..., SwapWithTrigger(_tuple) );
+					return ( ..., SwapWithTrigger(_rA,_tuple) );
         }, m_tuple
     );
 		return true;
@@ -687,7 +779,7 @@ public:
 	static void SwapWithTrigger( t_TyAnalyzer & _rA, t_TyTrigger & _rtThis )
 	{
 		constexpr vtyTokenIdent kidCur = t_TyTrigger::GetTokenId();
-		t_TyTrigger & rtThat = static_cast< t_TyTrigger & >( _rA.GetActionObj< kidCur >() );
+		t_TyTrigger & rtThat = static_cast< t_TyTrigger & >( _rA.template GetActionObj< kidCur >() );
 		_rtThis.swap( rtThat );
 	}
 	void swap( _TyThis & _r )
@@ -741,7 +833,7 @@ public:
 	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
 	{
 		_TyTuple tupleLocal; 
-		_ros << "_l_action_save_data_multiple< " << s_kiTriggerOrToken << ", " << ", false, ";
+		_ros << "_l_action_save_data_multiple< " << s_kiTriggerOrToken << ", false, ";
 		std::apply
     (
         [ _pcCharName, &_ros ]( t_TysTriggers const &... _tuple )
@@ -752,19 +844,29 @@ public:
     );
 		_ros << " >";
 	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		stringstream ss;
+		StaticRenderActionType( ss, _pcCharName );
+		return ss.str();
+	}
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
+		Trace( "TriggerOrToken[%d], Position[%ld].", s_kiTriggerOrToken, _rA.GetCurrentPosition() );
 		// We copy data from all constituent triggers regardless if that trigger fired. We may change this later.
 		// We add data to the SegArray when this trigger/token fires.
 		// Get a new element at the end of the segarray:
 		_TyTuple & rtupleEnd = m_saTuples.emplaceAtEnd(); // This could throw but we don't expect swapping below to throw since no allocation is performed.
-		Assert( rtupleEnd.FIsNull() );
 		std::apply
     (
-        []( t_TysTriggers &... _tuple )
+        [&_rA]( t_TysTriggers &... _tuple )
         {
-					return ( ..., SwapWithTrigger(_tuple) );
+					return ( ..., SwapWithTrigger(_rA,_tuple) );
         }, rtupleEnd
     );
 		return true;
@@ -773,7 +875,7 @@ public:
 	static void SwapWithTrigger( t_TyAnalyzer & _rA, t_TyTrigger & _rtThis )
 	{
 		constexpr vtyTokenIdent kidCur = t_TyTrigger::GetTokenId();
-		t_TyTrigger & rtThat = static_cast< t_TyTrigger & >( _rA.GetActionObj< kidCur >() );
+		t_TyTrigger & rtThat = static_cast< t_TyTrigger & >( _rA.template GetActionObj< kidCur >() );
 		_rtThis.swap( rtThat );
 	}
 	void swap( _TyThis & _r )
@@ -848,7 +950,7 @@ public:
 		//	triggers and clear the triggers' values.
 		if ( _rA.FGotTrigger( s_kiTriggerBegin ) )
 		{
-			t_TyTriggerBegin & rtBegin = static_cast< t_TyTriggerBegin & >( _rA.GetActionObj< s_kiTriggerBegin >() );
+			t_TyTriggerBegin & rtBegin = static_cast< t_TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			Assert( _rA.FGotTrigger( s_kiTriggerEnd ) ); // How would we have otherwise completed the production?
 			if ( _rA.FGotTrigger( s_kiTriggerEnd ) )
@@ -937,4 +1039,3 @@ struct __map_to_base_class< _l_action_save_data_multiple< t_kiTriggerOrToken, t_
 
 __BIENUTIL_END_NAMESPACE
 
-#endif //__L_AXION_H

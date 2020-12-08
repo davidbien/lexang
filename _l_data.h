@@ -16,10 +16,6 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
-typedef size_t vtyDataPosition;
-static constexpr vtyDataPosition vtpNullDataPosition = numeric_limits< vtyDataPosition >::max();
-typedef size_t vtyDataType;
-
 // _l_data_range_pod: A simple token range in a token stream.
 // We want this to be a POD struct so we can use it in a anonymous union.
 struct _l_data_range_pod
@@ -86,7 +82,7 @@ class _l_data
 public:
   typedef t_TyChar _TyChar;
   typedef SegArray< _l_data_typed_range, std::false_type, vtyDataPosition > _TySegArray;
-  static constexpr size_t s_knSegArrayInitTypedRange = s_knbySegSize / sizeof( _l_data_typed_range );
+  static constexpr size_t s_knSegArrayInit = s_knbySegSize / sizeof( _l_data_typed_range );
   static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
   typedef std::basic_string< _TyChar > _TyStdStr;
 
@@ -264,12 +260,12 @@ public:
     if ( FContainsSinglePos() )
     {
       _TySegArray saNew( s_knSegArrayInit );
-      saNew.Overwrite( 0, &m_dtrData, 1 );
+      saNew.Overwrite( 0, (const ns_re::_l_data_typed_range *)&m_dtrData, 1 );
       new ( m_rgbySegArray ) _TySegArray( std::move( saNew ) );
       AssertValid();
     }
     _l_data_typed_range_pod ttrWrite = { _posBegin, _posEnd, _nType };
-    _PSegArray()->Overwrite( _PSegArray()->NElements(), &ttrWrite, 1 );
+    _PSegArray()->Overwrite( _PSegArray()->NElements(), (const ns_re::_l_data_typed_range *)&ttrWrite, 1 );
     AssertValid();
   }
 protected:

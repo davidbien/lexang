@@ -375,6 +375,72 @@ litnotset( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
 	return _regexp_litnotset< t_TyChar >( _pc, _rAlloc );
 }
 
+// _regexp_litnotset_no_surrogates: a single literal not in the set given in the string.
+// This class ensures that no surrogate UTF16 (which are also not valid as characters in UTF32)
+//	are added to the recognition set.
+// One thought was to somehow make the exclusion of surrogates part of a potential NfaContext option
+//	but it wasn't clear that this would work.
+template < class t_TyChar, class t_TyAllocator = __L_DEFAULT_ALLOCATOR >
+class _regexp_litnotset_no_surrogates 
+	: public _regexp_base< t_TyChar >
+{
+private:
+	typedef _regexp_base< t_TyChar > _TyBase;
+	typedef _regexp_litnotset_no_surrogates _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
+public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+
+	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
+	typedef typename _TyBase::_TyOstream _TyOstream;
+	
+	_TyString	m_s;
+
+	_regexp_litnotset_no_surrogates(	const t_TyChar * _pc,
+											t_TyAllocator const & _alloc = t_TyAllocator() )
+		: m_s( _pc, _alloc )
+	{
+	}
+	// REVIEW:<dbien>: Don't remember why I have this for the copy constructor...
+	_regexp_litnotset_no_surrogates( _TyThis const & _r, std::false_type = std::false_type() )
+    : m_s( _r.m_s )
+  {
+  }
+
+	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	{
+		_rNfaCtxt.CreateLiteralNotInSetNFANoSurrogates( m_s.c_str() );
+	}
+
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; } // assuming false here... the fact is that if it does matches empty then it only matches nothing...
+
+	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	{
+		_CloneHelper( this, _prbCopier, _pprbStorage );
+	}
+
+	virtual void	Dump( _TyOstream & _ros ) const
+	{
+		_ros << "[^" << m_s << "]";
+	}
+};
+
+template < class t_TyChar >
+__INLINE _regexp_litnotset_no_surrogates< t_TyChar >
+litnotset_no_surrogates( const t_TyChar * _pc )
+{
+	return _regexp_litnotset_no_surrogates< t_TyChar >( _pc );
+}
+
+template < class t_TyChar, class t_TyAllocator >
+__INLINE _regexp_litnotset_no_surrogates< t_TyChar, t_TyAllocator >
+litnotset_no_surrogates( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
+{
+	return _regexp_litnotset_no_surrogates< t_TyChar >( _pc, _rAlloc );
+}
+
 template < class t_TyRegExp1, class t_TyRegExp2 >
 class _regexp_follows : public _regexp_base< typename t_TyRegExp1::_TyChar >
 {

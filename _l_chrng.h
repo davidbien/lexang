@@ -46,6 +46,12 @@ public:
 	{
 	}
 
+	void set_empty()
+	{
+		first = 0;
+		second = 0;
+	}
+
 	bool	empty() const _BIEN_NOTHROW
 	{
 		if ( !first )
@@ -85,6 +91,36 @@ public:
 	bool	isconsecutive( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		return isconsecutiveleft( _r ) || isconsecutiveright( _r );
+	}
+	// Return this range without _r and return any remaining range in _rSecondResult.
+	void remove( _TyThis const & _r, _TyThis & _rSecondResult )
+	{
+		if ( first < _r.first )
+		{
+			if ( second > _r.second )
+			{
+				_rSecondResult.first = _r.second+1;
+				_rSecondResult.second = second;
+			}
+			else
+			{
+				_rSecondResult.set_empty();
+				if ( second < _r.first )
+					return;
+			}
+			second = _r.first-1;
+		}
+		else
+		{
+			_rSecondResult.set_empty();
+			if ( first <= _r.second )
+			{
+				if ( second <= _r.second )
+					set_empty();
+				else
+					first = _r.second+1;
+			}
+		}			
 	}
 
 	friend std::ostream & operator << ( std::ostream & _ros, const _TyThis & _r )

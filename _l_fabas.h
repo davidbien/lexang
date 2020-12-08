@@ -92,6 +92,17 @@ public:
 		if ( !!_r.m_psrTriggers )
 			m_psrTriggers.template emplace< _TySetActionIds const & >( *_r.m_psrTriggers );
 	}
+	void AssertValid() const
+	{
+#if ASSERTSENABLED
+		if ( !!( e_aatTrigger & m_eaatType ) )
+		{
+			//Assert( !!m_pSdpAction ); // Should have an action.
+			if ( !!m_psrTriggers )
+				Assert( m_psrTriggers->countsetbits() );
+		}
+#endif //ASSERTSENABLED
+	}
 
 	t_TyActionIdent	GetOriginalActionId() const
 	{

@@ -1,5 +1,4 @@
-#ifndef __L_BASE_H__
-#define __L_BASE_H__
+#pragma once
 
 //          Copyright David Lawrence Bien 1997 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
@@ -143,6 +142,7 @@ public:
 	virtual void CreateStringNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateRangeNFA( _TyRange const & _rr ) = 0;
 	virtual void CreateLiteralNotInSetNFA( t_TyChar const * _pc ) = 0;
+	virtual void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateTriggerNFA( ) = 0;
@@ -157,4 +157,3 @@ public:
 
 __REGEXP_END_NAMESPACE
 
-#endif //__L_BASE_H__

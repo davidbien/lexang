@@ -1,5 +1,4 @@
-#ifndef __L_LXGEN_H
-#define __L_LXGEN_H
+#pragma once
 
 //          Copyright David Lawrence Bien 1997 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
@@ -62,16 +61,18 @@ struct _l_generator
 {
 	typedef t_TyDfa	_TyDfa;
 	typedef t_TyCharOut _TyCharOut;
-	typedef typename _TyDfa::_TyState				_TyState;
-	typedef typename _TyDfa::_TyDfaCtxt			_TyDfaCtxt;
-	typedef typename _TyDfa::_TyAllocator		_TyAllocator;
-	typedef typename _TyDfa::_TyNodeLookup		_TyNodeLookup;
-	typedef typename _TyDfa::_TyRange				_TyRange;
-	typedef typename _TyDfa::_TyGraph				_TyGraph;
-	typedef typename _TyDfa::_TyGraphNode		_TyGraphNode;
-	typedef typename _TyDfa::_TyChar					_TyCharGen;
-	typedef typename _TyDfa::_TyRangeEl			_TyRangeEl;
-	typedef typename _TyDfa::_TyActionObjectBase	_TyActionObjectBase;
+	typedef typename _TyDfa::_TyState _TyState;
+	typedef typename _TyDfa::_TyDfaCtxt _TyDfaCtxt;
+	typedef typename _TyDfa::_TyAllocator _TyAllocator;
+	typedef typename _TyDfa::_TyNodeLookup _TyNodeLookup;
+	typedef typename _TyDfa::_TyRange _TyRange;
+	typedef typename _TyDfa::_TyGraph _TyGraph;
+	typedef typename _TyDfa::_TyGraphNode _TyGraphNode;
+	typedef typename _TyDfa::_TyChar _TyCharGen;
+	typedef typename _TyDfa::_TyRangeEl _TyRangeEl;
+	typedef typename _TyDfa::_TyActionObjectBase _TyActionObjectBase;
+	typedef typename _TyDfa::_TyAcceptAction _TyAcceptAction;
+	typedef typename _TyAcceptAction::_TySetActionIds _TySetActionIds;
 
 	typedef typename _TyDfaCtxt::_TyPartAcceptStates	_TyPartAcceptStates;
 	typedef typename _TyDfaCtxt::_TyAcceptPartLookup	_TyAcceptPartLookup;
@@ -215,30 +216,33 @@ struct _l_generator
 			m_pvtDfaCur = &*lit;
 
 			{
-				typename _TyPartAcceptStates::iterator	itAction = m_pvtDfaCur->m_rDfaCtxt.m_partAccept.begin();
-				typename _TyPartAcceptStates::iterator	itActionEnd = m_pvtDfaCur->m_rDfaCtxt.m_partAccept.end();
+				typename _TyPartAcceptStates::iterator itAction = m_pvtDfaCur->m_rDfaCtxt.m_partAccept.begin();
+				typename _TyPartAcceptStates::iterator itActionEnd = m_pvtDfaCur->m_rDfaCtxt.m_partAccept.end();
 				for ( ; itAction != itActionEnd; ++itAction )
 				{
 					typename _TyPartAcceptStates::value_type & rvt = *itAction;
-					Assert( !!rvt.second.m_pSdpAction || ( e_aatAntiAccepting == rvt.second.m_eaatType ) || ( rvt.second.m_eaatType ) );
+					rvt.second.AssertValid();
 					if ( rvt.second.m_pSdpAction )
 					{
-						Assert( !( e_aatTrigger & rvt.second.m_eaatType ) ); // Should see only non-trigger actions here.
+						//Assert( !( e_aatTrigger & rvt.second.m_eaatType ) ); // Should see only non-trigger actions here.
 						typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
 						_TyGenActionInfo gaiInfo;
 						if ( m_mapActionInfo.end() == citAxnInfo )
 						{
 							// Just use the action id - leave the comment empty.
-							PrintfStdStr( gaiInfo.m_strActionName, "Token%d", (*rvt.second.m_pSdpAction)->VGetTokenId() );
+							PrintfStdStr( gaiInfo.m_strActionName, ( e_aatTrigger & rvt.second.m_eaatType ) ? "Trigger%d" : "Token%d", (*rvt.second.m_pSdpAction)->VGetTokenId() );
 						}
 						else
 						{
 							gaiInfo = citAxnInfo->second;
 						}
+						Trace( "Adding action [%s].", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str() );
 						std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
 							typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
-						VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
+						VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					}
+					else
+						Trace( "No action object for action id [%u].", rvt.second.GetOriginalActionId() );
 				}
 			}
 			
@@ -252,7 +256,7 @@ struct _l_generator
 				{
 					typename _TyDfa::_TyMapTriggers::value_type & rvt = *itTrigger;
 					Assert( e_aatTrigger == rvt.second.m_eaatType ); // Should see only triggers here.
-					Assert( !!rvt.second.m_pSdpAction );
+					rvt.second.AssertValid();
 					typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					_TyGenActionInfo gaiInfo;
 					if ( m_mapActionInfo.end() == citAxnInfo )
@@ -266,7 +270,10 @@ struct _l_generator
 					}
 					std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type(	**rvt.second.m_pSdpAction, 
 						typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
-					VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->SzTypeName(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
+					if ( pib.second )
+						Trace( "Added trigger [%s].", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str() );
+					// REVIEW: Note that some of these triggers were added above so they may not be unique here.
+					//VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 				}
 			}
 		}
@@ -320,7 +327,7 @@ struct _l_generator
 		_ros << "\t{ }\n";
 
 		// Declare the base GetActionObject() template that is not implemented.
-		_ros << "\ntemplate < const int t_kiAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();";
+		_ros << "\n\ttemplate < const int t_kiAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();\n";
 
 		// We generate all referenced unique actions:
 		typename _TyMapActions::iterator itMAEnd = m_mapActions.end();
@@ -331,14 +338,14 @@ struct _l_generator
 			if ( rvt.second.second )
 			{
 				// Define a constant so that we don't just have raw numbers lying around as much:
-				_ros << "\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << " = " << rvt.first->VGetTokenId() << ";\n";
+				_ros << "\n\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << " = " << rvt.first->VGetTokenId() << ";\n";
 				// Get a typedef for the action object for ease of use:
 				_ros << "\tusing _tyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
 				rvt.first->RenderActionType( _ros, m_sCharTypeName.c_str() );
 				_ros << ";\n";
 				// Define the object as a member of the lexical analyzer class:
 				_ros << "\t_tyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
-				_ros << "\ntemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
+				_ros << "\ttemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
 							" { return m_axn" << rvt.second.first.m_strActionName.c_str() << "; }\n";
 				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "();\n";
 			}
@@ -424,10 +431,12 @@ struct _l_generator
 	void	_GenStateType(	ostream & _ros, _TyGraphNode * _pgn, 
 												int _nOuts, bool _fAccept )
 	{
-		typename _TyPartAcceptStates::value_type *	pvtAction = 0;
+		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
 		if ( _fAccept )
 		{
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
+			if ( !!pvtAction && !!pvtAction->second.m_pSdpAction )
+				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
 		
 #ifndef LXGEN_OUTPUT_TRIGGERS
@@ -507,7 +516,7 @@ struct _l_generator
 
 		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << "\t\t";
 
-		typename _TyPartAcceptStates::value_type *	pvtAction = 0;
+		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
 
 		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
 		{
@@ -529,12 +538,15 @@ struct _l_generator
 				--_nOuts;	// The zeroth transition is the trigger.
 			}
 #endif //!LXGEN_OUTPUT_TRIGGERS
+			if ( !!pvtAction->second.m_pSdpAction )
+				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
 		_ros	<< _nOuts << ", ";
 		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
 		{
 			if ( pvtAction->second.m_psrTriggers )
 			{
+				Assert( pvtAction->second.m_psrTriggers->countsetbits() );
 				_ros << pvtAction->second.m_psrTriggers->countsetbits();
 			}
 			else
@@ -716,7 +728,7 @@ struct _l_generator
 	// Generate the accept function pointer:
 	void	_GenActionMFnP( ostream & _ros, _TyState _stAccept )
 	{
-		typename _TyPartAcceptStates::value_type *	pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _stAccept );
+		const typename _TyPartAcceptStates::value_type *	pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _stAccept );
 
 		// Generate the accepting action, if any:
 		if ( ( pvtAction->second.m_eaatType & ~e_aatTrigger ) &&
@@ -751,8 +763,7 @@ struct _l_generator
 				{
 					// We store the bit vector of valid associated lookahead states- this
 					//	vector is accumulated during disambiguation.
-					if (	e_aatLookaheadAcceptAndLookahead == 
-								( pvtAction->second.m_eaatType & ~e_aatTrigger ) )
+					if (	e_aatLookaheadAcceptAndLookahead == ( pvtAction->second.m_eaatType & ~e_aatTrigger ) )
 					{
 						// Then we need to store the action identifier:
 						_ros << ", " << ( pvtAction->second.GetOriginalActionId() + m_aiStart );
@@ -792,8 +803,9 @@ struct _l_generator
 			// Then generate the triggers:
 			if ( pvtAction->second.m_psrTriggers )
 			{
-				size_t	stEnd = pvtAction->second.m_psrTriggers->size();
-				for ( auto stTrigger = pvtAction->second.m_psrTriggers->getclearfirstset(); 
+				_TySetActionIds bvCopyTriggers( *pvtAction->second.m_psrTriggers ); // better make a copy since this algorithm is destructive.
+				size_t	stEnd = bvCopyTriggers.size();
+				for ( auto stTrigger = bvCopyTriggers.getclearfirstset(); 
 							stEnd != stTrigger;
 						)
 				{
@@ -802,7 +814,7 @@ struct _l_generator
 					
 					_PrintActionMFnP( _ros, **( itTrigger->second.m_pSdpAction ) );
 
-					stTrigger = pvtAction->second.m_psrTriggers->getclearfirstset( stTrigger );
+					stTrigger = bvCopyTriggers.getclearfirstset( stTrigger );
 					if ( stEnd != stTrigger )
 					{
 						_ros << ",";
@@ -861,4 +873,3 @@ struct _l_generator
 
 __REGEXP_END_NAMESPACE
 
-#endif //__L_LXGEN_H

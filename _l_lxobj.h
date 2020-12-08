@@ -86,7 +86,7 @@ struct _l_transition
       (void)FPrintfStdStrNoThrow(str, "%c (%lu)", (char)_uc, (uint64_t)_uc);
     else
       (void)FPrintfStdStrNoThrow(str, "%lu", (uint64_t)_uc);
-    return std::move( str );
+    return str;
   }
   n_SysLog::vtyJsoValueSysLog GetJsonValue() const
   {
@@ -96,7 +96,7 @@ struct _l_transition
 #ifdef LXOBJ_STATENUMBERS
     jv("n").SetValue( m_psp->m_nState );
 #endif //LXOBJ_STATENUMBERS
-    return std::move(jv);
+    return (jv);
   }
 };
 
@@ -178,7 +178,7 @@ public:
     {
       // TODO - later.
     }
-    return std::move(jv);
+    return jv;
   }
 };
 
@@ -589,6 +589,7 @@ public:
   _TyStateProto *m_pspCur;           // Current state.
   _TyUnsignedChar *m_pcLastAccept{}; // The position in the buffer when last accept encountered.
   _TyCompSearch m_compSearch;        // search object.
+  _TyUnsignedChar *m_pcStart{};        // Start of search string.
   _TyUnsignedChar *m_pcCur{};        // Current search string.
 
   _l_analyzer() = delete;
@@ -599,6 +600,10 @@ public:
       : m_pspStart(_pspStart),
         m_pspLastAccept(0)
   {
+  }
+  size_t GetCurrentPosition() const
+  {
+    return m_pcCur - m_pcStart;
   }
 
 #define LXOBJ_DOTRACE(MESG...) _DoTrace( __FILE__, __LINE__, __PRETTY_FUNCTION__, MESG)
@@ -637,7 +642,7 @@ public:
   // Update <_rpc> appropriately.
   bool get(t_TyChar *&_rpc)
   {
-    m_pcCur = reinterpret_cast<_TyUnsignedChar *>(_rpc);
+    m_pcStart = m_pcCur = reinterpret_cast<_TyUnsignedChar *>(_rpc);
 
     do
     {
