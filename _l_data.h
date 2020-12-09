@@ -82,7 +82,7 @@ class _l_data
 public:
   typedef t_TyChar _TyChar;
   typedef SegArray< _l_data_typed_range, std::false_type, vtyDataPosition > _TySegArray;
-  static constexpr size_t s_knSegArrayInit = s_knbySegSize / sizeof( _l_data_typed_range );
+  static constexpr size_t s_knSegArrayInit = s_knbySegSize;
   static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
   typedef std::basic_string< _TyChar > _TyStdStr;
 

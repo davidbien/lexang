@@ -780,7 +780,7 @@ public:
 	{
 		constexpr vtyTokenIdent kidCur = t_TyTrigger::GetTokenId();
 		t_TyTrigger & rtThat = static_cast< t_TyTrigger & >( _rA.template GetActionObj< kidCur >() );
-		_rtThis.swap( rtThat );
+		rtThat.swap( _rtThis );
 	}
 	void swap( _TyThis & _r )
 	{
@@ -805,8 +805,12 @@ private:
 	typedef _l_action_object_base< _TyChar, t_fInLexGen > _TyBase;
 public:
 	typedef tuple< t_TysTriggers...> _TyTuple;
+	static const size_t s_kstInitSegArray = 32 * sizeof(_TyTuple);
 	static constexpr vtyTokenIdent s_kiTriggerOrToken = t_kiTriggerOrToken;
-	_l_action_save_data_multiple() = default;
+	_l_action_save_data_multiple()
+		: m_saTuples( s_kstInitSegArray )
+	{
+	}
 	_l_action_save_data_multiple( _TyThis const & _r ) = default;
 	bool FIsNull() const
 	{

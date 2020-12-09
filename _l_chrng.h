@@ -44,6 +44,7 @@ public:
 	_fa_char_range( t_TyRangeEl _rFirst, t_TyRangeEl _rSecond )
 		: _TyBase( _rFirst, _rSecond )
 	{
+		Assert( second >= first );
 	}
 
 	void set_empty()
@@ -139,8 +140,8 @@ public:
 			if ( !first )
 				_jvl.WriteNullValue();
 			else
-			if ( ( first > _l_char_type_map< _TyChar >::ms_kcMax ) || ( first < 32 ) ) // filter out unprintable characters.
-				_jvl.WriteValue( (_TyUnsignedChar)first );
+			if ( ( first > 254/* _l_char_type_map< _TyChar >::ms_kcMax */ ) || ( first < 32 ) ) // filter out unprintable characters.
+				_jvl.PrintfStringValue( str_array_cast< _TyChar>("0x%lx"), size_t((_TyUnsignedChar)first) );
 			else
 			{
 				_TyChar ch = (_TyChar)first;
@@ -149,8 +150,8 @@ public:
 			if ( !second )
 				_jvl.WriteNullValue();
 			else
-			if ( ( second > _l_char_type_map< _TyChar >::ms_kcMax ) || ( second < 32 ) ) // filter out unprintable characters.
-				_jvl.WriteValue( (_TyUnsignedChar)second );
+			if ( ( second > 254/* )_l_char_type_map< _TyChar >::ms_kcMax */ ) || ( second < 32 ) ) // filter out unprintable characters.
+				_jvl.PrintfStringValue( str_array_cast< _TyChar>("0x%lx"), size_t((_TyUnsignedChar)second) );
 			else
 			{
 				_TyChar ch = (_TyChar)second;

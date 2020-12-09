@@ -243,6 +243,7 @@ public:
 
 		_sdp< void *, _TyAllocator >	pvAllocMap( _TyAllocVPBase::get_allocator() );
 		_TyAllocVPBase::allocate_n( pvAllocMap.PtrRef(), m_stDfaStatesOrig );
+		memset( pvAllocMap.Ptr(), 0, m_stDfaStatesOrig * sizeof( void *) );
 		void **	pvPartClassCache;
 		_TyAllocVPBase::allocate_n( pvPartClassCache, m_stDfaStatesOrig + 1 );
 		m_cachePartClasses = reinterpret_cast< _TyPartitionClass ** >( pvPartClassCache );
@@ -581,6 +582,7 @@ protected:
 		_TyState	iTransState;
 		if ( !m_rgLookupRep[ (size_type)( iTransState = _pgl->PGNChild()->RElConst() ) ] )
 		{
+			Assert( !!m_rgsmeMap[ iTransState ] );
 			// Then determine the representative for this node:
 			if ( m_rgsmeMap[ iTransState ]->first >= 0 )
 			{

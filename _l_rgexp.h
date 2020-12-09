@@ -6,6 +6,8 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt).
 
+//#define REGEXP_NO_TRIGGERS
+
 #include <list>
 #include <sstream>
 
@@ -951,6 +953,7 @@ public:
 	using _TyAllocBase::get_allocator;
 
 	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+	typedef typename _TyBase::_TyRange _TyRange;
 	typedef typename _TyBase::_TyOstream _TyOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
@@ -985,6 +988,7 @@ public:
 
 	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
 	{
+		#ifndef REGEXP_NO_TRIGGERS
     try
     {
       _rcbNfa.CreateTriggerNFA();
@@ -1005,6 +1009,9 @@ public:
 		
 		// If we have an action object then set into NFA:
 		_rcbNfa.SetAction( m_pSdpAction, e_atTrigger );
+		#else //!REGEXP_NO_TRIGGERS
+		_rcbNfa.CreateRangeNFA( _TyRange(0,0) );
+		#endif //!REGEXP_NO_TRIGGERS
 	}
 
 	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
