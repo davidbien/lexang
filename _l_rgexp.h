@@ -1159,7 +1159,7 @@ public:
 	}
 
 	template < class t_TyActionObject >
-	void	SetAction( t_TyActionObject _ao )
+	void	SetAction( t_TyActionObject _ao ) requires( t_TyActionObject::_TyFIsToken::value )
 	{
 		typedef _sdpv< t_TyActionObject, t_TyAllocator >	_TySdp;
 		m_pSdpAction = _TySdp::template construct1< t_TyActionObject const & >( _ao, get_allocator() );

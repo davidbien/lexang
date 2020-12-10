@@ -111,7 +111,7 @@ struct _l_state_proto
 
 // Common members, all instantiations of _l_state<> have these.
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  _TyStateNumber m_nState; // For debugging, not used by the lexang.
 #endif //LXOBJ_STATENUMBERS
   _TyNTransitions m_nt;
   _TyNTriggers m_nTriggers;
@@ -1143,18 +1143,23 @@ private:
 
 public:
   typedef typename _TyBase::_TyChar _TyChar;
-
-  int m_iToken;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   _l_token_analyzer()
       : t_TyBaseAnalyzer()
   {
   }
 
-  void SetToken(int _iToken)
+  void SetToken( _TyAxnObjBase * _paobCurToken )
   {
-    m_iToken = _iToken;
+    m_paobCurToken = _paobCurToken;
   }
+  _TyAxnObjBase * PGetToken() const
+  { 
+    return m_paobCurToken;
+  }
+protected:
+  _TyAxnObjBase * m_paobCurToken{}; // A pointer to the current token found by the lexang.
 };
 
 __LEXOBJ_END_NAMESPACE
