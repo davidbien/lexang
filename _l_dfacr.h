@@ -363,6 +363,7 @@ public:
 		m_rDfa.m_fHasLookaheads = m_rNfa.m_fHasLookaheads;
 		m_rDfa.m_nTriggers = m_rNfa.m_nTriggers;
 		m_rDfa.m_nUnsatisfiableTransitions = m_rNfa.m_nUnsatisfiableTransitions;
+		m_rDfa.ConsumeMapTokenIdToTriggerTransition( m_rNfa.m_mapTokenIdToTriggerTransition );
 
 		return true;
 	}
@@ -393,7 +394,7 @@ public:
 				//	Choose the rule with the lowest action number - this should allow for
 				//		catch-all rules after more specific rules.
 				// 2) If, along the way, we find any triggers or lookahead accepting states then
-				//		include those in th ambiguous state.
+				//		include those in the ambiguous state.
 				// 3) We may have both (1) and (2) or either.
 				typename _TyNfa::_TySetAcceptVT & rvtFirst = *m_rNfa.m_pSetAcceptStates->find( stFirst );
 

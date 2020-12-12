@@ -938,7 +938,6 @@ action(	t_TyActionObject _ao,
 }
 
 // Trigger action:
-
 template < class t_TyChar, class t_TyAllocator = __L_DEFAULT_ALLOCATOR >
 class _regexp_trigger
 	: public _regexp_base< t_TyChar >,
@@ -982,16 +981,17 @@ public:
 
 	bool	FMatchesEmpty() const _BIEN_NOTHROW	
 	{
-		// triggers report that they match empty since they consume no input.
-		return true;
+		// triggers have to match an input trigger so that don't match empty.
+		return false;
 	}
 
 	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
 	{
+		VerifyThrowSz( !!m_pSdpAction, "Attempt to construct a trigger without a corresponding action object is not valid." );
 		#ifndef REGEXP_NO_TRIGGERS
     try
     {
-      _rcbNfa.CreateTriggerNFA();
+      _rcbNfa.CreateTriggerNFA( **m_pSdpAction );
     }
     catch (regexp_trigger_found_first_exception & _rexc)
     {

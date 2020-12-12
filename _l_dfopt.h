@@ -472,6 +472,10 @@ protected:
 		if ( itCur == m_partition.end() )
 			return;	// already optmimal ( but not a very complex DFA ).
 
+#ifndef NDEBUG
+		size_t dbg_nLinksFirst = size_t(-1);
+#endif //!NDEBUG
+
 		do
 		{
 			// We don't follow the Aho/Sethi/Ullman algorithm completely here - seems to me that
@@ -487,7 +491,7 @@ protected:
 			_rssUtil = ppelCur->second;	// Copy the set of states - we will modify below.
 
 			_TyPartitionClass **	pppc = _GetPartClass();	// Get a partition class from the cache.
-
+	
 			_TyState	iStateTest;
 			for ( iStateTest = (_TyState)_rssUtil.getclearfirstset();
 						_rssUtil.size() != iStateTest;
@@ -503,11 +507,23 @@ protected:
 
 				_TyPartitionEl ** pppelPartClass = (*pppc)->begin();
 
+#ifndef NDEBUG
+				size_t dbg_nLinksCur = 0;
+#endif //!NDEBUG
 				while( !lpi.FIsLast() )
 				{
+#ifndef NDEBUG
+					++dbg_nLinksCur;
+#endif //!NDEBUG
 					*pppelPartClass++ = m_rgsmeMap[ lpi.PGNChild()->REl() ];
 					lpi.NextChild();
 				}
+#ifndef NDEBUG
+				if ( size_t(-1) == dbg_nLinksFirst )
+					dbg_nLinksFirst = dbg_nLinksCur;
+				else
+					Assert( dbg_nLinksCur == dbg_nLinksFirst ); // Each node should have the same number of links out.
+#endif //!NDEBUG
 
 				// Now attempt to insert this new transition container into the set of unique
 				//	transition sets of the current group of the partition:

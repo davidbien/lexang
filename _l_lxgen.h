@@ -70,6 +70,7 @@ struct _l_generator
 	typedef typename _TyDfa::_TyGraphNode _TyGraphNode;
 	typedef typename _TyDfa::_TyChar _TyCharGen;
 	typedef typename _TyDfa::_TyRangeEl _TyRangeEl;
+	typedef typename _TyDfa::_TyAlphaIndex _TyAlphaIndex;
 	typedef typename _TyDfa::_TyActionObjectBase _TyActionObjectBase;
 	typedef typename _TyDfa::_TyAcceptAction _TyAcceptAction;
 	typedef typename _TyAcceptAction::_TySetActionIds _TySetActionIds;
@@ -78,6 +79,7 @@ struct _l_generator
 	typedef typename _TyDfaCtxt::_TyAcceptPartLookup	_TyAcceptPartLookup;
 
 	typedef basic_string< t_TyCharOut, char_traits<t_TyCharOut>, _TyAllocator >	_TyString;
+	typedef std::pair< _TyAlphaIndex, _TyAlphaIndex > _TyPrAI;
 
 	typedef _l_gen_dfa< _TyDfa, t_TyCharOut >		_TyGenDfa;
 
@@ -96,6 +98,7 @@ struct _l_generator
 	_TyString m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
 	_TyString m_sVisibleCharPrefix;	// Prefix for a visible character const.
 	_TyString m_sVisibleCharSuffix;	// Suffix for a visible character const.
+	_TyPrAI m_praiTriggers; // The range of trigger alpha indices (not vtyActionIdent, btw.)
 	vtyActionIdent m_aiStart;
 	typename _TyDfa::_TyState m_stStart;
 
@@ -188,6 +191,8 @@ struct _l_generator
 		{
 			m_pvtDfaCur = &*lit;
 
+			m_pvtDfaCur->m_rDfa.GetTriggerUnsatAIRanges( &m_praiTriggers, nullptr );
+
 			_GenStates( ofsHeader, ofsImp );
 
 			m_aiStart += m_pvtDfaCur->m_rDfa.m_iMaxActions;
@@ -239,7 +244,8 @@ struct _l_generator
 						Trace( "Adding action [%s].", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str() );
 						std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
 							typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
-						VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
+						// Apparently we can have duplicate actions here as well...
+						//VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					}
 					else
 						Trace( "No action object for action id [%u].", rvt.second.GetOriginalActionId() );
@@ -394,7 +400,10 @@ struct _l_generator
 													int _nOuts, bool _fAccept )
 	{
 		_ros	<< "extern	";
-		_GenStateType( _ros, _pgn, _nOuts, _fAccept );
+		bool fIsTriggerAction, fIsTriggerGateway;
+		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
+		_TyRangeEl rgelTrigger; 
+		_GenStateType( _ros, _pgn, _nOuts, _fAccept, fIsTriggerAction, fIsTriggerGateway, tidTokenTrigger, rgelTrigger );
 		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
 		{
 			// Use the special start state name:
@@ -427,9 +436,13 @@ struct _l_generator
 			_ros << "0x0" << hex << unsigned( _r ) << dec;
 		}
 	}
-
+	bool _FIsTrigger( _TyRangeEl const & _rre ) const
+	{
+		return ( _rre >= m_praiTriggers.first ) && ( _rre < m_praiTriggers.second );
+	}
 	void	_GenStateType(	ostream & _ros, _TyGraphNode * _pgn, 
-												int _nOuts, bool _fAccept )
+												int _nOuts, bool _fAccept, bool & _rfIsTriggerAction, bool & _rfIsTriggerGateway, 
+												vtyTokenIdent & _rtidTokenTrigger, _TyRangeEl & _rrgelTrigger )
 	{
 		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
 		if ( _fAccept )
@@ -438,9 +451,40 @@ struct _l_generator
 			if ( !!pvtAction && !!pvtAction->second.m_pSdpAction )
 				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
-		
+		_rfIsTriggerAction = ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) );		
+		_rfIsTriggerGateway = false;
+		_rtidTokenTrigger = numeric_limits< vtyTokenIdent >::max();
+		_rrgelTrigger = 0;
 #ifndef LXGEN_OUTPUT_TRIGGERS
-		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
+		// We check for trigger links at the beginning of the the link list.
+		// We should only ever see at most one. If we see an odd one then we expect the
+		//	type of this node to be a trigger action, otherwise we expect this node to *not*
+		//  be a trigger action.
+		// We should never see that this node has any other action when there are trigger transitions
+		//	leaving it.
+		{//B
+			typename _TyGraph::_TyLinkPosIterConst	lpi( _pgn->PPGLChildHead() );
+			if ( !lpi.FIsLast() )
+			{
+				if ( _FIsTrigger( *lpi ) )
+				{
+					_TyRange r = m_pvtDfaCur->m_rDfa.LookupRange( *lpi );
+
+					typename _TyDfa::_TyMapTriggerTransitionToTokenId::const_iterator cit = m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.find( r.first );
+					VerifyThrowSz( cit != m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.end(), "Couldn't find trigger transition [0x%lx] in m_mapTriggerTransitionToTokenId.", size_t(r.first) );
+					_rtidTokenTrigger = cit->second;
+					_rrgelTrigger = r.first;
+
+					Assert( r.second == r.first );
+					_rfIsTriggerGateway = !( r.first % 2 ); // We are entering into a triggered state.
+					VerifyThrowSz( _rfIsTriggerAction == !_rfIsTriggerGateway, "We expect odd triggers out of trigger states and even triggers into trigger states." );
+					VerifyThrowSz( _rfIsTriggerAction || !_fAccept, "A trigger is leaving an accept state - this is an ambiguous situation.");
+					if ( lpi.NextChild(), !lpi.FIsLast() )
+						VerifyThrowSz( !_FIsTrigger( *lpi ), "More than one trigger leaving a state." );
+				}
+			}
+		}//EB
+		if ( _rfIsTriggerAction || _rfIsTriggerGateway )
 		{
 			--_nOuts;	// The zeroth transition is the trigger.
 		}
@@ -480,13 +524,33 @@ struct _l_generator
 				break;
 			}
 
-			if ( pvtAction->second.m_eaatType & e_aatTrigger )
+			if ( _rfIsTriggerAction || _rfIsTriggerGateway )
 			{
 				// Then we have some triggers:
 				_ros << ", ";
-				if ( pvtAction->second.m_psrTriggers )
+				if ( _rfIsTriggerAction && pvtAction->second.m_psrTriggers )
 				{
           Assert(pvtAction->second.m_psrTriggers->countsetbits());
+					size_t stBits = pvtAction->second.m_psrTriggers->countsetbits();
+					if ( ( stBits > 1 ) && ( _rtidTokenTrigger != numeric_limits< vtyTokenIdent >::max() ) )
+					{
+						// Then we are going to filter out the actions that do not match the input trigger transition and we are going to print a warning because this
+						//	is very likely a bug:
+						auto stEnd = pvtAction->second.m_psrTriggers->size();
+						for ( auto stTrigger = pvtAction->second.m_psrTriggers->getfirstset(); 
+									stEnd != stTrigger; stTrigger = pvtAction->second.m_psrTriggers->getnextset( stTrigger ) )
+						{
+							typename _TyDfa::_TyMapTriggers::iterator itTrigger = m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (vtyActionIdent)stTrigger );
+							if ( (*itTrigger->second.m_pSdpAction)->VGetTokenId() != _rtidTokenTrigger )
+							{
+								n_SysLog::Log( eslmtError, "%s: Filtering out token [%ld] since it doesn't match the input transition. This looks like a bug in NFA->DFA conversion.", 
+									__PRETTY_FUNCTION__, (*itTrigger->second.m_pSdpAction)->VGetTokenId() );
+								pvtAction->second.m_psrTriggers->clearbit( stTrigger );
+							}
+							// else we leave the bit.
+						}
+						Assert( 1 == pvtAction->second.m_psrTriggers->countsetbits() );
+					}
 					_ros << pvtAction->second.m_psrTriggers->countsetbits();
 				}
 				else
@@ -511,7 +575,10 @@ struct _l_generator
 											int _nOutsOrig, bool _fAccept )
 	{
 		_ros << "typedef ";
-		_GenStateType( _ros, _pgn, _nOutsOrig, _fAccept );
+		bool fIsTriggerAction, fIsTriggerGateway;
+		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
+		_TyRangeEl rgelTrigger; 
+		_GenStateType( _ros, _pgn, _nOutsOrig, _fAccept, fIsTriggerAction, fIsTriggerGateway, tidTokenTrigger, rgelTrigger );
 		_ros << "\t\t_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << ";\n";
 
 		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << "\t\t";
@@ -532,17 +599,17 @@ struct _l_generator
 		{
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
 			Assert( !!pvtAction );
-#ifndef LXGEN_OUTPUT_TRIGGERS
-			if ( !!pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
-			{
-				--_nOuts;	// The zeroth transition is the trigger.
-			}
-#endif //!LXGEN_OUTPUT_TRIGGERS
 			if ( !!pvtAction->second.m_pSdpAction )
 				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
+#ifndef LXGEN_OUTPUT_TRIGGERS
+		if ( fIsTriggerAction || fIsTriggerGateway )
+		{
+			--_nOuts;	// The zeroth transition is the trigger.
+		}
+#endif //!LXGEN_OUTPUT_TRIGGERS
 		_ros	<< _nOuts << ", ";
-		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
+		if ( fIsTriggerAction )
 		{
 			if ( pvtAction->second.m_psrTriggers )
 			{
@@ -600,7 +667,7 @@ struct _l_generator
 		{
 			_ros << "0, ";
 		}
-		if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
+		if ( fIsTriggerAction || fIsTriggerGateway )
 		{
 			// Then the first transition is the trigger:
 			_ros << "(_TyStateProto*)( & ";
@@ -657,7 +724,7 @@ struct _l_generator
 			_ros << "\t{\n";
 			typename _TyGraph::_TyLinkPosIterNonConst	lpi( _pgn->PPGLChildHead() );
 #ifndef LXGEN_OUTPUT_TRIGGERS
-			if ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) )
+			if ( fIsTriggerAction || fIsTriggerGateway )
 			{
 				lpi.NextChild();	// Skip the trigger transition.
 			}
@@ -683,10 +750,17 @@ struct _l_generator
 				}
 				_ros << " ) }";
 
+				bool fIsTrigger = _FIsTrigger( *lpi );
 				lpi.NextChild();
 				if ( !lpi.FIsLast() )
 				{
 					_ros << ",";
+				}
+				if ( fIsTrigger )
+				{
+					typename _TyDfa::_TyMapTriggerTransitionToTokenId::const_iterator cit = m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.find( r.first );
+					VerifyThrowSz( cit != m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.end(), "Couldn't find trigger transition [0x%lx] in m_mapTriggerTransitionToTokenId.", size_t(r.first) );
+					_ros << " /* TokenId[" << cit->second << "] */";
 				}
 				_ros << "\n";
 			}

@@ -116,6 +116,7 @@ private:
 	typedef _context_base< t_TyChar > _TyBase;
 public:
 	typedef _fa_base< t_TyChar > _TyNfaBase;
+	typedef _l_action_object_base< t_TyChar, true > _TyActionObjectBase;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 	typedef typename _TyBase::_TyRange _TyRange;
 
@@ -145,7 +146,7 @@ public:
 	virtual void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
-	virtual void CreateTriggerNFA( ) = 0;
+	virtual void CreateTriggerNFA( _TyActionObjectBase const & _raob ) = 0;
 	virtual void CreateOrNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateZeroOrMoreNFA() = 0;
 	virtual void CreateExcludesNFA( _TyThis & _rcb ) = 0;

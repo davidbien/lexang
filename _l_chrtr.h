@@ -92,7 +92,7 @@ struct _l_char_type_map< wchar_t >
 #endif //1
 
   // Provide a large set of triggers and unsatisifiable transitions:
-  static constexpr _TyLarger ms_knTriggerStart = ms_kcMax + 1;
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
   static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
   static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
   static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
@@ -112,8 +112,8 @@ struct _l_char_type_map< int32_t >
   typedef int64_t      _TyLarger;
   static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
 
-  static constexpr int32_t ms_kcMin = INT32_MIN;
-  static constexpr int32_t ms_kcMax = INT32_MAX;
+  // static constexpr int32_t ms_kcMin = INT32_MIN;
+  // static constexpr int32_t ms_kcMax = INT32_MAX;
 };
 #else //0
 template <>

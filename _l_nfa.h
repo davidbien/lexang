@@ -73,6 +73,7 @@ public:
 	typedef typename _TyBase::_TyRange _TyRange;
 	typedef typename _TyBase::_TyRangeEl _TyRangeEl;
 	typedef typename _TyBase::_TySetStates _TySetStates;
+	typedef typename _TyBase::_TyActionObjectBase _TyActionObjectBase;
 	typedef typename _TyBase::_TyAcceptAction _TyAcceptAction;
 	typedef typename _TyBase::_TyUnsignedChar _TyUnsignedChar;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
@@ -111,12 +112,19 @@ public:
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
 
 	// Sometimes need to order the accept actions by action identifier:
+	// REVIEW:<dbien>: This system likely needs to change. Probably have to figure out some other manner of ordering actions - especially when this is used for triggers and not tokens.
 	typedef less< vtyActionIdent > _TyCompareAI;
 	typedef typename _Alloc_traits< typename map< vtyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
 	typedef map< vtyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
 
+	// Need a map from _l_action_object_base::VGetTokenId() to the first trigger (of the pair) associated with it. This ensures that instances of same triggers distributed
+	//	throughout the NFA will combine appropriately with one another when forming the DFA and then optimizing it.
+	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
+	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
+
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
+	_TyMapTokenIdToTriggerTransition m_mapTokenIdToTriggerTransition;
 	size_type m_nTriggers;
 	size_type m_nUnsatisfiableTransitions;
 	bool m_fHasLookaheads;
@@ -136,6 +144,7 @@ public:
 			m_iActionCur( 0 ),
 			m_pSetAcceptStates( get_allocator() ),
 			m_pLookupActionID( get_allocator() ),
+			m_mapTokenIdToTriggerTransition( get_allocator() ),
 			m_fHasLookaheads( false ),
 			m_nTriggers( 0 ),
 			m_fHasFreeActions( false ),
@@ -149,6 +158,13 @@ public:
 	~_nfa()
 	{
 		DeallocClosureCache();
+	}
+
+	void AssertValid()
+	{
+#ifndef NDEBUG
+		Assert( m_nTriggers == m_mapTokenIdToTriggerTransition.size() * 2 );
+#endif //!NDEBUG		
 	}
 
 	t_TyAllocator get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
@@ -597,28 +613,31 @@ protected:	// accessed by _nfa_context:
 		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
 	}
 
-	void	CreateTriggerNFA( _TyNfaCtxt & _rctxt )
+	void CreateTriggerNFA( _TyNfaCtxt & _rctxt, _TyActionObjectBase const & _raob )
 	{
     Assert( !_rctxt.m_pgnStart ); // throw-safety.
     // If the current state is 0 then we are starting all productions with a trigger. This doesn't seem to make much sense and indeed the trigger fires regardless
     //  so I am going to throw an error if the current state is 0 when this trigger is encountered.
     if (!m_iCurState)
       throw regexp_trigger_found_first_exception();
+		
+		// Check if we have already added a trigger for this action object and if so use the trigger values added at that time,
+		//	otherwise add new ones.
+		pair< typename _TyMapTokenIdToTriggerTransition::const_iterator, bool > pibTrigger =  
+			m_mapTokenIdToTriggerTransition.insert( typename _TyMapTokenIdToTriggerTransition::value_type( _raob.VGetTokenId(), m_nTriggers ) );
+		if ( pibTrigger.second )
+			m_nTriggers += 2; // New trigger.
 
+		// Isolate the trigger accept state so we can better decide when we see ambiguity.
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, 
-												_TyRange( 0, 0 ), 
+												_TyRange( ms_kreTriggerStart + pibTrigger.first->second, ms_kreTriggerStart + pibTrigger.first->second ), 
 												&_rctxt.m_pgnAltAccept );
 		// We increment m_nTriggers in AddTrigger() below.
 		_NewAcceptingState(	_rctxt.m_pgnAltAccept, 
-	#ifndef _L_NFA_UNIQUETRIGGERS
-												_TyRange( ms_kreTriggerStart, ms_kreTriggerStart ), 
-	#else //!_L_NFA_UNIQUETRIGGERS
-												_TyRange( ms_kreTriggerStart + m_nTriggers, ms_kreTriggerStart + m_nTriggers ), 
-	#endif //!_L_NFA_UNIQUETRIGGERS
+												_TyRange( ms_kreTriggerStart + pibTrigger.first->second+1, ms_kreTriggerStart + pibTrigger.first->second+1 ), 
 												&_rctxt.m_pgnAccept );
 	}
-
 	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_type _nUnsatisfiable )
 	{
 		CreateRangeNFA( _rctxt, 
@@ -639,13 +658,6 @@ protected:	// accessed by _nfa_context:
 #endif //!NDEBUG
 		m_pSetAcceptStates->insert( vtAcceptState );
 		Assert( pib.second );
-	
-	#ifndef _L_NFA_UNIQUETRIGGERS
-		if ( !m_nTriggers )
-			m_nTriggers = 1;
-	#else //!_L_NFA_UNIQUETRIGGERS
-		++m_nTriggers;
-	#endif//!_L_NFA_UNIQUETRIGGERS
 	}
 
 	void	AddAction( _TyState _st, const _TySdpActionBase * _pSdpAction )
@@ -1082,6 +1094,7 @@ public:
 	typedef typename _TyNfa::_TyGraphLink _TyGraphLink;
 	typedef typename _TyNfa::_TySetStates _TySetStates;
 	typedef typename _TyNfa::_TyUnsignedChar _TyUnsignedChar;
+	typedef typename _TyBase::_TyActionObjectBase _TyActionObjectBase;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 	typedef typename _TyBase::_TyRange _TyRange;
 	typedef typename _TyBase::_TyState _TyState;
@@ -1228,11 +1241,11 @@ public:
 		//	where it is ).
 		RNfa().CreateLookaheadNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void CreateTriggerNFA()
+	void CreateTriggerNFA( _TyActionObjectBase const & _raob )
 	{
 		// We need to save the intermediate accept state ( otherwise we won't know
 		//	where it is ).
-		RNfa().CreateTriggerNFA( *this );
+		RNfa().CreateTriggerNFA( *this, _raob );
 	}
 	void CreateOrNFA( _TyBase & _rcb )
 	{

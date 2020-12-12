@@ -271,6 +271,78 @@ public:
 	}
 };
 
+// _l_trigger_noop:
+// This trigger is used by tokens that don't store any data.
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+struct _l_trigger_noop
+	: public _l_action_object_base< t_TyChar, t_fInLexGen >
+{
+private:
+	typedef _l_trigger_noop	_TyThis;
+	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+public:
+	typedef t_TyChar _TyChar;
+	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
+	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
+	using _TyBase::s_fInLexGen;	
+
+	_l_trigger_noop() = default;
+	_l_trigger_noop( _TyThis const & _r ) = default;
+	bool FIsNull() const
+	{
+		return true;
+	}
+	// Return the unique token ID associated with this object.
+	static constexpr vtyTokenIdent GetTokenId()
+	{
+		return s_kiTrigger;
+	}
+	constexpr vtyTokenIdent VGetTokenId() const
+	{
+		return s_kiTrigger;
+	}
+	void Clear()
+	{
+	}
+  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  {
+    return StaticRenderActionType(_ros, _pcCharName);
+  }
+  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  {
+    return StaticRenderActionType(_ros, _pcCharName);
+  }
+  template < class t_TyOStream >
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	{
+		_ros << "_l_trigger_noop< " << _pcCharName << ", " << s_kiTrigger << ", false >";
+	}
+	string VStrTypeName( const char * _pcCharName ) const
+	{
+		return StaticStrTypeName( _pcCharName );
+	}
+	static string StaticStrTypeName( const char * _pcCharName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_trigger_noop< %s, %u, false >", _pcCharName, s_kiTrigger );
+		return str;
+	}
+	// We pass the action object the most derived analyzer.
+	template < class t_TyAnalyzer >
+	bool action( t_TyAnalyzer & _rA )
+	{
+		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+#ifdef AXION_USE_TRIGGER_BITVEC
+		_rA.SetGotTrigger( s_kiTrigger ); // The only thing we do is record that we got the trigger.
+#endif //AXION_USE_TRIGGER_BITVEC
+		return true;
+	}
+	void swap( _TyThis & _r )
+	{
+	}
+protected:
+};
+
 // _l_trigger_bool:
 // Trigger that stores a boolean. If the trigger fires then the boolean is true.
 template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >

@@ -807,274 +807,191 @@ protected:
   {
     switch (m_pspCur->m_nt)
     {
-    case 0:
-      if (t_fSupportTriggers)
+      case 0:
+        break;
+
+      case 1:
       {
-        // Then must check for a trigger transition:
-        if (m_pspCur->m_nTriggers)
+        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
+            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
         {
-          // Then have one - execute the triggers:
-          Assert( !!m_pspCur->m_pspTrigger );
-          _execute_triggers();
-          LXOBJ_DOTRACE( "Moved to trigger." );
-          return true; // advanced the state.
+          m_pspCur = m_pspCur->m_rgt[0].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
         }
       }
-      return false;
       break;
 
-    case 1:
-    {
-      if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-          *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+      case 2:
       {
-        m_pspCur = m_pspCur->m_rgt[0].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else
-      {
-        if (t_fSupportTriggers)
+        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
+            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
         {
-          // Then must check for a trigger transition:
-          if (m_pspCur->m_nTriggers)
-          {
-            // Then have one - execute the triggers:
-            _execute_triggers();
-            LXOBJ_DOTRACE( "Moved to trigger." );
-            return true; // advanced the state.
-          }
+          m_pspCur = m_pspCur->m_rgt[0].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
         }
-        return false;
+        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[1].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
       }
-    }
-    break;
+      break;
 
-    case 2:
-    {
-      if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-          *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+      case 3:
       {
-        m_pspCur = m_pspCur->m_rgt[0].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[1].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[1].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else
-      {
-        if (t_fSupportTriggers)
+        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
+            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
         {
-          // Then must check for a trigger transition:
-          if (m_pspCur->m_nTriggers)
-          {
-            // Then have one - execute the triggers:
-            _execute_triggers();
-            LXOBJ_DOTRACE( "Moved to trigger." );
-            return true; // advanced the state.
-          }
+          m_pspCur = m_pspCur->m_rgt[0].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
         }
-        return false;
+        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[1].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+        else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[2].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[2].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
       }
-    }
-    break;
+      break;
 
-    case 3:
-    {
-      if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-          *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+      case 4:
       {
-        m_pspCur = m_pspCur->m_rgt[0].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[1].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[1].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[2].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[2].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else
-      {
-        if (t_fSupportTriggers)
+        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
+            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
         {
-          // Then must check for a trigger transition:
-          if (m_pspCur->m_nTriggers)
-          {
-            // Then have one - execute the triggers:
-            _execute_triggers();
-            LXOBJ_DOTRACE( "Moved to trigger." );
-            return true; // advanced the state.
-          }
+          m_pspCur = m_pspCur->m_rgt[0].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
         }
-        return false;
+        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[1].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+        else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[2].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[2].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+        else if (*m_pcCur <= m_pspCur->m_rgt[3].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[3].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[3].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
       }
-    }
-    break;
+      break;
 
-    case 4:
-    {
-      if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-          *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+      case 5:
       {
-        m_pspCur = m_pspCur->m_rgt[0].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[1].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[1].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[2].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[2].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[3].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[3].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[3].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else
-      {
-        if (t_fSupportTriggers)
+        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
+            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
         {
-          // Then must check for a trigger transition:
-          if (m_pspCur->m_nTriggers)
-          {
-            // Then have one - execute the triggers:
-            _execute_triggers();
-            LXOBJ_DOTRACE( "Moved to trigger." );
-            return true; // advanced the state.
-          }
+          m_pspCur = m_pspCur->m_rgt[0].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
         }
-        return false;
+        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[1].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+        else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[2].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[2].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+        else if (*m_pcCur <= m_pspCur->m_rgt[3].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[3].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[3].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+        else if (*m_pcCur <= m_pspCur->m_rgt[4].m_last &&
+                *m_pcCur >= m_pspCur->m_rgt[4].m_first)
+        {
+          m_pspCur = m_pspCur->m_rgt[4].m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
       }
-    }
-    break;
+      break;
 
-    case 5:
+      default:
+      {
+        // Enough elements to warrant a binary search:
+        _TyTransition *ptLwr =
+            lower_bound(m_pspCur->m_rgt,
+                        m_pspCur->m_rgt + m_pspCur->m_nt,
+                        *m_pcCur, m_compSearch);
+        if ((*m_pcCur >= ptLwr->m_first) &&
+            (*m_pcCur <= ptLwr->m_last))
+        {
+          m_pspCur = ptLwr->m_psp;
+          ++m_pcCur;
+          LXOBJ_DOTRACE( "Moved to state." );
+          return true;
+        }
+      }
+    }
+    if (t_fSupportTriggers)
     {
-      if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-          *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+      // Then must check for a trigger transition:
+      if (m_pspCur->m_nTriggers)
       {
-        m_pspCur = m_pspCur->m_rgt[0].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[1].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[1].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[2].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[2].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[3].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[3].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[3].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else if (*m_pcCur <= m_pspCur->m_rgt[4].m_last &&
-               *m_pcCur >= m_pspCur->m_rgt[4].m_first)
-      {
-        m_pspCur = m_pspCur->m_rgt[4].m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
+        // Then have one - execute the triggers:
+        Assert( !!m_pspCur->m_pspTrigger );
+        _execute_triggers();
+        LXOBJ_DOTRACE( "Executed triggers." );
+        return true; // advanced the state.
       }
       else
+      if ( !!m_pspCur->m_pspTrigger ) // This is the "gateway trigger" to a trigger state.
       {
-        if (t_fSupportTriggers)
-        {
-          // Then must check for a trigger transition:
-          if (m_pspCur->m_nTriggers)
-          {
-            // Then have one - execute the triggers:
-            _execute_triggers();
-            LXOBJ_DOTRACE( "Moved to trigger." );
-            return true; // advanced the state.
-          }
-        }
-        return false;
+        Assert( !!m_pspCur->m_pspTrigger->m_nTriggers ); // We should be headed to a trigger state.
+        m_pspCur = m_pspCur->m_pspTrigger; // Move to the trigger.
+        return true; // advanced the state.
       }
     }
-    break;
-
-    default:
-    {
-      // Enough elements to warrant a binary search:
-      _TyTransition *ptLwr =
-          lower_bound(m_pspCur->m_rgt,
-                      m_pspCur->m_rgt + m_pspCur->m_nt,
-                      *m_pcCur, m_compSearch);
-      if ((*m_pcCur >= ptLwr->m_first) &&
-          (*m_pcCur <= ptLwr->m_last))
-      {
-        m_pspCur = ptLwr->m_psp;
-        ++m_pcCur;
-        LXOBJ_DOTRACE( "Moved to state." );
-        return true;
-      }
-      else
-      {
-        if (t_fSupportTriggers)
-        {
-          // Then must check for a trigger transition:
-          if (m_pspCur->m_nTriggers)
-          {
-            // Then have one - execute the triggers:
-            _execute_triggers();
-            LXOBJ_DOTRACE( "Moved to trigger." );
-            return true; // advanced the state.
-          }
-        }
-        return false;
-      }
-    }
-    }
+    return false;
   }
 };
 

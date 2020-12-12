@@ -47,6 +47,7 @@ protected:
 	using _TyBase::m_iCurState;
 	using _TyBase::m_setAlphabet;
 	using _TyBase::_STUpdateNodeLookup;
+	using _TyBase::ms_kreTriggerStart;
 public:
 	using _TyBase::m_nodeLookup;
 	using _TyBase::get_allocator;
@@ -108,12 +109,20 @@ public:
   typedef map< vtyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
 
+	// We consume the tokenid->rangeel map converting it to a rangeel->tokenid map as we consume.
+	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
+	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
+	typedef typename _Alloc_traits< typename map< _TyRangeEl, vtyTokenIdent >::value_type, t_TyAllocator >::allocator_type _TyMapTriggerTransitionToTokenIdAllocator;
+	typedef map< _TyRangeEl, vtyTokenIdent, less< vtyTokenIdent >, _TyMapTriggerTransitionToTokenIdAllocator > _TyMapTriggerTransitionToTokenId;
+	_TyMapTriggerTransitionToTokenId m_mapTriggerTransitionToTokenId;
+
 	_dfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		: _TyBase( _rAlloc ),
 			m_gDfa( typename _TyGraph::_TyAllocatorSet( _rAlloc, _rAlloc, _rAlloc ) ),
 			m_fHasDeadState( false ),
 			m_rgrngLookup( _rAlloc ),
 			m_pSetCompCharRange( _rAlloc ),
+			m_mapTriggerTransitionToTokenId( _rAlloc ),
 			m_pCCRIndex( _rAlloc ),
 			m_fHasLookaheads( false ),
 			m_nTriggers( 0 ),
@@ -167,6 +176,18 @@ public:
 		{
 			_praiUnsatisfiable->first = AlphabetSize() - m_nUnsatisfiableTransitions;
 			_praiUnsatisfiable->second = _praiUnsatisfiable->first + m_nUnsatisfiableTransitions;
+		}
+	}
+
+	void ConsumeMapTokenIdToTriggerTransition( _TyMapTokenIdToTriggerTransition const & _r )
+	{
+		Assert( !m_mapTriggerTransitionToTokenId.size() );
+		typename _TyMapTokenIdToTriggerTransition::const_iterator cit = _r.begin();
+		for ( ; _r.end() != cit; ++cit )
+		{
+			pair< typename _TyMapTriggerTransitionToTokenId::iterator, bool > pib = m_mapTriggerTransitionToTokenId.insert( typename _TyMapTriggerTransitionToTokenId::value_type( ms_kreTriggerStart + cit->second, cit->first ) );
+			VerifyThrow( !!pib.second );
+			pib = m_mapTriggerTransitionToTokenId.insert( typename _TyMapTriggerTransitionToTokenId::value_type( ms_kreTriggerStart + cit->second+1, cit->first ) );
 		}
 	}
 
