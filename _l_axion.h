@@ -138,14 +138,16 @@ struct _l_action_object_base< t_TyChar, false >
 	typedef _l_action_object_base _TyThis;
 public:
 	static const bool s_fInLexGen = false;
+	typedef _l_value< t_TyChar > _TyValue;
+
 	// Return the ID for this action object.
 	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
 
 	// Clear any data that is residing within this object.
 	virtual void Clear() = 0;
 
-	// Get the set of data from the object in a generic form.
-	//virtual void GetData() = 0;
+	// Get the set of data (the "value") from the object in a generic form. Leave the object empty of data.
+	virtual void GetAndClearValue( _TyValue & _rv ) = 0;
 };
 
 // Some default action objects - useful for debugging and testing:
@@ -340,6 +342,10 @@ public:
 	void swap( _TyThis & _r )
 	{
 	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		_rv.Clear(); // No values here.
+	}
 protected:
 };
 
@@ -414,6 +420,11 @@ public:
 	void swap( _TyThis & _r )
 	{
 		std::swap( m_f, _r.m_f );
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		_rv.SetValue( m_f );
+		Clear();
 	}
 protected:
 	bool m_f{false};
@@ -497,6 +508,11 @@ public:
 	{
 		std::swap( m_tpPos, _r.m_tpPos );
 	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		_rv.SetValue( m_tpPos );
+		Clear();
+	}
 protected:
 	vtyDataPosition m_tpPos{ vtpNullDataPosition };
 };
@@ -563,6 +579,7 @@ public:
 	{
 			_TyBase::swap( _r );
 	}
+	using _TyBase::GetAndClearValue;
 };
 
 // _l_trigger_strings:
@@ -581,18 +598,18 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
-	typedef _l_data< t_TyChar > _TyToken;
+	typedef _l_data< t_TyChar > _TyData;
 	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	_l_trigger_strings() = default;
 	_l_trigger_strings( _TyThis const & _r ) = default;
 	void Clear()
 	{
 		_TyBase::Clear();
-		m_tkStrings.Clear();
+		m_dtStrings.Clear();
 	}
 	bool FIsNull() const
 	{
-		return _TyBase::FIsNull() && m_tkStrings.FIsNull();
+		return _TyBase::FIsNull() && m_dtStrings.FIsNull();
 	}
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
@@ -641,7 +658,7 @@ public:
 						( vtpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
-				m_tkStrings.Append( posBegin, posEnd );
+				m_dtStrings.Append( posBegin, posEnd );
 			}
 		}
 		return true;
@@ -649,18 +666,23 @@ public:
 	template < class t_TyAnalyzer >
 	void Append( t_TyAnalyzer & _rA, vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
 	{
-		m_tkStrings.Append( _posBegin, _posEnd, _nType );
+		m_dtStrings.Append( _posBegin, _posEnd, _nType );
 	}
 	void swap( _TyThis & _r )
 	{
 		// We swap the base because it's part of this object but probably the caller won't use the value - also probably the value is null.
 		// Also the data within it is redundant as it would be contained with m_skStrings.
 		_TyBase::swap( _r );
-		m_tkStrings.swap( _r.m_tkStrings );
+		m_dtStrings.swap( _r.m_dtStrings );
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		_rv.SetValue( m_dtStrings );
+		Clear();
 	}
 protected:
 	using _TyBase::GetClearPosition;
-	_TyToken m_tkStrings;
+	_TyData m_dtStrings;
 };
 
 // _l_trigger_string_typed_range:
@@ -682,7 +704,6 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
-	typedef _l_data< _TyChar > _TyToken;
 	typedef _l_trigger_position< _TyChar, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	typedef t_TyActionStoreData _tyActionStoreData;
 	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
@@ -750,6 +771,12 @@ public:
 	void swap( _TyThis & _r )
 	{
 		_TyBase::swap( _r );
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		// We shouldn't get here but if so call the base:
+		AssertSz( false, "No reason to use this class within a token since it stores its value in another trigger/token.");
+		_TyBase::GetAndClearValue( _rv );
 	}
 protected:
 	using _TyBase::GetClearPosition;
@@ -864,6 +891,22 @@ public:
 	{
 		m_tuple.swap( _r.m_tuple );
 	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		_rv.SetSize( sizeof...(t_TysTriggers) );
+		std::apply
+    (
+        [&_rv]( t_TysTriggers &... _tuple )
+        {
+					size_t nCurEl = 0;
+					( ..., _tuple.GetAndClearValue( _rv[nCurEl++] ) );
+        }, m_tuple
+    );
+		
+		// We shouldn't get here but if so call the base:
+		AssertSz( false, "No reason to use this class within a token since it stores its value in another trigger/token.");
+		_TyBase::GetAndClearValue( _rv );
+	}
 protected:
 	_TyTuple m_tuple; // ya got yer tuple.
 };
@@ -970,6 +1013,25 @@ public:
 	{
 		m_saTuples.swap( _r.m_saTuples );
 		Assert( FIsNull() ); // We generally expect an empty SegArray to be swapped in. This assertion can be removed if there is a usage case for swapping in a non-empty.
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		const size_type knEls = m_saTuples.NElements();
+		_rv.SetSize( knEls );
+		for ( size_type nEl = 0; nEl < knEls; ++nEl )
+		{
+			_TyValue & rvEl = _rv[nEl];
+			_TyTuple & rtuple = m_saTuples[nEl];
+			_rv.SetSize( sizeof...(t_TysTriggers) );
+			std::apply
+			(
+					[&rvEl]( t_TysTriggers &... _tuple )
+					{
+						size_t nCurEl = 0;
+						( ..., _tuple.GetAndClearValue( rvEl[nCurEl++] ) );
+					}, rtuple
+			);
+		}
 	}
 protected:
 	// We save multiple sets of tuple values in a SegArray.
