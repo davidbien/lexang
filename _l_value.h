@@ -15,6 +15,11 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
+template< class... Ts > 
+struct _VisitHelpOverloadFCall : Ts... { using Ts::operator()...; };
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts> _VisitHelpOverloadFCall(Ts...) -> _VisitHelpOverloadFCall<Ts...>;
+
 template< class t_tyChar, size_t s_knbySegSize = 1024 >
 class _l_value
 {
@@ -27,11 +32,20 @@ public:
   typedef _tySizeType size_type;
   // Use monostate to allow an "empty" value here.
   // These are the possible values of a action object.
-  typedef variant< monostate, bool, vtyDataPosition, _TyData, _TySegArrayValues > _TyVariant;
+  // We add all three types of STL strings to the variant - at least under linux - char, char16_t and char32_t.
+  // Specifying them in this manner should allow for no code changes under Windows even though wchar_t is char16_t under Windows.
+  typedef basic_string< char > _TyStrChar8;
+  typedef basic_string< char16_t > _TyStrChar16;
+  typedef basic_string< char32_t > _TyStrChar32;
+  typedef variant< monostate, bool, vtyDataPosition, _TyData, _TyStrChar8, _TyStrChar16, _TyStrChar32, _TySegArrayValues > _TyVariant;
 
   _l_value() = default;
   _l_value(_l_value const & ) = default;
   _l_value & operator =( _l_value const & ) = default;
+  void swap( _TyThis & _r )
+  {
+    m_var.swap( _r.m_var );
+  }
 
   bool FIsNull() const
   {
@@ -71,21 +85,87 @@ public:
       m_var.emplace<_TySegArrayValues>( s_knSegArrayInit );
     get< _TySegArrayValues >( m_var ).SetSize( _stNEls );
   }
+  // This fails with a throw if we don't contain an array.
+  void GetSize() const
+  {
+    Assert( FIsArray() );
+    return get< _TySegArrayValues >( m_var ).NElements();
+  }
 
   _TyThis & operator [] ( size_type _nEl )
   {
     Assert( FIsArray() ); // Assert and then we will throw below.
-    return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we 
+    return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we don't contain an array.
   }
   _TyThis const & operator [] ( size_type _nEl ) const
   {
     Assert( FIsArray() ); // Assert and then we will throw below.
-    return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we 
+    return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we don't contain an array.
+  }
+
+  // Output the data to a JsoValue.
+  template < class t_TyCharOut >
+  void ToJsoValue( JsoValue< t_TyCharOut > & _rjv ) const
+  {
+    Assert( _rjv.FIsNull() );
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate _ms) {},
+      [&_rjv](bool _f)
+      {  
+        _rjv.SetBoolValue( _f );
+      },
+      [&_rjv](vtyDataPosition _dp)
+      {
+        _rjv.SetValue( _dp );
+      },
+      [&_rjv](_TyData const & _rdt)
+      {
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
+        _rdt.ToJsoValue( _rjv );
+      },
+      [&_rjv](_TyStrChar8 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TyStrChar16 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TyStrChar32 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TySegArrayValues const & _rrg)
+      {
+        const size_type knEls = _rrg.NElements();
+        _rjv.SetArrayCapacity( knEls ); // preallocate
+        for ( size_type nEl = 0; nEl < knEls; ++nEl )
+          _rrg[nEl].ToJsoValue( _rjv.CreateOrGetEl( nEl ) );
+      },
+    }, m_var );
+  }
+
+  // Convert stream position ranges to strings throughout the entire value (i.e. recursively) using the stream _rs.
+  template < class t_TyStream, class t_tyCharOut = t_TyChar >
+  void ConvertStrings( t_TyStream & _rs )
+  {
+    if ( FIsArray() )
+    {
+      _TySegArrayValues const & rrg = get< _TySegArrayValues >( m_var );
+      const size_type knEls = rrg.NElements();
+      for ( size_type nEl = 0; nEl < knEls; ++nEl )
+        rrg[nEl].ConvertStrings( _rs );
+    }
+    else
+    if ( holds_alternative< _TyData >( m_var ) )
+    {
+      // Allow the stream to decide how to deal with any set of strings that might be present.
+      _rs.ConvertStrings< t_tyCharOut >( *this );
+    }
   }
 
 protected:
   _TyVariant m_var;
 };
-
 
 __REGEXP_END_NAMESPACE

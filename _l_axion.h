@@ -582,15 +582,16 @@ public:
 	using _TyBase::GetAndClearValue;
 };
 
-// _l_trigger_strings:
-// This is a triggered simple set of strings that stores the strings within it. 
+// _l_trigger_string:
+// This is a triggered simple set of strings that stores the strings within it.
 // This is not a resultant token but may be part of a resultant token.
+// Conceptually this is a single string - i.e. it is translated (or may be and is intended to be) as a single string that has multiple segments with potentially different m_nType values.
 template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
-struct _l_trigger_strings
+struct _l_trigger_string
 	: public _l_trigger_position_end< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
 {
 private:
-	typedef _l_trigger_strings	_TyThis;
+	typedef _l_trigger_string	_TyThis;
 	typedef _l_trigger_position_end< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
 	typedef t_TyChar _TyChar;
@@ -600,8 +601,8 @@ public:
 	using _TyBase::s_fInLexGen;	
 	typedef _l_data< t_TyChar > _TyData;
 	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
-	_l_trigger_strings() = default;
-	_l_trigger_strings( _TyThis const & _r ) = default;
+	_l_trigger_string() = default;
+	_l_trigger_string( _TyThis const & _r ) = default;
 	void Clear()
 	{
 		_TyBase::Clear();
@@ -625,7 +626,7 @@ public:
   template < class t_TyOStream >
 	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
 	{
-		_ros << "_l_trigger_strings< " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
+		_ros << "_l_trigger_string< " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
 	}
 	string VStrTypeName( const char * _pcCharName ) const
 	{
@@ -634,7 +635,7 @@ public:
 	static string StaticStrTypeName( const char * _pcCharName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_strings< %s, %u, %u, false >", _pcCharName, s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_string< %s, %u, %u, false >", _pcCharName, s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -677,8 +678,8 @@ public:
 	}
 	void GetAndClearValue( _TyValue & _rv )
 	{
-		_rv.SetValue( m_dtStrings );
-		Clear();
+		_rv.SetValue( std::move(m_dtStrings) );
+		Assert( m_dtString.FIsNull() );
 	}
 protected:
 	using _TyBase::GetClearPosition;
@@ -737,7 +738,7 @@ public:
 	{
 		string strActionStoreData( _tyActionStoreData::StaticStrTypeName( _pcCharName ) );
 		string str;
-		PrintfStdStr( str, "_l_trigger_strings< %u, %s, %u, %u, false >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_string< %u, %s, %u, %u, false >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -902,10 +903,6 @@ public:
 					( ..., _tuple.GetAndClearValue( _rv[nCurEl++] ) );
         }, m_tuple
     );
-		
-		// We shouldn't get here but if so call the base:
-		AssertSz( false, "No reason to use this class within a token since it stores its value in another trigger/token.");
-		_TyBase::GetAndClearValue( _rv );
 	}
 protected:
 	_TyTuple m_tuple; // ya got yer tuple.
@@ -1071,7 +1068,7 @@ struct __map_to_base_class< _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLex
 };
 
 template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
-struct __map_to_base_class< _l_trigger_strings< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
+struct __map_to_base_class< _l_trigger_string< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
 {
 	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
 };

@@ -87,6 +87,7 @@ class _l_data
 public:
   typedef t_TyChar _TyChar;
   typedef SegArray< _l_data_typed_range, std::false_type, vtyDataPosition > _TySegArray;
+  typedef _TySegArray::_tySizeType size_type;
   static constexpr size_t s_knSegArrayInit = s_knbySegSize;
   static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
   typedef std::basic_string< _TyChar > _TyStdStr;
@@ -273,7 +274,30 @@ public:
     _PSegArray()->Overwrite( _PSegArray()->NElements(), (const ns_re::_l_data_typed_range *)&ttrWrite, 1 );
     AssertValid();
   }
+  template < class t_TyCharOut >
+  void ToJsoValue( JsoValue< t_TyCharOut > & _rjv ) const
+  {
+    if ( FIsNull() )
+      _rjv.SetNullValue();
+    else
+    if ( FContainsSinglePos() )
+      _ToJsoValue( _rjv, m_dtrData );
+    else
+    {
+      const size_type knEls = _PSegArray()->NElements();
+      for ( size_type n = 0; n < knEls; ++n )
+        _ToJsoValue( reinterpret_cast< _l_data_typed_range_pod const & >( _rjv[n] ) );
+    }
+  }
 protected:
+  static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range_pod const & _rttr )
+  {
+    Assert( _rjv.FIsNull() );
+    _rjv.SetValueType( ejvtObject );
+    _rjv.SetValue( "b", _rttr.m_posBegin );
+    _rjv.SetValue( "e", _rttr.m_posEnd );
+    _rjv.SetValue( "t", _rttr.m_nType );
+  }
   void _SetContainsSinglePos()
   {
     m_u64Marker = 0xffffffffffffffff;
