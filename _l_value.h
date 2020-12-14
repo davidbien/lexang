@@ -11,6 +11,7 @@
 // 11DEC2020
 
 #include "_l_inc.h"
+#include <string_view>
 #include <variant>
 
 __REGEXP_BEGIN_NAMESPACE
@@ -20,7 +21,7 @@ struct _VisitHelpOverloadFCall : Ts... { using Ts::operator()...; };
 // explicit deduction guide (not needed as of C++20)
 template<class... Ts> _VisitHelpOverloadFCall(Ts...) -> _VisitHelpOverloadFCall<Ts...>;
 
-template< class t_tyChar, size_t s_knbySegSize = 1024 >
+template< class t_TyChar, size_t s_knbySegSize = 1024 >
 class _l_value
 {
   typedef _l_value _TyThis;
@@ -37,7 +38,17 @@ public:
   typedef basic_string< char > _TyStrChar8;
   typedef basic_string< char16_t > _TyStrChar16;
   typedef basic_string< char32_t > _TyStrChar32;
-  typedef variant< monostate, bool, vtyDataPosition, _TyData, _TyStrChar8, _TyStrChar16, _TyStrChar32, _TySegArrayValues > _TyVariant;
+  template < class t_TyChar >
+  using get_string_type = basic_string< t_TyChar >;
+
+  // Also allow basic_string_views of every type since that can be used until character translation is needed.
+  typedef basic_string_view< char > _TyStrViewChar8;
+  typedef basic_string_view< char16_t > _TyStrViewChar16;
+  typedef basic_string_view< char32_t > _TyStrViewChar32;
+  template < class t_TyChar >
+  using get_string_view_type = basic_string_view< t_TyChar >;
+
+  typedef variant< monostate, bool, vtyDataPosition, _TyData, _TyStrChar8, _TyStrViewChar8, _TyStrChar16, _TyStrViewChar16, _TyStrChar32, _TyStrViewChar32, _TySegArrayValues > _TyVariant;
 
   _l_value() = default;
   _l_value(_l_value const & ) = default;
@@ -56,10 +67,10 @@ public:
     m_var.emplace<monostate>();
   }
 
-  template < class t_ty >
+  template < class t_Ty >
   bool FIsA() const
   {
-    return holds_alternative<t_ty>( m_var );
+    return holds_alternative<t_Ty>( m_var );
   }
   bool FIsArray() const
   {
@@ -67,15 +78,15 @@ public:
   }
 
   // These should work in many cases.
-  template < class t_ty >
-  SetValue( t_ty const & _rv )
+  template < class t_Ty >
+  SetValue( t_Ty const & _rv )
   {
-    m_var.emplace<t_ty>( _rv );
+    m_var.emplace<t_Ty>( _rv );
   }
-  template < class t_ty >
-  SetValue( t_ty && _rrv )
+  template < class t_Ty >
+  SetValue( t_Ty && _rrv )
   {
-    m_var.emplace<t_ty>(std::move(_rrv));
+    m_var.emplace<t_Ty>(std::move(_rrv));
   }
 
   // This ensures we have an array of _l_values within and then sets the size to the passed size.
@@ -127,11 +138,23 @@ public:
       {
         _rjv.SetStringValue( _rstr );
       },
+      [&_rjv](_TyStrViewChar8 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
       [&_rjv](_TyStrChar16 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
       },
+      [&_rjv](_TyStrViewChar16 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
       [&_rjv](_TyStrChar32 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TyStrViewChar32 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
       },
@@ -146,25 +169,79 @@ public:
   }
 
   // Convert stream position ranges to strings throughout the entire value (i.e. recursively) using the stream _rs.
-  template < class t_TyStream, class t_tyCharOut = t_TyChar >
+  // If there are strings that are present which are not in the representation t_TyCharOut then these are converted to t_TyCharOut.
+  template < class t_TyStream, class t_TyCharOut = t_TyChar >
   void ConvertStrings( t_TyStream & _rs )
   {
-    if ( FIsArray() )
-    {
-      _TySegArrayValues const & rrg = get< _TySegArrayValues >( m_var );
-      const size_type knEls = rrg.NElements();
-      for ( size_type nEl = 0; nEl < knEls; ++nEl )
-        rrg[nEl].ConvertStrings( _rs );
-    }
-    else
-    if ( holds_alternative< _TyData >( m_var ) )
-    {
-      // Allow the stream to decide how to deal with any set of strings that might be present.
-      _rs.ConvertStrings< t_tyCharOut >( *this );
-    }
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate _ms) {},
+      [](bool _f) {},
+      [&_rjv](vtyDataPosition _dp) {},
+      [&_rjv](_TyData const & _rdt)
+      {
+        // Allow the stream to decide how to deal with any set of strings that might be present.
+        _rs.ConvertStrings< t_TyCharOut >( *this );
+      },
+      [&_rjv](_TyStrChar8 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TyStrViewChar8 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TyStrChar16 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TyStrViewChar16 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TyStrChar32 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TyStrViewChar32 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TySegArrayValues const & _rrg)
+      {
+        const size_type knEls = _rrg.NElements();
+        for ( size_type nEl = 0; nEl < knEls; ++nEl )
+          _rrg[nEl].ConvertStrings( _rs );
+      },
+    }, m_var );
   }
 
 protected:
+  template < class t_TyCharConvertFrom, class t_TyCharConvertTo >
+  static void _ConvertStringValue( get_string_type< t_TyCharConvertFrom > & _rstr ) 
+    requires ( is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+  { // no-op.
+  }
+  template < class t_TyCharConvertFrom, class t_TyCharConvertTo >
+  static void _ConvertStringValue( get_string_type< t_TyCharConvertFrom > & _rstr ) 
+    requires ( !is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+  {
+    get_string_type< t_TyCharConvertTo > strConverted;
+    ConvertString( strConverted, _rstr );
+    m_var.emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
+  }
+  template < class t_TyCharConvertFrom, class t_TyCharConvertTo >
+  static void _ConvertStringValue( get_string_view_type< t_TyCharConvertFrom > & _rstr ) 
+    requires ( is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+  { // no-op.
+  }
+  template < class t_TyCharConvertFrom, class t_TyCharConvertTo >
+  static void _ConvertStringValue( get_string_view_type< t_TyCharConvertFrom > & _rstr ) 
+    requires ( !is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+  {
+    get_string_type< t_TyCharConvertTo > strConverted;
+    ConvertString( strConverted, _rstr );
+    m_var.emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
+  }
   _TyVariant m_var;
 };
 
