@@ -13,6 +13,7 @@
 #include "_l_inc.h"
 #include <string_view>
 #include <variant>
+#include "segarray.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -27,7 +28,7 @@ class _l_value
   typedef _l_value _TyThis;
 public:
   typedef _l_data< t_TyChar > _TyData;
-  static constexpr size_t s_knSegArrayInit = s_knbySegSize;
+  static constexpr size_t s_knSegArrayInit = s_knbySegSize * sizeof(t_TyChar);
   typedef SegArray< _TyThis, std::true_type > _TySegArrayValues;
   typedef typename _TySegArrayValues::_tySizeType _tySizeType;
   typedef _tySizeType size_type;
@@ -48,7 +49,20 @@ public:
   template < class t_TyChar >
   using get_string_view_type = basic_string_view< t_TyChar >;
 
-  typedef variant< monostate, bool, vtyDataPosition, _TyData, _TyStrChar8, _TyStrViewChar8, _TyStrChar16, _TyStrViewChar16, _TyStrChar32, _TyStrViewChar32, _TySegArrayValues > _TyVariant;
+  // Also need views into segmented arrays which may not be contiguous memory - i.e. a given view may span chunk boundary(s).
+  // Want to avoid translating the string until the reader asks for it to be translated - or even giving it a contiguous chunk of memory.
+  typedef SegArrayView< char > _TySegArrayViewChar8;
+  typedef SegArrayView< char16_t > _TySegArrayViewChar16;
+  typedef SegArrayView< char32_t > _TySegArrayViewChar32;
+  template < class t_TyChar >
+  using get_SegArrayView_type = SegArrayView< t_TyChar >;
+
+  // Our big old variant.
+  typedef variant<  monostate, bool, vtyDataPosition, _TyData, 
+                    _TyStrChar8, _TyStrViewChar8, _TySegArrayViewChar8, 
+                    _TyStrChar16, _TyStrViewChar16, _TySegArrayViewChar16,
+                    _TyStrChar32, _TyStrViewChar32, _TySegArrayViewChar32,
+                    _TySegArrayValues > _TyVariant;
 
   _l_value() = default;
   _l_value(_l_value const & ) = default;
@@ -142,6 +156,16 @@ public:
       {
         _rjv.SetStringValue( _rstr );
       },
+      [&_rjv](_TySegArrayViewChar8 const & _rsav)
+      {
+        _TyStrChar8 str;
+        _TyStrViewChar8 sv;
+        bool fSV = _rsav.GetStringViewOrString( sv, str );
+        if ( fSV )
+          _rjv.SetStringValue( sv );
+        else
+          _rjv.SetStringValue( str );
+      },
       [&_rjv](_TyStrChar16 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
@@ -150,6 +174,16 @@ public:
       {
         _rjv.SetStringValue( _rstr );
       },
+      [&_rjv](_TySegArrayViewChar16 const & _rsav)
+      {
+        _TyStrChar16 str;
+        _TyStrViewChar16 sv;
+        bool fSV = _rsav.GetStringViewOrString( sv, str );
+        if ( fSV )
+          _rjv.SetStringValue( sv );
+        else
+          _rjv.SetStringValue( str );
+      },
       [&_rjv](_TyStrChar32 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
@@ -157,6 +191,16 @@ public:
       [&_rjv](_TyStrViewChar32 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TySegArrayViewChar32 const & _rsav)
+      {
+        _TyStrChar32 str;
+        _TyStrViewChar32 sv;
+        bool fSV = _rsav.GetStringViewOrString( sv, str );
+        if ( fSV )
+          _rjv.SetStringValue( sv );
+        else
+          _rjv.SetStringValue( str );
       },
       [&_rjv](_TySegArrayValues const & _rrg)
       {
@@ -190,6 +234,10 @@ public:
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
+      [&_rjv](_TySegArrayViewChar8 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
       [&_rjv](_TyStrChar16 const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
@@ -198,11 +246,19 @@ public:
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
+      [&_rjv](_TySegArrayViewChar16 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
       [&_rjv](_TyStrChar32 const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
       [&_rjv](_TyStrViewChar32 const & _rstr)
+      {
+        _ConvertStringValue< t_TyCharOut >( _rstr );
+      },
+      [&_rjv](_TySegArrayViewChar32 const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
@@ -242,7 +298,62 @@ protected:
     ConvertString( strConverted, _rstr );
     m_var.emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
   }
+  template < class t_TyCharConvertFrom, class t_TyCharConvertTo >
+  static void _ConvertStringValue( get_SegArrayView_type< t_TyCharConvertFrom > & _rsav ) 
+    requires ( is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+  { // no-op.
+  }
+  template < class t_TyCharConvertFrom, class t_TyCharConvertTo >
+  static void _ConvertStringValue( get_SegArrayView_type< t_TyCharConvertFrom > & _rsav ) 
+    requires ( !is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+  {
+    get_string_view_type< t_TyCharConvertFrom > sv;
+    get_string_type< t_TyCharConvertFrom > str;
+    bool fSV = _rsav.GetStringViewOrString( sv, str );
+    get_string_type< t_TyCharConvertTo > strConverted;
+    if ( fSV )
+      ConvertString( strConverted, sv );
+    else
+      ConvertString( strConverted, str );
+    m_var.emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
+  }
   _TyVariant m_var;
 };
+
+#if 0 // Not sure about this - may store in _l_token.
+// _l_value_w_buffer
+// This is a value object that comes with a buffer the contents of which are referred to by some members of the
+//	aggregated value object. This is all to speed and allow non-seeking file support such that STDIN can be used
+//  as an input stream.
+// Note that only the topmost object is 
+template< class t_TyChar, size_t s_knbySegSize = 1024 >
+class _l_value_w_buffer : public _l_value< t_TyChar, s_knbySegSize >
+{
+  typedef _l_value_w_buffer _TyThis;
+  typedef _l_value< t_TyChar, s_knbySegSize > _TyBase;
+public:
+  using _TyBase::_TyData;
+  using _TyBase::s_knSegArrayInit;
+  using _TyBase::_TySegArrayValues;
+  using _TyBase::_tySizeType;
+  using _TyBase::size_type;
+  typedef SegArray< t_TyChar, false_Type > _TySegArrayBuffer;
+
+  _l_value_w_buffer() = default;
+  _l_value_w_buffer( vtyDataPosition _posStart, _TySegArrayBuffer && _rrbuf )
+    : m_posStart( _posStart )
+  {
+    m_buf.swap( _rrbuf );
+  }
+
+  void SwapSegArrayBuf( _TySegArrayBuffer & _rbuf )
+  {
+    m_buf.swap( _rbuf );
+  }
+protected:
+  _TySegArrayBuffer m_buf{s_knSegArrayInit}; // some of the values in the aggregated _l_value may refer to memory in this segarray.
+  vtyDataPosition m_posStart{vtpNullDataPosition}; // The position in the input stream corresponding to the start of data in m_buf.
+};
+#endif 0
 
 __REGEXP_END_NAMESPACE
