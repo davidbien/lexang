@@ -13,6 +13,7 @@
 #include <iostream>
 #include <tuple>
 #include "_aloctrt.h"
+#include "_l_types.h"
 #include "_l_data.h"
 
 __REGEXP_BEGIN_NAMESPACE
@@ -217,7 +218,7 @@ public:
 };
 
 // Print the token seen - useful for debugging.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_action_print
 	: public _l_action_object_base< t_TyChar, t_fInLexGen >
 {
@@ -275,7 +276,7 @@ public:
 
 // _l_trigger_noop:
 // This trigger is used by tokens that don't store any data.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_trigger_noop
 	: public _l_action_object_base< t_TyChar, t_fInLexGen >
 {
@@ -351,7 +352,7 @@ protected:
 
 // _l_trigger_bool:
 // Trigger that stores a boolean. If the trigger fires then the boolean is true.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_trigger_bool
 	: public _l_action_object_base< t_TyChar, t_fInLexGen >
 {
@@ -431,7 +432,7 @@ protected:
 };
 
 // Trigger to record a position in a stream.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_trigger_position
 	: public _l_action_object_base< t_TyChar, t_fInLexGen >
 {
@@ -519,7 +520,7 @@ protected:
 
 // Trigger to record an ending position in a stream.
 // This is only used as a base class - and really it could be gotten rid of.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
 struct _l_trigger_position_end
 	: public _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLexGen >
 {
@@ -586,7 +587,7 @@ public:
 // This is a triggered simple set of strings that stores the strings within it.
 // This is not a resultant token but may be part of a resultant token.
 // Conceptually this is a single string - i.e. it is translated (or may be and is intended to be) as a single string that has multiple segments with potentially different m_nType values.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
+template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
 struct _l_trigger_string
 	: public _l_trigger_position_end< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
 {
@@ -690,7 +691,7 @@ protected:
 // This will store a range of input data into t_TyActionStoreData identified by the t_kdtType "type" of data.
 // The beginning position of the data is in t_kiTriggerBegin.
 // The ending position of the data is contained in this object.
-template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
 class _l_trigger_string_typed_range
 	: public _l_trigger_position_end< typename t_TyActionStoreData::_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
 {
@@ -1041,7 +1042,7 @@ __REGEXP_END_NAMESPACE
 __BIENUTIL_BEGIN_NAMESPACE 
 __REGEXP_USING_NAMESPACE
 
-// Specialize base class mapping because of a bug in Intel compiler:
+// Specialize base class mapping for use with _sdpv<> since it depends on knowing the base class of the object.
 // Fails to link when attempting to use covariant return.
 template < class t_TyActionObject >
 struct __map_to_base_class< _l_action_token< t_TyActionObject > >

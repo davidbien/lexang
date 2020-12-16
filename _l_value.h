@@ -128,6 +128,111 @@ public:
     return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we don't contain an array.
   }
 
+  // This will return a string view of the given type.
+  // It will:
+  // 1) If the current state is representable as a string view of the given type then set the type contained in the value to such a string view.
+  // 2) If the current state is not representable as a string view of the given type then it will create a string of the given type and store
+  //    that in the variant and return a string view on that string.
+  // We will convert from one representation to another according to the caller's whims...
+  // If the current state is not a string-related state then we throw.
+  template < class t_TyToken, class t_TyStringView >
+  void GetStringView( t_TyToken & _rtok, t_TyStringView & _rsv )
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate _ms) {},
+      [&_rjv](bool _f)
+      {
+        bad_variant_access
+        _rjv.SetBoolValue( _f );
+      },
+      [&_rjv](vtyDataPosition _dp)
+      {
+        _rjv.SetValue( _dp );
+      },
+      [&_rjv](_TyData const & _rdt)
+      {
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
+        _rdt.ToJsoValue( _rjv );
+      },
+      [&_rjv](_TyStrChar8 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TyStrViewChar8 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TySegArrayViewChar8 const & _rsav)
+      {
+        _TyStrChar8 str;
+        _TyStrViewChar8 sv;
+        bool fSV = _rsav.GetStringViewOrString( sv, str );
+        if ( fSV )
+          _rjv.SetStringValue( sv );
+        else
+          _rjv.SetStringValue( str );
+      },
+      [&_rjv](_TyStrChar16 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TyStrViewChar16 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TySegArrayViewChar16 const & _rsav)
+      {
+        _TyStrChar16 str;
+        _TyStrViewChar16 sv;
+        bool fSV = _rsav.GetStringViewOrString( sv, str );
+        if ( fSV )
+          _rjv.SetStringValue( sv );
+        else
+          _rjv.SetStringValue( str );
+      },
+      [&_rjv](_TyStrChar32 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TyStrViewChar32 const & _rstr)
+      {
+        _rjv.SetStringValue( _rstr );
+      },
+      [&_rjv](_TySegArrayViewChar32 const & _rsav)
+      {
+        _TyStrChar32 str;
+        _TyStrViewChar32 sv;
+        bool fSV = _rsav.GetStringViewOrString( sv, str );
+        if ( fSV )
+          _rjv.SetStringValue( sv );
+        else
+          _rjv.SetStringValue( str );
+      },
+      [&_rjv](_TySegArrayValues const & _rrg)
+      {
+        const size_type knEls = _rrg.NElements();
+        _rjv.SetArrayCapacity( knEls ); // preallocate
+        for ( size_type nEl = 0; nEl < knEls; ++nEl )
+          _rrg[nEl].ToJsoValue( _rjv.CreateOrGetEl( nEl ) );
+      },
+    }, m_var );
+  }
+
+  // This is much like the above but we won't change the current state of the value (hence it is a const method).
+  template < class t_TyToken, class t_TyString >
+  void GetString( t_TyToken & _rtok, t_TyString & _rstr ) const
+  {
+
+  }
+
+  // Like the above but as it is const it will only return a string view if that returnable from the current data.
+  // Otherwise it will return a string.
+  template < class t_TyToken, class t_TyStringView >
+  void GetStringViewOrString( t_TyToken & _rtok, t_TyStringView & _rsv, t_TyString & _rstr ) const
+  {
+
+  }
+
   // Output the data to a JsoValue.
   template < class t_TyCharOut >
   void ToJsoValue( JsoValue< t_TyCharOut > & _rjv ) const
@@ -214,8 +319,14 @@ public:
 
   // Convert stream position ranges to strings throughout the entire value (i.e. recursively) using the stream _rs.
   // If there are strings that are present which are not in the representation t_TyCharOut then these are converted to t_TyCharOut.
-  template < class t_TyStream, class t_TyCharOut = t_TyChar >
-  void ConvertStrings( t_TyStream & _rs )
+  // This will turn all strings into "usable" version - according to the transport backing the stream.
+  //  1) All _TyData _l_values are converted into either:
+  //		a) SegArrayView<t_TyChar>s if they are single, simple, _TyData(s) with no processing required and the backing an fd or other non-in-memory backing.
+  //    b) basic_string_view<t_TyChar>s if they are single, simple, _TyData(s) with no processing required and the backing an mapped file or in-memory backing.
+  //    c) basic_string<t_TyChar>s if processing is required for single- or multi-part _TyData(s).
+  //  2) Any other values that aren't represented in t_TyCharOut form are converted to t_TyCharOut form.
+  template < class t_TyTransportCtxt, class t_TyCharOut = t_TyChar >
+  void ProcessStrings( t_TyTransportCtxt & _rcxt )
   {
     std::visit(_VisitHelpOverloadFCall {
       [](monostate _ms) {},
@@ -224,7 +335,7 @@ public:
       [&_rjv](_TyData const & _rdt)
       {
         // Allow the stream to decide how to deal with any set of strings that might be present.
-        _rs.ConvertStrings< t_TyCharOut >( *this );
+        _rcxt.ProcessStrings< t_TyCharOut >( *this );
       },
       [&_rjv](_TyStrChar8 const & _rstr)
       {
@@ -266,7 +377,7 @@ public:
       {
         const size_type knEls = _rrg.NElements();
         for ( size_type nEl = 0; nEl < knEls; ++nEl )
-          _rrg[nEl].ConvertStrings( _rs );
+          _rrg[nEl].ProcessStrings( _rcxt );
       },
     }, m_var );
   }
