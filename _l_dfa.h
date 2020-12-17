@@ -16,9 +16,17 @@ __REGEXP_BEGIN_NAMESPACE
 
 class alpha_index_overflow : public _t__Named_exception< __L_DEFAULT_ALLOCATOR >
 {
+	typedef alpha_index_overflow _TyThis;
 	typedef _t__Named_exception< __L_DEFAULT_ALLOCATOR > _TyBase;
 public:
-	alpha_index_overflow( const string_type & __s ) : _TyBase(__s) {}
+  alpha_index_overflow( const char * _pc )
+    : _TyBase( _pc ) 
+  {
+  }
+  alpha_index_overflow( const string_type & __s ) 
+    : _TyBase( __s ) 
+  {
+  }
 };
 
 template < class t_TyChar, class t_TyAllocator >

@@ -23,20 +23,23 @@ template < class t_TyChar, class t_TyAllocator > class _nfa_context;
 
 // class regexp_trigger_first:
 // We throw this when we encounter a trigger as the first state in an NFA - it will fire all the time regardless of input - so it is dumb
-#ifdef __NAMDDEXC_STDBASE
-#pragma push_macro("std")
-#undef std
-#endif //__NAMDDEXC_STDBASE
 class regexp_trigger_found_first_exception : public std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
 {
   typedef std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
 public:
-  regexp_trigger_found_first_exception() : _TyBase("regexp_trigger_found_first_exception") {}
-  regexp_trigger_found_first_exception(const string_type & __s) : _TyBase(__s) {}
+  regexp_trigger_found_first_exception() 
+		: _TyBase("regexp_trigger_found_first_exception") 
+	{
+	}
+  regexp_trigger_found_first_exception( const char * _pc ) 
+		: _TyBase(_pc) 
+	{
+	}
+  regexp_trigger_found_first_exception(const string_type & __s) 
+		: _TyBase(__s) 
+	{
+	}
 };
-#ifdef __NAMDDEXC_STDBASE
-#pragma pop_macro("std")
-#endif //__NAMDDEXC_STDBASE
 
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
 class _nfa 

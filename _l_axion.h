@@ -335,9 +335,6 @@ public:
 	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
-#ifdef AXION_USE_TRIGGER_BITVEC
-		_rA.SetGotTrigger( s_kiTrigger ); // The only thing we do is record that we got the trigger.
-#endif //AXION_USE_TRIGGER_BITVEC
 		return true;
 	}
 	void swap( _TyThis & _r )
@@ -412,9 +409,6 @@ public:
 	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
-#ifdef AXION_USE_TRIGGER_BITVEC
-		_rA.SetGotTrigger( s_kiTrigger ); // The only thing we do is record that we got the trigger.
-#endif //AXION_USE_TRIGGER_BITVEC
 		m_f = true;
 		return true;
 	}
@@ -491,9 +485,6 @@ public:
 	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
-#ifdef AXION_USE_TRIGGER_BITVEC
-		_rA.SetGotTrigger( t_kiTrigger );
-#endif //AXION_USE_TRIGGER_BITVEC
 		m_tpPos = _rA.GetCurrentPosition();
 		return true;
 	}
@@ -567,12 +558,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-#ifdef AXION_USE_TRIGGER_BITVEC
-		Assert( _rA.FGotTrigger( s_kiTriggerBegin ) ); // Should have seen this first.
-		return _rA.FGotTrigger( s_kiTriggerBegin ) && _TyBase::action( _rA );
-#else //!AXION_USE_TRIGGER_BITVEC
 		return _TyBase::action( _rA );
-#endif //!AXION_USE_TRIGGER_BITVEC
 	}
 	using _TyBase::GetClearPosition;
 	// Unlikely this ever gets called but we imeplement it.
@@ -649,9 +635,6 @@ public:
 		{
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
-#ifdef AXION_USE_TRIGGER_BITVEC
-			Assert( _rA.FGotTrigger( s_kiTrigger ) ); // We just got it!
-#endif //AXION_USE_TRIGGER_BITVEC
 			vtyDataPosition posEnd = GetClearPosition();
 			Assert(	( vtpNullDataPosition != posBegin ) &&
 						( vtpNullDataPosition != posEnd ) &&
@@ -752,9 +735,6 @@ public:
 		{
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
-#ifdef AXION_USE_TRIGGER_BITVEC
-			Assert( _rA.FGotTrigger( s_kiTrigger ) ); // We just got it!
-#endif //AXION_USE_TRIGGER_BITVEC
 			vtyDataPosition posEnd = GetClearPosition();
 			Assert(	( vtpNullDataPosition != posBegin ) &&
 						( vtpNullDataPosition != posEnd ) &&

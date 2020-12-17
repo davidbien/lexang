@@ -17,6 +17,9 @@
 //  those values to strings, etc. according to how the lexicographical analyzer is being used. In fact that is what use of the token
 //  involves: perusing values and reacting to them. They can be converted to a given representation that is useful, etc.
 
+#include "_l_ns.h"
+#include "_l_value.h"
+#include "_l_strm.h"
 
 template < class t_TyUserContext >
 class _l_token
@@ -25,6 +28,7 @@ class _l_token
 public:
   typedef typename t_TyUserContext::_TyChar _TyChar;
   typedef t_TyUserContext _TyUserContext;
+  typedef _l_data< t_TyChar > _TyData;
   typedef _l_value< t_TyChar > _TyValue;
 
   _TyValue & operator [] ( size_type _nEl )
@@ -34,6 +38,12 @@ public:
   const _TyValue & operator [] ( size_type _nEl ) const
   {
     return m_value[_nEl];
+  }
+
+  template < class t_tyStringView >
+  void GetStringView( t_tyStringView & _rsvDest, _TyValue & _rval )
+  {
+    m_scx.GetStringView( _rsvDest, *this, _rval );
   }
 
 protected:

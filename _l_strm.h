@@ -55,7 +55,7 @@ public:
 protected:
   _TyTransportFd * m_ptxpFd{nullptr}; // We need to be able to return our token buffer to the transport when we are done with it.
   _TySegArrayBuffer m_saTokenBuf{vkstTransportFdTokenBufferSize}; // This contains the piece of the input that corresponds to the entirety of the token.
-  off_t m_posTokenStart{numeric_limits< vtyDataPosition >::max()>}; // The position in the stream at the start of the current token.
+  off_t m_posTokenStart{numeric_limits< vtyDataPosition >::max()}; // The position in the stream at the start of the current token.
 };
 
 // _l_transport_fd:
@@ -76,7 +76,7 @@ public:
     errno = 0;
     int fd = open( _pszFileName, O_RDONLY );
     if ( -1 == fd )
-      THROWNAMEDEXCEPTIONERRNO( errno, "_l_transport_fd::_l_transport_fd(): open of [%s] failed.", _pszFileName );
+      THROWNAMEDEXCEPTIONERRNO( errno, "Open of [%s] failed.", _pszFileName );
     m_fd = fd;
     m_fOwnFd = true;
   }
@@ -228,16 +228,64 @@ public:
 
 };
 
+template < class t_TyChar >
+class _l_default_user_obj
+{
+  typedef _l_default_user_obj _TyThis;
+public:
+  typedef t_TyChar _TyChar;
+  typedef _l_data< _TyChar > _TyData;
+  typedef _l_value< _TyChar > _TyValue;
+  typedef _l_transport_fd_ctxt< _TyChar > _TyTransportCtxtFd;
+  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxtFixedMem;
+
+  // These is the default GetStringView() impl. It just concatenates segmented strings regardless of the m_nType value.
+  // _rval is a constituent value of _rtok.m_value or may be _rtok.m_value itself. We expect _rval's _TyData object to be
+  //  occupied and we will convert it to either a string or a string_view depending on various things...
+  // 1) If the character type of the returned string matches _TyChar:
+    // a) If _rval<_TyData> contains only a single value and it doesn't cross a segmented memory boundary then we can return a
+    //    stringview and we will also update the value with a stringview as it is inexpensive.
+    // b) If _rval<_TyData> contains only a single value but it cross a segmented memory boundary then we will create a string
+    //    of the appropriate length and then stream the segarray data into the string.
+    // c) If _rval<_TyData> contains multiple values then we have to create a string of length adding all the sub-lengths together
+    //    and then stream each piece.
+  // 2) If the character type doesn't match then need to first create the string - hopefully on the stack using alloca() - and then
+  //    pass it to the string conversion.
+  // In all cases where we produce a new string we store that string in _rval - we must because we are returning a stringview to it.
+  // This means that we may store data in a character representation that isn't _TyChar in _rval and that's totally fine (at least for me).
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+    requires ( is_same_v< typename t_TyStringView::char_data, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
+  {
+    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+  }
+
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+    requires ( is_same_v< typename t_TyStringView::char_data, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
+  {
+    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+  }
+};
+
 // _l_user_context:
 // This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
-template < class t_tyUserObj, class t_TyTransportCtxt >
+template < class t_TyTransportCtxt, class t_tyUserObj = _l_default_user_obj >
 class _l_user_context : public t_TyTransportCtxt
 {
   typedef _l_user_context _TyThis;
   typedef t_TyTransportCtxt _TyBase;
 public:
+  typedef t_tyUserObj _tyUserObj;
   typedef typename t_TyTransportCtxt::_TyChar _TyChar;
-  
+  typedef _l_token< _TyThis > _TyToken;
+
+  template < class t_tyStringView >
+  void GetStringView( t_tyStringView & _rsvDest, _TyToken & _rtok, _TyValue & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    m_uoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
+  }
 
 
 
