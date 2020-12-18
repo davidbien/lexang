@@ -45,6 +45,11 @@ public:
   {
     m_scx.GetStringView( _rsvDest, *this, _rval );
   }
+  template < class t_tyString >
+  void GetString( t_tyString & _rstrDest, _TyValue const & _rval )
+  {
+    m_scx.GetString( _rstrDest, *this, _rval );
+  }
 
 protected:
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.

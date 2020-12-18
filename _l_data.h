@@ -21,6 +21,7 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
+#if 0 // trying to rid these.
 // _l_data_range_pod: A simple token range in a token stream.
 // We want this to be a POD struct so we can use it in a anonymous union.
 struct _l_data_range_pod
@@ -34,6 +35,7 @@ struct _l_data_typed_range_pod : public _l_data_range_pod
 {
   vtyDataType m_nType;
 };
+#endif 0
 
 // l_token_range: Non-pod version.
 class _l_data_range
@@ -48,6 +50,15 @@ public:
   {
   }
   _l_data_range & operator =( _TyThis const & _r ) = default;
+
+  vtyDataPosition begin() const
+  {
+    return m_posBegin;
+  }
+  vtyDataPosition end() const
+  {
+    return m_posEnd;
+  }
   
 // Make these accessible.
   vtyDataPosition m_posBegin{ numeric_limits< vtyDataPosition >::max() };
@@ -73,6 +84,13 @@ public:
   {
     return *this;
   }
+  
+  using _TyBase::begin;
+  using _TyBase::end;
+  vtyDataType type() const
+  {
+    return m_nType;
+  }
 
   using _TyBase::m_posBegin;
   using _TyBase::m_posEnd;
@@ -97,7 +115,7 @@ public:
     struct
     {
       uint64_t m_u64Marker; // When m_u64Marker is 0xffffffffffffffff then m_dtrData contains valid data, else m_rgbySegArray is populated.
-      _l_data_typed_range_pod m_dtrData;
+      _l_data_typed_range m_dtrData;
     };
     unsigned char m_rgbySegArray[ sizeof( _TySegArray ) ];
   };
@@ -105,7 +123,7 @@ public:
   void AssertValid() const
 #if ASSERTSENABLED
   {
-    if ( FContainsSinglePos() )
+    if ( FContainsSingleDataRange() )
     {
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posEnd ) );
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || !m_dtrData.m_nType );
@@ -126,7 +144,7 @@ public:
   }
   _l_data( vtyDataPosition _posBegin, vtyDataPosition _posEnd )
   {
-    _SetContainsSinglePos();
+    _SetContainsSingleDataRange();
     m_dtrData.m_posBegin = _posBegin;
     m_dtrData.m_posEnd = _posEnd;
     m_dtrData.m_nType = 0;
@@ -134,7 +152,7 @@ public:
   }
   _l_data( _l_data_range const & _rdr )
   {
-    _SetContainsSinglePos();
+    _SetContainsSingleDataRange();
     m_dtrData.m_posBegin = _rdr.m_posBegin;
     m_dtrData.m_posEnd = _rdr.m_posEnd;
     m_dtrData.m_nType = 0;
@@ -142,15 +160,14 @@ public:
   }
   _l_data( _l_data_typed_range const & _rttr )
   {
-    static_assert( sizeof( _l_data_typed_range ) == sizeof( _l_data_typed_range_pod ) );
-    _SetContainsSinglePos();
+    _SetContainsSingleDataRange();
     memcpy( &m_dtrData, &_rttr, sizeof m_dtrData );
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
   _l_data( const _l_data & _r )
   {
     _r.AssertValid();
-    if ( _r.FContainsSinglePos() )
+    if ( _r.FContainsSingleDataRange() )
     {
       memcpy( this, &_r, sizeof *this );
     }
@@ -169,7 +186,7 @@ public:
   }
   ~_l_data()
   {
-    if ( !FContainsSinglePos() )
+    if ( !FContainsSingleDataRange() )
       _ClearSegArray();
   }
   void swap( _l_data & _r )
@@ -192,7 +209,7 @@ public:
     return *this;
   }
 
-  bool FContainsSinglePos() const
+  bool FContainsSingleDataRange() const
   {
     return m_u64Marker == 0xffffffffffffffff;
   }
@@ -202,7 +219,7 @@ public:
     if ( FIsNull() )
       return 0;
     else
-    if ( FContainsSinglePos() )
+    if ( FContainsSingleDataRange() )
       return 1;
     else
       return _PSegArray()->NElements();
@@ -210,19 +227,19 @@ public:
   bool FContainsData() const
   {
     AssertValid();
-    if ( FContainsSinglePos() )
-      return !!( m_posEnd > m_posBegin );
+    if ( FContainsSingleDataRange() )
+      return !!( m_dtrData.m_posEnd > m_dtrData.m_posBegin );
     else
       return !!_PSegArray()->NElements(); // Assuming we don't put empty elements in the segarray.
   }
   bool FIsNull() const
   {
     AssertValid();
-    return FContainsSinglePos() && ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posBegin );
+    return FContainsSingleDataRange() && ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posBegin );
   }
   void SetNull()
   {
-    if ( !FContainsSinglePos() )
+    if ( !FContainsSingleDataRange() )
       _ClearSegArray();
     _SetMembersNull();
   }
@@ -231,6 +248,29 @@ public:
     SetNull();
   }
 
+  bool FGetSingleDataRange( _l_data_range & _rdr ) const
+  {
+    if ( FContainsSingleDataRange() )
+    {
+      _rdr = m_dtrData.GetRangeBase();
+      return true;
+    }
+    return false;
+  }
+  bool FGetSingleDataRange( _l_data_typed_range & _rdtr ) const
+  {
+    if ( FContainsSingleDataRange() )
+    {
+      _rdtr = m_dtrData;
+      return true;
+    }
+    return false;
+  }
+  _l_data_typed_range DataRangeGetSingle() const
+  {
+    VerifyThrowSz( FContainsSingleDataRange(), "This _l_data object contains an array." );
+    return m_dtrData;
+  }
   void Set( _l_data_range const & _rdr )
   {
     Set( _rdr.m_posBegin, _rdr.m_posEnd );
@@ -242,9 +282,9 @@ public:
   void Set( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
   {
     Assert( _posEnd >= _posBegin );
-    if ( !FContainsSinglePos() )
+    if ( !FContainsSingleDataRange() )
       _ClearSegArray();
-    _SetContainsSinglePos();
+    _SetContainsSingleDataRange();
     m_dtrData.m_posBegin = _posBegin;
     m_dtrData.m_posEnd = _posEnd;
     m_dtrData.m_nType = _nType;
@@ -263,16 +303,24 @@ public:
     if ( FIsNull() )
       return Set( _posBegin, _posEnd, _nType );
     else
-    if ( FContainsSinglePos() )
+    if ( FContainsSingleDataRange() )
     {
       _TySegArray saNew( s_knSegArrayInit );
       saNew.Overwrite( 0, (const ns_re::_l_data_typed_range *)&m_dtrData, 1 );
       new ( m_rgbySegArray ) _TySegArray( std::move( saNew ) );
       AssertValid();
     }
-    _l_data_typed_range_pod ttrWrite = { _posBegin, _posEnd, _nType };
-    _PSegArray()->Overwrite( _PSegArray()->NElements(), (const ns_re::_l_data_typed_range *)&ttrWrite, 1 );
+    _l_data_typed_range dtrWrite = { _posBegin, _posEnd, _nType };
+    _PSegArray()->Overwrite( _PSegArray()->NElements(), &dtrWrite, 1 );
     AssertValid();
+  }
+  _TySegArray & GetSegArrayDataRanges()
+  {
+    return *_PSegArray();
+  }
+  const _TySegArray & GetSegArrayDataRanges() const
+  {
+    return *_PSegArray();
   }
   template < class t_TyCharOut >
   void ToJsoValue( JsoValue< t_TyCharOut > & _rjv ) const
@@ -280,17 +328,17 @@ public:
     if ( FIsNull() )
       _rjv.SetNullValue();
     else
-    if ( FContainsSinglePos() )
+    if ( FContainsSingleDataRange() )
       _ToJsoValue( _rjv, m_dtrData );
     else
     {
       const size_type knEls = _PSegArray()->NElements();
       for ( size_type n = 0; n < knEls; ++n )
-        _ToJsoValue( reinterpret_cast< _l_data_typed_range_pod const & >( _rjv[n] ) );
+        _ToJsoValue( _rjv[n] );
     }
   }
 protected:
-  static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range_pod const & _rttr )
+  static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range const & _rttr )
   {
     Assert( _rjv.FIsNull() );
     _rjv.SetValueType( ejvtObject );
@@ -298,30 +346,30 @@ protected:
     _rjv.SetValue( "e", _rttr.m_posEnd );
     _rjv.SetValue( "t", _rttr.m_nType );
   }
-  void _SetContainsSinglePos()
+  void _SetContainsSingleDataRange()
   {
     m_u64Marker = 0xffffffffffffffff;
   }
   void _SetMembersNull()
   {
-    _SetContainsSinglePos();
+    _SetContainsSingleDataRange();
     m_dtrData.m_posBegin = numeric_limits< vtyDataPosition >::max();
     m_dtrData.m_posEnd = numeric_limits< vtyDataPosition >::max();
     m_dtrData.m_nType = 0;
   }
   _TySegArray * _PSegArray()
   {
-    Assert( !FContainsSinglePos() );
+    Assert( !FContainsSingleDataRange() );
     return (_TySegArray*)m_rgbySegArray;
   }
   const _TySegArray * _PSegArray() const
   {
-    Assert( !FContainsSinglePos() );
+    Assert( !FContainsSingleDataRange() );
     return (_TySegArray*)m_rgbySegArray;
   }
   void _ClearSegArray()
   {
-    Assert( !FContainsSinglePos() );
+    Assert( !FContainsSingleDataRange() );
     _PSegArray()->~_TySegArray();
   }
 };

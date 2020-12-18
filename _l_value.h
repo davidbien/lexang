@@ -91,17 +91,55 @@ public:
   {
     return holds_alternative<_TySegArrayValues>( m_var );
   }
-
-  // These should work in many cases.
-  template < class t_Ty >
-  SetValue( t_Ty const & _rv )
+  bool FHasTypedData() const
   {
-    m_var.emplace<t_Ty>( _rv );
+    return FIsA< _TyData >();
+  }
+
+  template < class t_Ty, class... t_tysArgs>
+  _tyT & emplaceArgs( t_tysArgs &&... _args )
+  {
+    return m_var.emplace<t_Ty>( std::forward<t_tysArgs>(_args)... );
   }
   template < class t_Ty >
-  SetValue( t_Ty && _rrv )
+  _tyT & emplaceVal( t_Ty const & _r )
   {
-    m_var.emplace<t_Ty>(std::move(_rrv));
+    return m_var.emplace<t_Ty>( _r );
+  }
+  template < class t_Ty >
+  _tyT & emplaceVal( t_Ty && _rr )
+  {
+    return m_var.emplace<t_Ty>( std::move( _rr ) );
+  }
+
+  template < class t_Ty >
+  t_Ty & GetVal()
+  {
+    Assert( holds_alternative<t_Ty>( m_var) ); // assert before we throw...
+    return get< t_Ty >( m_var );
+  }
+  template < class t_Ty >
+  const t_Ty & GetVal() const
+  {
+    Assert( holds_alternative<t_Ty>( m_var) ); // assert before we throw...
+    return get< t_Ty >( m_var );
+  }
+  // These should work in many cases.
+  template < class t_Ty >
+  t_Ty & SetVal( t_Ty const & _rv )
+  {
+    if ( holds_alternative< t_Ty >( m_var ) )
+      return get< t_Ty >( m_var ) = _rv;
+    else
+      return m_var.emplace<t_Ty>( _rv );
+  }
+  template < class t_Ty >
+  t_Ty & SetVal( t_Ty && _rrv )
+  {
+    if ( holds_alternative< t_Ty >( m_var ) )
+      return get< t_Ty >( m_var ) = std::move( _rrv );
+    else
+      return m_var.emplace<t_Ty>(std::move(_rrv));
   }
 
   // This ensures we have an array of _l_values within and then sets the size to the passed size.
@@ -154,7 +192,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.")
       },
-      [this,&_rtok,&_rsv](_TyData const & _rdt)
+      [this,&_rtok,&_rsv](_TyData const &)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rtok.GetStringView( _rsv, *this );
@@ -258,10 +296,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.")
       },
-      [this,&_rtok,&_rstr](_TyData const & _rdt)
+      [this,&_rtok,&_rstr](_TyData const &)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
-        _rtok.GetString( _rstr, *this, _rdt );
+        _rtok.GetString( _rstr, *this );
       },
       [&_rstr](_TyStrChar8 const & _rstr8)
       {
