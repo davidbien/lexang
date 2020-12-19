@@ -163,9 +163,6 @@ public:
 
 template < class _TyNfaCharRange >
 struct _fa_char_range_intersect
-#ifdef __LEXANG_USE_STLPORT
-	: public binary_function< _TyNfaCharRange, _TyNfaCharRange, bool >
-#endif //__LEXANG_USE_STLPORT
 {
 	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
 	{

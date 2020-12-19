@@ -3,14 +3,17 @@
 #include "_l_ns.h"
 #include "_l_types.h"
 
-
-
 // _l_strm.h
 // Stream objects for use with the lexical analyzer objects.
 // dbien
 // 13DEC2020
 
 // Transports for the stream objects.
+
+#include "_l_ns.h"
+#include "_l_types.h"
+
+__LEXOBJ_BEGIN_NAMESPACE
 
 // _l_transport_base: base for all transports.
 // Templatize by the character type contained in the file.
@@ -243,235 +246,6 @@ public:
 
 };
 
-template < class t_TyChar >
-class _l_default_user_obj
-{
-  typedef _l_default_user_obj _TyThis;
-public:
-  typedef t_TyChar _TyChar;
-  typedef _l_data< _TyChar > _TyData;
-  typedef _l_value< _TyChar > _TyValue;
-  typedef _l_transport_fd_ctxt< _TyChar > _TyTransportCtxtFd;
-  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxtFixedMem;
-
-  // These is the default GetStringView() impl. It just concatenates segmented strings regardless of the m_nType value.
-  // _rval is a constituent value of _rtok.m_value or may be _rtok.m_value itself. We expect _rval's _TyData object to be
-  //  occupied and we will convert it to either a string or a string_view depending on various things...
-  // 1) If the character type of the returned string matches _TyChar:
-    // a) If _rval<_TyData> contains only a single value and it doesn't cross a segmented memory boundary then we can return a
-    //    stringview and we will also update the value with a stringview as it is inexpensive.
-    // b) If _rval<_TyData> contains only a single value but it cross a segmented memory boundary then we will create a string
-    //    of the appropriate length and then stream the segarray data into the string.
-    // c) If _rval<_TyData> contains multiple values then we have to create a string of length adding all the sub-lengths together
-    //    and then stream each piece.
-  // 2) If the character type doesn't match then need to first create the string - hopefully on the stack using alloca() - and then
-  //    pass it to the string conversion.
-  // In all cases where we produce a new string we store that string in _rval - we must because we are returning a stringview to it.
-  // This means that we may store data in a character representation that isn't _TyChar in _rval and that's totally fine (at least for me).
-  // Non-converting GetStringView for fd transport.
-  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
-  {
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyData kdtr = _rval.GetVal< _TyData >();
-    if ( !kdtr.FContainsSingleDataRange() || !_rcxt.GetTokenBuffer().FGetStringView( _rsvDest, kdtr.begin(), kdtr.end() ) )
-    {
-      // Then we must back with a string:
-      vtyDataPosition nCharsCount = kdtr.CountChars();
-      vtyDataPosition nCharsRemaining = nCharsCount;
-      typename _TyValue::get_string_type< _TyChar > strBacking( nCharsRemaining, 0 );
-      if ( kdtr.FContainsSingleDataRange() )
-      {
-        _tySizeType nCharsRead = _rcxt.GetTokenBuffer().Read( &strBacking[0], nCharsRemaining );
-        Assert( nCharsRemaining == nCharsRead );
-        nCharsRemaining -= nCharsRead;
-      }
-      else
-      {
-        t_TyChar * pcCur = &strBacking[0]; // Current output pointer.
-        kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
-          [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-          {
-            Assert( nCharsRemaining ); // Should have reserved enough.
-            if ( nCharsRemaining )
-            {
-              vtyDataPosition nRead = _rcxt.GetTokenBuffer().ReadSegmented( _pdtrBegin, _pdtrEnd, pcCur, nCharsRemaining );
-              pcCur += nRead;
-              nCharsRemaining -= nRead;
-            }
-          }
-        );
-        Assert( !nCharsRemaining ); // Should have eaten everything.
-      }
-      strBacking.resize( nCharsCount - nCharsRemaining );
-      _rsvDest = _rval.emplaceVal( std::move( strBacking ) );
-    }
-    else
-    {
-      // We could set the stringview into the object since it doesn't really hurt:
-      _rval.SetVal( _rsvDest );
-    }
-  }
-
-  // Converting GetStringView for fd transport.
-  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( !is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
-  {
-    typedef typename t_TyStringView::value_type _TyCharConvertTo;
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyData kdtr = _rval.GetVal< _TyData >();
-    // Then we must back with a converted string, attempt to use an alloca() buffer:
-    static const _tySizeType knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
-    basic_string< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
-    vtyDataPosition nCharsCount = kdtr.CountChars();
-    vtyDataPosition nCharsRemaining = nCharsCount;
-    _TyChar * pcBuf;
-    if ( nCharsCount > knchMaxAllocaSize )
-    {
-      strTempBuf.resize( nCharsCount );
-      pcBuf = &strTempBuf[0];
-    }
-    else
-      pcBuf = (_TyChar*)alloca( nCharsCount * sizeof( _TyChar ) );
-    if ( kdtr.FContainsSingleDataRange() )
-    {
-      _tySizeType nCharsRead = _rcxt.GetTokenBuffer().Read( kdtr.begin(), pcBuf, nCharsRemaining );
-      Assert( nCharsRead == nCharsRemaining );
-      nCharsRemaining -= nCharsRead;
-    }
-    else
-    {
-      t_TyChar * pcCur = pcBuf; // Current output pointer.
-      kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
-        [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-        {
-          vtyDataPosition nRead = _rcxt.GetTokenBuffer().ReadSegmented( _pdtrBegin, _pdtrEnd, pcCur, nCharsRemaining );
-          pcCur += nRead;
-          nCharsRemaining -= nRead;
-        }
-      );
-      Assert( !nCharsRemaining );
-    }
-    if ( nCharsRemaining )
-    {
-      if ( nCharsCount > knchMaxAllocaSize )
-        strTempBuf.resize( nCharsCount - nCharsRemaining );
-      nCharsCount -= nCharsRemaining;
-    }
-    typedef typename _TyValue::get_string_type< _TyCharConvertTo > _TyStrConvertTo;
-    _TyStrConvertTo strConverted;
-    ConvertString( strConverted, pcBuf, nCharsCount );
-    _rsvDest = _rval.emplaceVal( std::move( strConverted ) );
-  }
-
-  // Non-converting GetStringView for fixed-memory transport.
-  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
-  {
-    static_assert( is_same_v< t_TyStringView, typename _TyValue::get_string_view_type< _TyChar > > );
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
-    const _TyData kdtr = _rval.GetVal< _TyData >();
-    _rcxt.AssertValidDataRange( kdtr );
-    if ( !kdtr.FContainsSingleDataRange() )
-    {
-      // Then we must back with a string:
-      vtyDataPosition nCharsCount = kdtr.CountChars();
-      vtyDataPosition nCharsRemaining = nCharsCount;
-      typename _TyValue::get_string_type< _TyChar > strBacking( nCharsRemaining, 0 );
-      t_TyChar * pcCur = &strBacking[0]; // Current output pointer.
-      kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
-        [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * const _pdtrEnd )
-        {
-          for ( const _l_data_typed_range * pdtrCur = _pdtrBegin; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )
-          {
-            vtyDataPosition nToRead = pdtrCur->length();
-            Assert( nCharsRemaining >= nToRead );
-            if ( nToRead > nCharsRemaining )
-              nToRead = nCharsRemaining;
-            Assert( nToRead + pdtrCur->begin() )
-            memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead );
-            nCharsRemaining -= nToRead;
-            pcCur += nToRead;
-          }
-        }
-      );
-      Assert( !nCharsRemaining ); // Should have eaten everything.
-      strBacking.resize( nCharsCount - nCharsRemaining );
-      _rsvDest = _rval.emplaceVal( std::move( strBacking ) );
-    }
-    else
-    {
-      // We could set the stringview into the object since it doesn't really hurt:
-      _rsvDest = _rval.emplaceArgs< t_TyStringView >( prmvFull.first + kdtr.begin(), kdtr.length() );
-    }
-  }
-
-  // Converting GetStringView for fixed-memory transport.
-  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( !is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > )
-  {
-    typedef typename t_TyStringView::value_type _TyCharConvertTo;
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
-    const _TyData kdtr = _rval.GetVal< _TyData >();
-    // Then we must back with a converted string, attempt to use an alloca() buffer:
-    static const _tySizeType knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
-    basic_string< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
-    vtyDataPosition nCharsCount = kdtr.CountChars();
-    vtyDataPosition nCharsRemaining = nCharsCount;
-    _TyChar * pcBuf;
-    if ( nCharsCount > knchMaxAllocaSize )
-    {
-      strTempBuf.resize( nCharsCount );
-      pcBuf = &strTempBuf[0];
-    }
-    else
-      pcBuf = (_TyChar*)alloca( nCharsCount * sizeof( _TyChar ) );
-    if ( kdtr.FContainsSingleDataRange() )
-    {
-      memcpy( pcBuf, prmvFull.first + kdtr.begin(), kdtr.length() );
-      nCharsRemaining -= kdtr.length();
-    }
-    else
-    {
-      t_TyChar * pcCur = pcBuf; // Current output pointer.
-      kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
-        [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-        {
-          for ( const _l_data_typed_range * pdtrCur = _pdtrBegin; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )
-          {
-            vtyDataPosition nToRead = pdtrCur->length();
-            Assert( nCharsRemaining >= nToRead );
-            if ( nToRead > nCharsRemaining )
-              nToRead = nCharsRemaining;
-            Assert( nToRead + pdtrCur->begin() )
-            memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead );
-            nCharsRemaining -= nToRead;
-            pcCur += nToRead;
-          }
-        }
-      );
-    }
-    Assert( !nCharsRemaining );
-    if ( nCharsRemaining )
-    {
-      if ( nCharsCount > knchMaxAllocaSize )
-        strTempBuf.resize( nCharsCount - nCharsRemaining );
-      nCharsCount -= nCharsRemaining;
-    }
-    typedef typename _TyValue::get_string_type< _TyCharConvertTo > _TyStrConvertTo;
-    _TyStrConvertTo strConverted;
-    ConvertString( strConverted, pcBuf, nCharsCount );
-    _rsvDest = _rval.emplaceVal( std::move( strConverted ) );
-  }
-
-};
-
 // _l_user_context:
 // This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
 template < class t_TyTransportCtxt, class t_tyUserObj = _l_default_user_obj >
@@ -490,13 +264,18 @@ public:
     // yet another delegation...and add another parameter.
     m_uoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
   }
+  template < class t_tyStringView, class t_tyString >
+  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    return m_uoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
+  }
   template < class t_tyString >
-  void GetString( t_tyString & _rstrDest, _TyToken & _rtok, const _TyValue & _rval )
+  void GetString( t_tyString & _rstrDest, _TyToken & _rtok, _TyValue const & _rval )
   {
     // yet another delegation...and add another parameter.
     m_uoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
   }
-
 protected:
   t_tyUserObj m_uoUserObj;
 };
@@ -535,3 +314,5 @@ protected:
   _TyOptTransport m_opttpImpl; // The "transport" that implements the stream. Make it optional so that the user can emplace construct the stream after declaration of an _l_stream object.
   _TyChar m_posCur; // The current position in the stream. This is kept maintained with any transports that also have a current position.
 };
+
+__LEXOBJ_END_NAMESPACE

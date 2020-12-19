@@ -8,490 +8,28 @@
 
 // _l_lxobj.h
 
-// Debugging, etc.
-#define LXOBJ_STATENUMBERS
-
 #include <memory>
 #include <stddef.h>
 #include "_assert.h"
 #include <wchar.h>
-#ifdef __LEXANG_USE_STLPORT
-#include <stl/_alloc.h>
-#include <hash_set>
-#else //__LEXANG_USE_STLPORT
 #include <unordered_set>
-#endif //__LEXANG_USE_STLPORT
 #include <typeinfo>
 #include "bienutil.h"
 #include "_basemap.h"
 #include "_l_ns.h"
+#include "_l_Types.h"
 #include "_l_chrtr.h"
 #include "_ticont.h"
 #include <functional>
 #include <algorithm>
 
 #include "_l_axion.h"
-
-#ifdef __LEXANG_USE_STLPORT
-#define _STLP_ZERO_SIZE_ARRAYS // This isn't part of the current STLport but we still have it here.
-#endif                         //__LEXANG_USE_STLPORT
+#include "_l_strm.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-__REGEXP_USING_NAMESPACE
-
-#ifdef LXOBJ_STATENUMBERS
-typedef unsigned short _TyStateNumber;  // Type for state number.
-#endif                                  // LXOBJ_STATENUMBERS
-typedef unsigned short _TyNTransitions; // Type for number of transitions ( could make unsigned short ).
-typedef unsigned short _TyNTriggers;
-typedef signed char _TyStateFlags; // Type for state flags.
-
-const unsigned char kucAccept = 1;          // Normal accept state.
-const unsigned char kucLookahead = 2;       // Lookahead state.
-const unsigned char kucLookaheadAccept = 3; // Lookahead accept state.
-// This state is both a lookahead accept state and a normal accept state.
-// If the lookahead suffix is seen then that action is performed - if the lookahead
-//	suffix is never seen then this action is performed.
-const unsigned char kucLookaheadAcceptAndAccept = 4;
-// Similar to above.
-const unsigned char kucLookaheadAcceptAndLookahead = 5;
-
-template <class t_TyChar>
-struct _l_state_proto;
-
-template <class t_TyChar>
-struct _l_an_mostbase;
-
-template <class t_TyChar, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace = false>
-struct _l_analyzer;
-
-template <class t_TyChar, int t_iTransitions,
-          bool t_fAccept, bool t_fLookahead,
-          int t_iLookaheadVectorEls,
-          int t_iTriggers>
-struct _l_state;
-
-template <class t_TyChar>
-struct _l_transition
-{
-  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
-  _TyUnsignedChar m_first;
-  _TyUnsignedChar m_last;
-  _l_state_proto<t_TyChar> *m_psp;
-  static std::string StaticGetJsonText(_TyUnsignedChar _uc)
-  {
-    std::string str;
-    if ((_uc > 32) && (_uc < 127))
-      (void)FPrintfStdStrNoThrow(str, "%c (%lu)", (char)_uc, (uint64_t)_uc);
-    else
-      (void)FPrintfStdStrNoThrow(str, "%lu", (uint64_t)_uc);
-    return str;
-  }
-  n_SysLog::vtyJsoValueSysLog GetJsonValue() const
-  {
-    n_SysLog::vtyJsoValueSysLog jv(ejvtObject);
-    jv("f").SetStringValue( StaticGetJsonText( m_first ) );
-    jv("l").SetStringValue( StaticGetJsonText( m_last ) );
-#ifdef LXOBJ_STATENUMBERS
-    jv("n").SetValue( m_psp->m_nState );
-#endif //LXOBJ_STATENUMBERS
-    return (jv);
-  }
-};
-
-// prototype struct - never gets instantiated - only cast to:
-// don't ever use this as arg to sizeof().
-template <class t_TyChar>
-struct _l_state_proto
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-  typedef typename _TyAnalyzer::_TyPMFnAccept _TyPMFnAccept;
-  typedef _l_transition<t_TyChar> _TyTransition;
-
-// Common members, all instantiations of _l_state<> have these.
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState; // For debugging, not used by the lexang.
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _TyTransition m_rgt[7]; // You can access the transitions.
-private:                            // Variable length structure - use accessors.
-  _TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;             // The associated lookahead action id.
-  vtyLookaheadVector m_rgValidLookahead[2]; // bit vector for valid associated lookahead actions.
-  _TyPMFnAccept m_rgpmfnTriggers[7];        // Array of pointers to trigger functions.
-public:
-  _TyPMFnAccept PMFnGetAction()
-  {
-    Assert(m_flAccept);
-    return *(_TyPMFnAccept *)((char *)this + m_usOffsetAccept);
-  }
-  vtyActionIdent AIGetLookahead()
-  {
-    typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
-    return *(vtyActionIdent *)((char *)this + m_usOffsetAccept +
-                               (offsetof(_TyStateAccept1Trans, m_aiLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
-  }
-  vtyLookaheadVector *PBeginValidLookahead()
-  {
-    Assert(m_flAccept == kucLookaheadAccept ||
-           m_flAccept == kucLookaheadAcceptAndAccept ||
-           m_flAccept == kucLookaheadAcceptAndLookahead);
-    typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
-    return (vtyLookaheadVector *)((char *)this + m_usOffsetAccept +
-                                  (offsetof(_TyStateAccept1Trans, m_rgValidLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
-  }
-  _TyPMFnAccept *PPMFnGetTriggerBegin()
-  {
-    return (_TyPMFnAccept *)((char *)this + m_usOffsetTriggers);
-  }
-  n_SysLog::vtyJsoValueSysLog GetJsonValue( bool _fLookahead ) const
-  {
-    n_SysLog::vtyJsoValueSysLog jv(ejvtObject);
-#ifdef LXOBJ_STATENUMBERS
-    jv("State").SetValue(m_nState);
-#endif //LXOBJ_STATENUMBERS
-    if ( m_nt )
-    {
-      jv("nTransitions").SetValue(m_nt);
-      n_SysLog::vtyJsoValueSysLog & jvTransitions = jv("Transitions");
-      const _TyTransition * ptCur = m_rgt;
-      const _TyTransition * const ptEnd = ptCur + m_nt;
-      for( ; ptEnd != ptCur; ++ptCur )
-        jvTransitions( ptCur - m_rgt ) = ptCur->GetJsonValue();
-    }
-    Assert( !m_nTriggers == !m_pspTrigger );
-    if ( m_nTriggers )
-    {
-      jv("nTriggers") = m_nTriggers;
-#ifdef LXOBJ_STATENUMBERS
-      if ( !!m_pspTrigger )
-        jv("TriggerState") = m_pspTrigger->m_nState;
-#endif //LXOBJ_STATENUMBERS
-    }
-    if ( _fLookahead )
-    {
-      // TODO - later.
-    }
-    return jv;
-  }
-};
-
-template <class t_TyChar, int t_iTransitions, int t_iTriggers>
-struct _l_state<t_TyChar, t_iTransitions, false, false, 0, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar, int t_iTransitions>
-struct _l_state<t_TyChar, t_iTransitions, false, false, 0, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iTransitions, int t_iTriggers>
-struct _l_state<t_TyChar, t_iTransitions, true, false, 0, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar, int t_iTransitions>
-struct _l_state<t_TyChar, t_iTransitions, true, false, 0, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iTransitions, int t_iTriggers>
-struct _l_state<t_TyChar, t_iTransitions, true, true, 0, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar, int t_iTransitions>
-struct _l_state<t_TyChar, t_iTransitions, true, true, 0, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iTransitions, int t_iLookaheadVectorEls, int t_iTriggers>
-struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar, int t_iTransitions, int t_iLookaheadVectorEls>
-struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  _l_transition<t_TyChar> m_rgt[t_iTransitions];
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iTriggers>
-struct _l_state<t_TyChar, 0, false, false, 0, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar>
-struct _l_state<t_TyChar, 0, false, false, 0, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iTriggers>
-struct _l_state<t_TyChar, 0, true, false, 0, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar>
-struct _l_state<t_TyChar, 0, true, false, 0, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iTriggers>
-struct _l_state<t_TyChar, 0, true, true, 0, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar>
-struct _l_state<t_TyChar, 0, true, true, 0, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
-template <class t_TyChar, int t_iLookaheadVectorEls, int t_iTriggers>
-struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
-  typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
-};
-#ifndef _STLP_ZERO_SIZE_ARRAYS
-template <class t_TyChar, int t_iLookaheadVectorEls>
-struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0>
-{
-  typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
-
-#ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
-#endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
-  _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
-  unsigned short m_usOffsetAccept;
-  unsigned short m_usOffsetTriggers;
-  typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
-  vtyActionIdent m_aiLookahead;
-  vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
-};
-#endif //!_STLP_ZERO_SIZE_ARRAYS
-
 template <class t_TyChar>
 struct _l_compare_input_with_range
-#ifdef __LEXANG_USE_STLPORT
-    : public binary_function<_l_transition<t_TyChar>,
-                             typename _l_transition<t_TyChar>::_TyUnsignedChar, bool>
-#endif //__LEXANG_USE_STLPORT
 {
   bool operator()(_l_transition<t_TyChar> const &_rrl,
                   typename _l_transition<t_TyChar>::_TyUnsignedChar const &_rucr) const
@@ -505,9 +43,20 @@ struct _l_an_mostbase
 {
 private:
   typedef _l_an_mostbase<t_TyChar> _TyThis;
-
 public:
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef bool (_TyThis::*_TyPMFnAccept)();
+
+  void SetToken( _TyAxnObjBase * _paobCurToken )
+  {
+    m_paobCurToken = _paobCurToken;
+  }
+  _TyAxnObjBase * PGetToken() const
+  { 
+    return m_paobCurToken;
+  }
+protected:
+  _TyAxnObjBase * m_paobCurToken{nullptr}; // A pointer to the current token found by the lexang.
 };
 
 template <class t_TyChar, bool t_fSupportLookahead>
@@ -518,12 +67,12 @@ struct _l_an_lookaheadbase<t_TyChar, false>
     : public _l_an_mostbase<t_TyChar>
 {
   typedef _l_state_proto<t_TyChar> _TyStateProto;
-  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
+  typedef typename _l_char_Type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
 
 protected:
   // Declare these so the code will compile - they may be optimized out.
   static _TyStateProto *m_pspLookaheadAccept;  // The lookahead accept state.
-  static _TyUnsignedChar *m_pcLookaheadAccept; // The position in the buffer when lookahead accept encountered.
+  static vtyDataPosition m_posLookaheadAccept; // The position in the buffer when lookahead accept encountered.
   static _TyStateProto *m_pspLookahead;        // The lookahead state.
 };
 
@@ -531,8 +80,7 @@ template <class t_TyChar>
 typename _l_an_lookaheadbase<t_TyChar, false>::_TyStateProto *
     _l_an_lookaheadbase<t_TyChar, false>::m_pspLookaheadAccept;
 template <class t_TyChar>
-typename _l_an_lookaheadbase<t_TyChar, false>::_TyUnsignedChar *
-    _l_an_lookaheadbase<t_TyChar, false>::m_pcLookaheadAccept;
+vtyDataPosition _l_an_lookaheadbase<t_TyChar, false>::m_posLookaheadAccept{vkdpNullDataPosition};
 template <class t_TyChar>
 typename _l_an_lookaheadbase<t_TyChar, false>::_TyStateProto *
     _l_an_lookaheadbase<t_TyChar, false>::m_pspLookahead;
@@ -542,42 +90,42 @@ struct _l_an_lookaheadbase<t_TyChar, true>
     : public _l_an_mostbase<t_TyChar>
 {
   typedef _l_state_proto<t_TyChar> _TyStateProto;
-  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
+  typedef typename _l_char_Type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
 
-  _TyStateProto *m_pspLookaheadAccept;  // The lookahead accept state.
-  _TyUnsignedChar *m_pcLookaheadAccept; // The position in the buffer when lookahead accept encountered.
-  _TyStateProto *m_pspLookahead;        // The lookahead state.
+  _TyStateProto *m_pspLookaheadAccept{nullptr}; // The lookahead accept state.
+  vtyDataPosition m_posLookaheadAccept{vkdpNullDataPosition}; // The position in the buffer when lookahead accept encountered.
+  _TyStateProto *m_pspLookahead{nullptr}; // The lookahead state.
 
   _l_an_lookaheadbase()
-      : m_pspLookaheadAccept(0),
-        m_pspLookahead(0)
   {
   }
 };
 
-template <class t_TyChar, bool t_fSupportLookahead,
+template <class t_TyTransport, class t_TyUserObj, bool t_fSupportLookahead,
           bool t_fSupportTriggers, bool t_fTrace>
-struct _l_analyzer : public _l_an_lookaheadbase<t_TyChar, t_fSupportLookahead>
+struct _l_analyzer : public _l_an_lookaheadbase< typename t_TyTransport::_TyChar, t_fSupportLookahead>
 {
 private:
-  typedef _l_an_lookaheadbase<t_TyChar, t_fSupportLookahead> _TyBase;
+  typedef _l_an_lookaheadbase< typename t_TyTransport::_TyChar, t_fSupportLookahead> _TyBase;
   typedef _l_analyzer _TyThis;
-
 protected:
-  using _TyBase::m_pcLookaheadAccept;
+  using _TyBase::m_posLookaheadAccept;
   using _TyBase::m_pspLookahead;
   using _TyBase::m_pspLookaheadAccept;
-
 public:
   typedef typename _TyBase::_TyStateProto _TyStateProto;
+  typedef typename t_TyTransport::_TyChar _TyChar;
+  typedef t_TyTransport _TyTransport;
+  typedef t_TyUserObj _TyUserObj;
+  typedef _l_stream< _TyTransport, _TyUserObj > _TyStream;
 
 private:
   _TyStateProto *m_pspLastAccept; // The last encountered accept state;
 public:
-  typedef typename _TyBase::_TyUnsignedChar _TyUnsignedChar;
-  typedef typename _TyBase::_TyPMFnAccept _TyPMFnAccept;
+  using _TyBase::_TyUnsignedChar;
+  using _TyBase::_TyPMFnAccept;
+  using _TyBase::_TyAxnObjBase;
 
-  typedef t_TyChar _TyChar;
   typedef _l_transition<t_TyChar> _TyTransition;
   typedef _l_compare_input_with_range<t_TyChar> _TyCompSearch;
 
@@ -585,37 +133,53 @@ public:
   static constexpr bool s_kfSupportTriggers = t_fSupportTriggers;
   static constexpr bool s_kfTrace = t_fTrace;
 
-  _TyStateProto *m_pspStart;         // Start state.
-  _TyStateProto *m_pspCur;           // Current state.
+  _TyStream m_stream; // the stream within which is the transport object and user context, etc.
+
+  _TyStateProto *m_pspCur{nullptr}; // Current state.
+  vtyDataPosition m_posLastAccept{vkdpNullDataPosition};
   _TyUnsignedChar *m_pcLastAccept{}; // The position in the buffer when last accept encountered.
+  // The start of the current token is stored in the transport.
+  _TyUnsignedChar m_ucCur; // The current character obtained from the transport.
   _TyCompSearch m_compSearch;        // search object.
-  _TyUnsignedChar *m_pcStart{};        // Start of search string.
-  _TyUnsignedChar *m_pcCur{};        // Current search string.
 
   _l_analyzer() = delete;
   _l_analyzer(const _l_analyzer &) = delete;
   _l_analyzer &operator=(_l_analyzer const &) = delete;
 
   _l_analyzer(_TyStateProto *_pspStart)
-      : m_pspStart(_pspStart),
-        m_pspLastAccept(0)
+      : m_pspLastAccept(0)
   {
+  }
+  _TyStream & GetStream()
+  {
+    return m_stream;
+  }
+  const _TyStream & GetStream() const
+  {
+    return m_stream;
+  }
+  _TyTransport & GetTransport()
+  {
+    return m_stream.GetTransport();
+  }
+  const _TyTransport & GetTransport() const
+  {
+    return m_stream.GetTransport();
   }
   size_t GetCurrentPosition() const
   {
-    return m_pcCur - m_pcStart;
+    return GetStream().PosCurrent();
   }
-
 #define LXOBJ_DOTRACE(MESG...) _DoTrace( __FILE__, __LINE__, __PRETTY_FUNCTION__, MESG)
   void _DoTrace(const char *_szFile, unsigned int _nLine, const char *_szFunction, const char *_szMesg, ...)
   {
     std::string strCur;
-    if ( !!m_pcCur && !!*m_pcCur )
+    if ( !!m_ucCur )
     {
-      if ((*m_pcCur > 32) && (*m_pcCur < 127))
-        (void)FPrintfStdStrNoThrow(strCur, "%c (%lu)", (char)*m_pcCur, uint64_t(*m_pcCur) );
+      if ((m_ucCur > 32) && (m_ucCur < 127))
+        (void)FPrintfStdStrNoThrow(strCur, "%c (%lu)", (char)m_ucCur, uint64_t(m_ucCur) );
       else
-        (void)FPrintfStdStrNoThrow(strCur, "%lu", uint64_t(*m_pcCur));
+        (void)FPrintfStdStrNoThrow(strCur, "%lu", uint64_t(m_ucCur));
     }
 
     std::string strMesg;
@@ -638,15 +202,16 @@ public:
     }
   }
 
-  // get the next accepted state. Return false if no accepted state found.
-  // Update <_rpc> appropriately.
-  bool get(t_TyChar *&_rpc)
+  // Keep getting tokens until we hit eof or the callback method returns false.
+  // If we process things as much as possible - i.e. get tokens until we are supposed to, then we return true and _pspStateFailing is set to nullptr.
+  // If we encounter a state where we cannot move forward on input then we return false. The current state is then still set to the state from which we were unable to continue.
+  template < class t_tyCallback >
+  bool FGetTokens( _TyStateProto * _pspStart, t_tyCallback _callback )
   {
-    m_pcStart = m_pcCur = reinterpret_cast<_TyUnsignedChar *>(_rpc);
-
+    Assert( GetStream().AtTokenStart() ); // We shouldn't be mid-token.
     do
     {
-      m_pspCur = m_pspStart;
+      m_pspCur = _pspStart; // Start at the beginning again...
       LXOBJ_DOTRACE("At start.");
       do
       {
@@ -660,7 +225,7 @@ public:
             case kucAccept:
             {
               m_pspLastAccept = m_pspCur;
-              m_pcLastAccept = m_pcCur;
+              m_posLastAccept = GetStream().PosCurrent();
             }
             break;
             case kucLookahead:
@@ -685,7 +250,7 @@ public:
                 {
                   // REVIEW: May be no need for {m_pspLookahead}.
                   m_pspLastAccept = m_pspLookahead = m_pspCur;
-                  m_pcLastAccept = m_pcLookaheadAccept;
+                  m_posLastAccept = m_posLookaheadAccept;
                 }
                 else
                 {
@@ -702,7 +267,7 @@ public:
             case kucLookaheadAccept:
             {
               m_pspLookaheadAccept = m_pspCur;
-              m_pcLookaheadAccept = m_pcCur;
+              m_posLookaheadAccept = GetStream().PosCurrent();
             }
             break;
             case kucLookaheadAcceptAndAccept:
@@ -710,7 +275,7 @@ public:
               // We have an ambiguous state that is both an accepting state and a
               //	lookahead accepting state.
               m_pspLastAccept = m_pspLookaheadAccept = m_pspCur;
-              m_pcLastAccept = m_pcLookaheadAccept = m_pcCur;
+              m_posLastAccept = m_posLookaheadAccept = GetStream().PosCurrent();
             }
             break;
             case kucLookaheadAcceptAndLookahead:
@@ -730,7 +295,7 @@ public:
                 {
                   // REVIEW: May be no need for {m_pspLookahead}.
                   m_pspLastAccept = m_pspLookahead = m_pspCur;
-                  m_pcLastAccept = m_pcLookaheadAccept;
+                  m_posLastAccept = m_posLookaheadAccept;
                 }
                 else
                 {
@@ -744,7 +309,7 @@ public:
 
               // Record the lookahead accept:
               m_pspLookaheadAccept = m_pspCur;
-              m_pcLookaheadAccept = m_pcCur;
+              m_posLookaheadAccept = GetStream().PosCurrent();
             }
             break;
             }
@@ -753,40 +318,53 @@ public:
           {
             LXOBJ_DOTRACE( "Accept found.");
             m_pspLastAccept = m_pspCur;
-            m_pcLastAccept = m_pcCur;
+            m_posLastAccept = GetStream().PosCurrent();
           }
         }
       } while (_getnext());
 
-      if (m_pspLastAccept)
+      if ( m_pspLastAccept )
       {
-        m_pcCur = m_pcLastAccept;
-
-        _TyPMFnAccept pmfnAccept;
-        if (!!(pmfnAccept = m_pspLastAccept->PMFnGetAction()))
+        _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
+        m_pspLastAccept = 0; // Regardless.
+        Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
+        if ( !!pmfnAccept )
         {
-          m_pspLastAccept = 0;
-          if ((this->*pmfnAccept)())
+          // See of the token wants to be accepted as the current action.
+          // This method will call SetToken() to set the current token.
+          __DEBUG_STMT( SetToken(nullptr) );
+          if ( (this->*pmfnAccept)() )
           {
-            _rpc = reinterpret_cast<t_TyChar *>(m_pcCur);
-            return true;
+            VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
+            unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
+            // Delegate to the stream to obtain the token as it needs to get the context from the transport.
+            GetStream().GetPToken( PGetToken(), m_posLastAccept, upToken );
+            if ( !_callback( upToken ) )
+              return true; // The caller is done with getting tokens for now.
+            // else continue to get tokens.
           }
+          else
+          {
+            Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
+            // We had hit a dead end. To continue from here we must return to the start state.
+            // If the token action didn't accept then it should have cleared all token data:
+            Assert( FIsClearOfTokenData() );
+            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh..
+            // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
+          }
+          m_posLastAccept = vkdpNullDataPosition; // sanity.
         }
-        m_pspLastAccept = 0;
         if (t_fSupportLookahead)
         {
           m_pspLookaheadAccept = 0;
         }
-        // else continue
       }
       else
       {
-        // No accepting state found - don't modify string.
+        // No accepting state found.
         return false;
       }
-    } while (*m_pcCur);
-
-    return false; // at eof - caller must check.
+    } while (m_ucCur);
   }
 
 protected:
@@ -803,6 +381,7 @@ protected:
     }
   }
 
+  // Move to the next state - return true if we either advanced the state or both advanced the state and the stream.
   bool _getnext()
   {
     switch (m_pspCur->m_nt)
@@ -812,11 +391,11 @@ protected:
 
       case 1:
       {
-        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+        if (m_ucCur <= m_pspCur->m_rgt[0].m_last &&
+            m_ucCur >= m_pspCur->m_rgt[0].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[0].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
@@ -825,19 +404,19 @@ protected:
 
       case 2:
       {
-        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+        if (m_ucCur <= m_pspCur->m_rgt[0].m_last &&
+            m_ucCur >= m_pspCur->m_rgt[0].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[0].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[1].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[1].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[1].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
@@ -846,27 +425,27 @@ protected:
 
       case 3:
       {
-        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+        if (m_ucCur <= m_pspCur->m_rgt[0].m_last &&
+            m_ucCur >= m_pspCur->m_rgt[0].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[0].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[1].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[1].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[1].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[2].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[2].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[2].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[2].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
@@ -875,35 +454,35 @@ protected:
 
       case 4:
       {
-        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+        if (m_ucCur <= m_pspCur->m_rgt[0].m_last &&
+            m_ucCur >= m_pspCur->m_rgt[0].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[0].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[1].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[1].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[1].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[2].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[2].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[2].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[2].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[3].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[3].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[3].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[3].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[3].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
@@ -912,43 +491,43 @@ protected:
 
       case 5:
       {
-        if (*m_pcCur <= m_pspCur->m_rgt[0].m_last &&
-            *m_pcCur >= m_pspCur->m_rgt[0].m_first)
+        if (m_ucCur <= m_pspCur->m_rgt[0].m_last &&
+            m_ucCur >= m_pspCur->m_rgt[0].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[0].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[1].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[1].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[1].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[1].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[1].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[2].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[2].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[2].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[2].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[2].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[3].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[3].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[3].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[3].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[3].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
-        else if (*m_pcCur <= m_pspCur->m_rgt[4].m_last &&
-                *m_pcCur >= m_pspCur->m_rgt[4].m_first)
+        else if (m_ucCur <= m_pspCur->m_rgt[4].m_last &&
+                m_ucCur >= m_pspCur->m_rgt[4].m_first)
         {
           m_pspCur = m_pspCur->m_rgt[4].m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
@@ -961,12 +540,12 @@ protected:
         _TyTransition *ptLwr =
             lower_bound(m_pspCur->m_rgt,
                         m_pspCur->m_rgt + m_pspCur->m_nt,
-                        *m_pcCur, m_compSearch);
-        if ((*m_pcCur >= ptLwr->m_first) &&
-            (*m_pcCur <= ptLwr->m_last))
+                        m_ucCur, m_compSearch);
+        if ((m_ucCur >= ptLwr->m_first) &&
+            (m_ucCur <= ptLwr->m_last))
         {
           m_pspCur = ptLwr->m_psp;
-          ++m_pcCur;
+          _NextChar();
           LXOBJ_DOTRACE( "Moved to state." );
           return true;
         }
@@ -1060,23 +639,11 @@ private:
 
 public:
   typedef typename _TyBase::_TyChar _TyChar;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   _l_token_analyzer()
       : t_TyBaseAnalyzer()
   {
   }
-
-  void SetToken( _TyAxnObjBase * _paobCurToken )
-  {
-    m_paobCurToken = _paobCurToken;
-  }
-  _TyAxnObjBase * PGetToken() const
-  { 
-    return m_paobCurToken;
-  }
-protected:
-  _TyAxnObjBase * m_paobCurToken{}; // A pointer to the current token found by the lexang.
 };
 
 __LEXOBJ_END_NAMESPACE

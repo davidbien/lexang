@@ -6,6 +6,9 @@
 #include "_l_ns.h"
 #include <limits>
 
+// Debugging, etc.
+#define LXOBJ_STATENUMBERS
+
 __REGEXP_BEGIN_NAMESPACE
 
 typedef int	vtyActionIdent;
@@ -14,7 +17,7 @@ typedef size_t vtyDataType;
 typedef unsigned long vtyLookaheadVector;
 
 typedef size_t vtyDataPosition;
-static constexpr vtyDataPosition vtpNullDataPosition = numeric_limits< vtyDataPosition >::max();
+static constexpr vtyDataPosition vkdpNullDataPosition = numeric_limits< vtyDataPosition >::max();
 typedef size_t vtyDataType;
 
 template < class t_TyChar, bool t_fInLexGen >
@@ -64,6 +67,44 @@ class _l_transport_mapped;
 template < class t_TyTransport >
 class _l_stream;
 
-
-
 __REGEXP_END_NAMESPACE
+
+__LEXOBJ_BEGIN_NAMESPACE
+
+#ifdef LXOBJ_STATENUMBERS
+typedef unsigned short _TyStateNumber;  // Type for state number.
+#endif                                  // LXOBJ_STATENUMBERS
+typedef unsigned short _TyNTransitions; // Type for number of transitions ( could make unsigned short ).
+typedef unsigned short _TyNTriggers;
+typedef signed char _TyStateFlags; // Type for state flags.
+
+const unsigned char kucAccept = 1;          // Normal accept state.
+const unsigned char kucLookahead = 2;       // Lookahead state.
+const unsigned char kucLookaheadAccept = 3; // Lookahead accept state.
+// This state is both a lookahead accept state and a normal accept state.
+// If the lookahead suffix is seen then that action is performed - if the lookahead
+//	suffix is never seen then this action is performed.
+const unsigned char kucLookaheadAcceptAndAccept = 4;
+// Similar to above.
+const unsigned char kucLookaheadAcceptAndLookahead = 5;
+
+template <class t_TyChar>
+struct _l_state_proto;
+
+template <class t_TyChar>
+struct _l_an_mostbase;
+
+template <class t_TyTransport, class t_tyUserObj, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace = false>
+struct _l_analyzer;
+
+template <class t_TyChar, int t_iTransitions,
+          bool t_fAccept, bool t_fLookahead,
+          int t_iLookaheadVectorEls,
+          int t_iTriggers>
+struct _l_state;
+
+template <class t_TyChar>
+struct _l_transition;
+
+
+__LEXOBJ_END_NAMESPACE

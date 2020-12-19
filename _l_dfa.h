@@ -34,9 +34,6 @@ class _dfa_context;
 
 template < class t_TyGraphLink >
 struct _sort_dfa_link 
-#ifdef __LEXANG_USE_STLPORT
-	: public binary_function< const t_TyGraphLink *, const t_TyGraphLink *, bool >
-#endif //__LEXANG_USE_STLPORT
 {
 	bool	operator()( const t_TyGraphLink * const & _rpglL, 
 										const t_TyGraphLink * const & _rpglR ) const _BIEN_NOTHROW
@@ -307,16 +304,11 @@ public:
 							pit = m_pSetCompCharRange->equal_range( r );
 						typename _TySetCompCharRange::iterator itFound;
 						if ( ( itFound = find_if( pit.first, pit.second, 
-#ifdef __LEXANG_USE_STLPORT
-										unary1st( bind2nd( equal_to< _TyRange >(), r ), 
-															typename _TySetCompCharRange::value_type() ) ) 
-#else //__LEXANG_USE_STLPORT
                   [=,&kr = as_const(r)](auto _el) 
                   { 
                     static_assert(is_const_v<remove_reference_t<decltype(kr)>>);
                     return kr == _el.first; 
                   } )
-#endif //__LEXANG_USE_STLPORT
               ) == pit.second )
 						{
 							// Then a new range:
@@ -557,19 +549,12 @@ public:
 	typedef typename _TyDfa::_TyAcceptAction _TyAcceptAction;
 	typedef _swap_object< _TySetStates > _TySwapSS;
 	typedef less< _TySwapSS > _TyCompareStates;
-#ifdef __LEXANG_USE_STLPORT
-  typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TyPartAcceptStates;
-  typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
-										  hash< _TyState >, equal_to< _TyState >,
-										  t_TyAllocator > _TyAcceptPartLookup;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename map< _TySwapSS, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TyPartAcceptStatesAllocator;
   typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, _TyPartAcceptStatesAllocator > _TyPartAcceptStates;
   typedef typename _Alloc_traits< typename unordered_map< _TyState, typename _TyPartAcceptStates::value_type * >::value_type, t_TyAllocator >::allocator_type _TyAcceptPartLookupAllocator;
   typedef unordered_map< _TyState, typename _TyPartAcceptStates::value_type *,
                         hash< _TyState >, equal_to< _TyState >,
                       _TyAcceptPartLookupAllocator > _TyAcceptPartLookup;
-#endif //__LEXANG_USE_STLPORT
 
 	_TyGraphNode * m_pgnStart;
 	_sdpd< _TySetStates, t_TyAllocator > m_pssAccept;

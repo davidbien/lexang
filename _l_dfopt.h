@@ -46,9 +46,6 @@ public:
 
 template < class t_TyPartitionClass >
 struct _compare_partition_classes
-#ifdef __LEXANG_USE_STLPORT
-	: public binary_function< t_TyPartitionClass *, t_TyPartitionClass *, bool >
-#endif //__LEXANG_USE_STLPORT
 {
 	size_t	m_stAlphabet;	// The number of characters in the alphabet.
 

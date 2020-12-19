@@ -20,6 +20,9 @@
 #include "_l_ns.h"
 #include "_l_value.h"
 #include "_l_strm.h"
+#include "_l_data.h"
+
+__LEXOBJ_BEGIN_NAMESPACE
 
 template < class t_TyUserContext >
 class _l_token
@@ -28,8 +31,17 @@ class _l_token
 public:
   typedef typename t_TyUserContext::_TyChar _TyChar;
   typedef t_TyUserContext _TyUserContext;
-  typedef _l_data< t_TyChar > _TyData;
-  typedef _l_value< t_TyChar > _TyValue;
+  typedef _l_data< _TyChar > _TyData;
+  typedef _l_value< _TyChar > _TyValue;
+
+  _TyValue & GetValue()
+  {
+    return m_value;
+  }
+  const _TyValue & GetValue() const
+  {
+    return m_value;
+  }
 
   _TyValue & operator [] ( size_type _nEl )
   {
@@ -45,6 +57,11 @@ public:
   {
     m_scx.GetStringView( _rsvDest, *this, _rval );
   }
+  template < class t_tyStringView, class t_tyString >
+  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval )
+  {
+    return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, _rval );
+  }
   template < class t_tyString >
   void GetString( t_tyString & _rstrDest, _TyValue const & _rval )
   {
@@ -56,3 +73,5 @@ protected:
   _TyValue m_value; // This value's context is in m_scx.
   vtyTokenIdent m_tid; // We are this here token.
 };
+
+__LEXOBJ_END_NAMESPACE

@@ -188,23 +188,15 @@ public:
   //  reference an internal impll class.
 	typedef __DGRAPH_NAMESPACE _graph_node_base	_TyLexanGraphNodeBase;
 
-#ifdef __LEXANG_USE_STLPORT
-  typedef deque< _TyLexanGraphNodeBase *, t_TyAllocator >	_TyNodeLookup;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename deque< _TyLexanGraphNodeBase * >::value_type, t_TyAllocator >::allocator_type _TyNodeLookupAllocator;
   typedef deque< _TyLexanGraphNodeBase *, _TyNodeLookupAllocator >	_TyNodeLookup;
-#endif //__LEXANG_USE_STLPORT
 
 	// Type for set of states:
 	typedef _simple_bitvec< unsigned int, t_TyAllocator >		_TySetStates;
 
 	// Type for state set cache:
-#ifdef __LEXANG_USE_STLPORT
-  typedef deque< _swap_object< _TySetStates >, t_TyAllocator >	_TySSCache;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename deque< _swap_object< _TySetStates > >::value_type, t_TyAllocator >::allocator_type _TySSCacheAllocator;
   typedef deque< _swap_object< _TySetStates >, _TySSCacheAllocator >	_TySSCache;
-#endif //__LEXANG_USE_STLPORT
 
 	_TyAlphabet	m_setAlphabet;
 

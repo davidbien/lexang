@@ -19,7 +19,7 @@
 #include "segarray.h"
 #include "_l_inc.h"
 
-__REGEXP_BEGIN_NAMESPACE
+__LEXOBJ_BEGIN_NAMESPACE
 
 #if 0 // trying to rid these.
 // _l_data_range_pod: A simple token range in a token stream.
@@ -374,4 +374,4 @@ protected:
   }
 };
 
-__REGEXP_END_NAMESPACE
+__LEXOBJ_END_NAMESPACE

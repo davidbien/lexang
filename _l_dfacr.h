@@ -43,13 +43,6 @@ protected:
 	typedef typename _TyDfa::_TyGraphLink	_TyGraphLinkDfa;
 	typedef typename _TyDfa::_TyAcceptAction	_TyAcceptAction;
 
-#ifdef __LEXANG_USE_STLPORT
-  typedef hash_map<	_TySwapSSNfa, _TyGraphNodeDfa*,
-										  hash< _TySwapSSNfa >, equal_to< _TySwapSSNfa >, 
-										  _TyAllocatorNfa > _TyLookupSS;
-  typedef slist< pair< _TyState, _TyState >, _TyAllocatorNfa > _TyDfaAcceptingList;
-  typedef deque< const _TySetStatesNfa*, _TyAllocatorNfa > _TyMapStateToSS;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename unordered_map< _TySwapSSNfa, _TyGraphNodeDfa* >::value_type, _TyAllocatorNfa >::allocator_type _tySwapSSNfaAlloc;
   typedef unordered_map<	_TySwapSSNfa, _TyGraphNodeDfa*,
     hash< _TySwapSSNfa >, equal_to< _TySwapSSNfa >,
@@ -58,7 +51,6 @@ protected:
   typedef forward_list< pair< _TyState, _TyState >, _TyDfaAcceptingListAlloc > _TyDfaAcceptingList;
   typedef typename _Alloc_traits< typename deque< const _TySetStatesNfa* >::value_type, _TyAllocatorNfa >::allocator_type _TyMapStateToSSAlloc;
   typedef deque< const _TySetStatesNfa*, _TyMapStateToSSAlloc > _TyMapStateToSS;
-#endif //__LEXANG_USE_STLPORT
 
 	// Lookahead disambiguating stuff:
   typedef typename _Alloc_traits< typename set< _TyState, less< _TyState > >::value_type, _TyAllocatorNfa >::allocator_type _TySetLDStatesAlloc;

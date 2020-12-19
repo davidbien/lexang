@@ -15,7 +15,7 @@
 #include <variant>
 #include "segarray.h"
 
-__REGEXP_BEGIN_NAMESPACE
+__LEXOBJ_BEGIN_NAMESPACE
 
 // Note that these to templates represent the standard pattern "overload" for variants.
 template< class... Ts > 
@@ -395,7 +395,7 @@ public:
       [this,&_rtok,&_rsv,&_rstr](_TyData const & _rdt)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
-        return _rtok.FGetStringViewOrString( _rsv, _rstr, *this, _rdt );
+        return _rtok.FGetStringViewOrString( _rsv, _rstr, *this );
       },
       [&_rsv,&_rstr](_TyStrChar8 const & _rstr8)
       {
@@ -706,8 +706,8 @@ public:
   }
 protected:
   _TySegArrayBuffer m_buf{s_knbySegArrayInit}; // some of the values in the aggregated _l_value may refer to memory in this segarray.
-  vtyDataPosition m_posStart{vtpNullDataPosition}; // The position in the input stream corresponding to the start of data in m_buf.
+  vtyDataPosition m_posStart{vkdpNullDataPosition}; // The position in the input stream corresponding to the start of data in m_buf.
 };
 #endif 0
 
-__REGEXP_END_NAMESPACE
+__LEXOBJ_END_NAMESPACE

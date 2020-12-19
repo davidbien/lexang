@@ -1113,11 +1113,7 @@ public:
 	size_t											m_stFinalSize;	
 	_dtorp< _TySdpActionBase >	m_pSdpAction;
 
-#ifdef __LEXANG_USE_STLPORT
-  typedef t_TyAllocator _TyFinalListAllocator;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename list< _TyThis >::value_type, t_TyAllocator >::allocator_type _TyFinalListAllocator;
-#endif //__LEXANG_USE_STLPORT
   typedef list< _TyThis, _TyFinalListAllocator >	_TyFinalList;
 	_TyFinalList m_lAlternatives;
 

@@ -442,11 +442,11 @@ public:
 	_l_trigger_position( _TyThis const & _r ) = default;
 	bool FIsNull() const
 	{
-		return ( m_tpPos == vtpNullDataPosition );
+		return ( m_tpPos == vkdpNullDataPosition );
 	}
 	void Clear()
 	{
-		m_tpPos = vtpNullDataPosition;
+		m_tpPos = vkdpNullDataPosition;
 	}
 	// Return the unique token ID associated with this object.
 	static constexpr vtyTokenIdent GetTokenId()
@@ -492,7 +492,7 @@ public:
 	vtyDataPosition GetClearPosition()
 	{
 		vtyDataPosition tpPos = m_tpPos;
-		m_tpPos = vtpNullDataPosition;
+		m_tpPos = vkdpNullDataPosition;
 		return tpPos;
 	}
 	// The parser might want to just save a single position in the stream so implement this.
@@ -506,7 +506,7 @@ public:
 		Clear();
 	}
 protected:
-	vtyDataPosition m_tpPos{ vtpNullDataPosition };
+	vtyDataPosition m_tpPos{ vkdpNullDataPosition };
 };
 
 // Trigger to record an ending position in a stream.
@@ -636,11 +636,11 @@ public:
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			vtyDataPosition posEnd = GetClearPosition();
-			Assert(	( vtpNullDataPosition != posBegin ) &&
-						( vtpNullDataPosition != posEnd ) &&
+			Assert(	( vkdpNullDataPosition != posBegin ) &&
+						( vkdpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) );
-			if (	( vtpNullDataPosition != posBegin ) &&
-						( vtpNullDataPosition != posEnd ) &&
+			if (	( vkdpNullDataPosition != posBegin ) &&
+						( vkdpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
 				m_dtStrings.Append( posBegin, posEnd );
@@ -736,11 +736,11 @@ public:
 			_TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
 			vtyDataPosition posBegin = rtBegin.GetClearPosition();
 			vtyDataPosition posEnd = GetClearPosition();
-			Assert(	( vtpNullDataPosition != posBegin ) &&
-						( vtpNullDataPosition != posEnd ) &&
+			Assert(	( vkdpNullDataPosition != posBegin ) &&
+						( vkdpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) );
-			if (	( vtpNullDataPosition != posBegin ) &&
-						( vtpNullDataPosition != posEnd ) &&
+			if (	( vkdpNullDataPosition != posBegin ) &&
+						( vkdpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
 				_tyActionStoreData & raxnStoreData = static_cast< _tyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
