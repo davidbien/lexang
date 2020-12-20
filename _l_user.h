@@ -43,7 +43,7 @@ public:
 // Generic transport methods:
 // For all transport types these converting methods are exactly the same.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
     requires ( !is_same_v< typename t_TyStringView::value_type, _TyChar > )
   {
     typedef typename t_TyStringView::value_type _TyCharConvertTo;
@@ -53,7 +53,7 @@ public:
     _rsvDest = _rval.emplaceVal( std::move( strConverted ) );
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( !is_same_v< typename t_TyStringView::value_type, _TyChar > )
   {
     Assert( _rsvDest.empty() );
@@ -66,7 +66,7 @@ public:
 // fd transport:
 // Non-converting GetString* for fd transport.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
     requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
   {
     Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
@@ -85,7 +85,7 @@ public:
     }
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & const _rval )
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & const _rval )
     requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
   {
     Assert( _rsvDest.empty() );
@@ -105,7 +105,7 @@ public:
     }
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
     requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
   {
     Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
@@ -144,7 +144,7 @@ public:
 
 // Converting GetString* for fd transport.
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
   {
     typedef typename t_TyString::value_type _TyCharConvertTo;
@@ -200,7 +200,7 @@ public:
 // Fixed-memory transport GetString* methods:
 // Non-converting GetString* for fixed-memory transport.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
     requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
   {
     Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
@@ -221,7 +221,7 @@ public:
     }
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
   {
     Assert( _rsvDest.empty() );
@@ -245,7 +245,7 @@ public:
     }
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
   {
     Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
@@ -286,7 +286,7 @@ public:
 
 // Converting GetString* for fixed-memory transport.
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > )
   {
     typedef typename t_TyString::value_type _TyCharConvertTo;

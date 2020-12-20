@@ -34,6 +34,18 @@ public:
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyChar > _TyValue;
 
+  _l_token() = delete;
+  _l_token & operator =( _l_token const & ) = delete;
+  // We could make this protected, etc, but I don't worry that it will be accidetally called.
+  _l_token( _TyUserContext && _rrucxt, _TyValue && _rrvalue, vtyTokenIdent _tid )
+    : m_scx( std::move( _rrucxt ) ),
+      m_value( std::move( _rrvalue ) ),
+      m_tid( _tid )
+  {
+  }
+  // We are copyable:
+  _l_token( _l_token const & ) = default;
+
   _TyValue & GetValue()
   {
     return m_value;

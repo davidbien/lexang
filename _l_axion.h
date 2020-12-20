@@ -643,15 +643,16 @@ public:
 						( vkdpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
-				m_dtStrings.Append( posBegin, posEnd );
+				m_dtStrings.Append( posBegin, posEnd, 0, s_kiTrigger );
 			}
 		}
 		return true;
 	}
+	// Other triggers may call this method with a different trigger id than this one.
 	template < class t_TyAnalyzer >
-	void Append( t_TyAnalyzer & _rA, vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
+	void Append( t_TyAnalyzer & _rA, vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
 	{
-		m_dtStrings.Append( _posBegin, _posEnd, _nType );
+		m_dtStrings.Append( _posBegin, _posEnd, _nType, _nIdTrigger );
 	}
 	void swap( _TyThis & _r )
 	{
@@ -744,7 +745,7 @@ public:
 						( posEnd > posBegin ) )
 			{
 				_tyActionStoreData & raxnStoreData = static_cast< _tyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
-				raxnStoreData.Append( _rA, posBegin, posEnd, s_kdtType );
+				raxnStoreData.Append( _rA, posBegin, posEnd, s_kdtType, s_kiTrigger );
 			}
 		}
 		return true;

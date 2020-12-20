@@ -75,6 +75,11 @@ public:
   _l_data_typed_range( _l_data_typed_range const & ) = default;
   _l_data_typed_range & operator = ( _l_data_typed_range const & ) = default;
 
+  _l_data_typed_range( _l_data_range const & _r )
+    : _TyBase( _r )
+  {
+  }
+
   // Provide access to base class via explicit accessor:
   _TyBase const & GetRangeBase() const
   {
@@ -91,10 +96,15 @@ public:
   {
     return m_nType;
   }
+  vtyDataType id() const
+  {
+    return m_nIdTrigger;
+  }
 
   using _TyBase::m_posBegin;
   using _TyBase::m_posEnd;
   vtyDataType m_nType{0}; // the 0th type always signifies "plain text".
+  vtyDataTriggerId m_nIdTrigger{vktidInvalidIdTrigger}; // This is the trigger id of the trigger that created the data range.
 };
 
 // by default we will keep the segment size small but large enough that most strings will fit in it.
@@ -127,6 +137,7 @@ public:
     {
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posEnd ) );
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || !m_dtrData.m_nType );
+      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( vktidInvalidIdTrigger == m_dtrData.m_nType ) );
       Assert( m_dtrData.m_posEnd >= m_dtrData.m_posBegin );
     }
     else
@@ -139,29 +150,25 @@ public:
 #endif //!ASSERTSENABLED
 
   _l_data()
+    : m_dtrData()
   {
-    _SetMembersNull();
   }
   _l_data( vtyDataPosition _posBegin, vtyDataPosition _posEnd )
+    : m_dtrData( _posBegin, _posEnd )
   {
     _SetContainsSingleDataRange();
-    m_dtrData.m_posBegin = _posBegin;
-    m_dtrData.m_posEnd = _posEnd;
-    m_dtrData.m_nType = 0;
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
   _l_data( _l_data_range const & _rdr )
+    : m_dtrData( _rdr )
   {
     _SetContainsSingleDataRange();
-    m_dtrData.m_posBegin = _rdr.m_posBegin;
-    m_dtrData.m_posEnd = _rdr.m_posEnd;
-    m_dtrData.m_nType = 0;
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
-  _l_data( _l_data_typed_range const & _rttr )
+  _l_data( _l_data_typed_range const & _rdtr )
   {
     _SetContainsSingleDataRange();
-    memcpy( &m_dtrData, &_rttr, sizeof m_dtrData );
+    memcpy( &m_dtrData, &_rdtr, sizeof m_dtrData );
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
   _l_data( const _l_data & _r )
@@ -273,45 +280,42 @@ public:
   }
   void Set( _l_data_range const & _rdr )
   {
-    Set( _rdr.m_posBegin, _rdr.m_posEnd );
+    Set( _l_data_typed_range( _rdr ) );
   }
-  void Set( _l_data_typed_range const & _rttr )
+  void Set( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {
-    Set( _rttr.m_posBegin, _rttr.m_posEnd, _rttr.m_nType );
+    Set( _l_data_typed_range( _posBegin, _posEnd, _nType, _nIdTrigger ) );
   }
-  void Set( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
+  void Set( _l_data_typed_range const & _rdtr )
   {
-    Assert( _posEnd >= _posBegin );
+    _rdtr.AssertValid();
     if ( !FContainsSingleDataRange() )
       _ClearSegArray();
     _SetContainsSingleDataRange();
-    m_dtrData.m_posBegin = _posBegin;
-    m_dtrData.m_posEnd = _posEnd;
-    m_dtrData.m_nType = _nType;
+    m_dtrData = _rdtr;
     AssertValid();
   }
   void Append( _l_data_range const & _rdr )
   {
-    Append( _rdr.m_posBegin, _rdr.m_posEnd );
+    Append( _l_data_typed_range( _rdr ) );
   }
-  void Append( _l_data_typed_range const & _rttr )
+  void Append( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _id )
   {
-    Append( _rttr.m_posBegin, _rttr.m_posEnd, _rttr.m_nType );
+    Append( _l_data_typed_range( _posBegin, _posEnd, _nType, _nIdTrigger ) );
   }
-  void Append( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType = 0 )
+  void Append( _l_data_typed_range const & _rdtr )
   {
     if ( FIsNull() )
-      return Set( _posBegin, _posEnd, _nType );
+      return Set( _rdtr );
     else
     if ( FContainsSingleDataRange() )
     {
       _TySegArray saNew( s_knSegArrayInit );
-      saNew.Overwrite( 0, (const ns_re::_l_data_typed_range *)&m_dtrData, 1 );
+      saNew.Overwrite( 0, &m_dtrData, 1 );
       new ( m_rgbySegArray ) _TySegArray( std::move( saNew ) );
       AssertValid();
     }
-    _l_data_typed_range dtrWrite = { _posBegin, _posEnd, _nType };
-    _PSegArray()->Overwrite( _PSegArray()->NElements(), &dtrWrite, 1 );
+    _PSegArray()->Overwrite( _PSegArray()->NElements(), &_rdtr, 1 );
     AssertValid();
   }
   _TySegArray & GetSegArrayDataRanges()
@@ -338,13 +342,14 @@ public:
     }
   }
 protected:
-  static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range const & _rttr )
+  static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range const & _rdtr )
   {
     Assert( _rjv.FIsNull() );
     _rjv.SetValueType( ejvtObject );
-    _rjv.SetValue( "b", _rttr.m_posBegin );
-    _rjv.SetValue( "e", _rttr.m_posEnd );
-    _rjv.SetValue( "t", _rttr.m_nType );
+    _rjv.SetValue( "b", _rdtr.m_posBegin );
+    _rjv.SetValue( "e", _rdtr.m_posEnd );
+    _rjv.SetValue( "t", _rdtr.m_nType );
+    _rjv.SetValue( "i", _rdtr.m_nIdTrigger );
   }
   void _SetContainsSingleDataRange()
   {
@@ -356,6 +361,7 @@ protected:
     m_dtrData.m_posBegin = numeric_limits< vtyDataPosition >::max();
     m_dtrData.m_posEnd = numeric_limits< vtyDataPosition >::max();
     m_dtrData.m_nType = 0;
+    m_dtrData.m_nIdTrigger = vktidInvalidIdTrigger;
   }
   _TySegArray * _PSegArray()
   {

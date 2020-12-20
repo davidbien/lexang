@@ -11,14 +11,15 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
-typedef int	vtyActionIdent;
-typedef int	vtyTokenIdent;
-typedef size_t vtyDataType;
+typedef int32_t	vtyActionIdent;
+typedef int32_t	vtyTokenIdent; // allow negative numbers to signify something, not sure yet.
 typedef unsigned long vtyLookaheadVector;
 
 typedef size_t vtyDataPosition;
 static constexpr vtyDataPosition vkdpNullDataPosition = numeric_limits< vtyDataPosition >::max();
-typedef size_t vtyDataType;
+typedef uint32_t vtyDataType;
+typedef vtyTokenIdent vtyDataTriggerId;
+vtyDataTriggerId vktidInvalidIdTrigger = numeric_limits< vtyDataTriggerId >::min();
 
 template < class t_TyChar, bool t_fInLexGen >
 struct _l_action_object_base;
@@ -42,7 +43,6 @@ template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
 class _l_action_save_data_single;
 template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
 class _l_action_save_data_multiple;
-
 
 // Transports:
 template < class t_TyChar >

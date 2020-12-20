@@ -202,6 +202,178 @@ public:
     }
   }
 
+  void
+  _CheckAcceptState()
+  {
+    if (m_pspCur->m_flAccept)
+    {
+      if (t_fSupportLookahead)
+      {
+        // Then need to check the type of accept state:
+        switch (m_pspCur->m_flAccept)
+        {
+        case kucAccept:
+        {
+          m_pspLastAccept = m_pspCur;
+          m_posLastAccept = GetStream().PosCurrent();
+        }
+        break;
+        case kucLookahead:
+        {
+          // The lookahead state ( the last state in the lookahead NFA ).
+          // There are a couple of possibilities:
+          // 1) We haven't seen the associated kucLookaheadAccept state - in which case
+          //		ignore this state.
+          // 2) We have seen the associated kucLookaheadAccept state:
+          //		a) and we have already seen this lookahead state <or>
+          //		b) we haven't yet seen this lookahead state.
+          if (m_pspLookaheadAccept)
+          {
+            // Then might not be the associated accept state:
+            vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
+            vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
+            if (((aiLA < 0) &&
+                  (*(m_pspLookaheadAccept->PBeginValidLookahead() +
+                    aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
+                  (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
+                (aiLA == aiCur))
+            {
+              // REVIEW: May be no need for {m_pspLookahead}.
+              m_pspLastAccept = m_pspLookahead = m_pspCur;
+              m_posLastAccept = m_posLookaheadAccept;
+            }
+            else
+            {
+              // Dangerous set of lookahead patterns.
+              Assert(0); // When does this happen ?
+                          // If and when this does happen then likely due to optimization.
+                          // Then the lookahead state for another lookahead accept state - ignore
+                          //	 it completely.
+            }
+          }
+          // We haven't seen the lookahead accept - ignore.
+        }
+        break;
+        case kucLookaheadAccept:
+        {
+          m_pspLookaheadAccept = m_pspCur;
+          m_posLookaheadAccept = GetStream().PosCurrent();
+        }
+        break;
+        case kucLookaheadAcceptAndAccept:
+        {
+          // We have an ambiguous state that is both an accepting state and a
+          //	lookahead accepting state.
+          m_pspLastAccept = m_pspLookaheadAccept = m_pspCur;
+          m_posLastAccept = m_posLookaheadAccept = GetStream().PosCurrent();
+        }
+        break;
+        case kucLookaheadAcceptAndLookahead:
+        {
+          // We have an ambiguous state that is both a lookahead state and a
+          //	lookahead accepting state.
+          if (m_pspLookaheadAccept)
+          {
+            // Then might not be the associated accept state:
+            vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
+            vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
+            if (((aiLA < 0) &&
+                  (*(m_pspLookaheadAccept->PBeginValidLookahead() +
+                    aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
+                  (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
+                (aiLA == aiCur))
+            {
+              // REVIEW: May be no need for {m_pspLookahead}.
+              m_pspLastAccept = m_pspLookahead = m_pspCur;
+              m_posLastAccept = m_posLookaheadAccept;
+            }
+            else
+            {
+              Assert(0); // When does this happen ?
+                          // If and when this does happen then likely due to optimization.
+                          // Then the lookahead state for another lookahead accept state - ignore
+                          //	 it completely.
+            }
+          }
+          // We haven't seen the lookahead accept - ignore the lookahead.
+
+          // Record the lookahead accept:
+          m_pspLookaheadAccept = m_pspCur;
+          m_posLookaheadAccept = GetStream().PosCurrent();
+        }
+        break;
+        }
+      }
+      else
+      {
+        LXOBJ_DOTRACE( "Accept found.");
+        m_pspLastAccept = m_pspCur;
+        m_posLastAccept = GetStream().PosCurrent();
+      }
+    }
+  }
+
+  // Just return a single token. Return false if you didn't get one.
+  bool FGetToken( _TyStateProto *_pspStart, unique_ptr< _TyToken > & _rpuToken )
+  {
+    Assert( GetStream().AtTokenStart() ); // We shouldn't be mid-token.
+    do
+    {
+      m_pspCur = _pspStart; // Start at the beginning again...
+      LXOBJ_DOTRACE("At start.");
+      do
+      {
+        _CheckAcceptState();
+      } 
+      while ( _getnext() );
+
+      if ( m_pspLastAccept )
+      {
+        _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
+        m_pspLastAccept = 0; // Regardless.
+        Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
+        if ( !!pmfnAccept )
+        {
+          // See of the token wants to be accepted as the current action.
+          // This method will call SetToken() to set the current token.
+          Assert( !PGetToken() ); // Why should we have a token now.
+          __DEBUG_STMT( SetToken(nullptr) );
+          if ( (this->*pmfnAccept)() )
+          {
+            VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
+            unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
+            // Delegate to the stream to obtain the token as it needs to get the context from the transport.
+            _TyAxnObjBase * paobCurToken = PGetToken();
+            SetToken(nullptr);
+            GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+            if ( !_callback( upToken ) )
+              return true; // The caller is done with getting tokens for now.
+            // else continue to get tokens.
+          }
+          else
+          {
+            Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
+            // We had hit a dead end. To continue from here we must return to the start state.
+            // If the token action didn't accept then it should have cleared all token data:
+            Assert( FIsClearOfTokenData() );
+            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
+            // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
+          }
+          m_posLastAccept = vkdpNullDataPosition; // sanity.
+        }
+        if (t_fSupportLookahead)
+        {
+          m_pspLookaheadAccept = 0;
+        }
+      }
+      else
+      {
+        // No accepting state found.
+        return false;
+      }
+    } while (m_ucCur);
+  }
+
   // Keep getting tokens until we hit eof or the callback method returns false.
   // If we process things as much as possible - i.e. get tokens until we are supposed to, then we return true and _pspStateFailing is set to nullptr.
   // If we encounter a state where we cannot move forward on input then we return false. The current state is then still set to the state from which we were unable to continue.
@@ -215,113 +387,9 @@ public:
       LXOBJ_DOTRACE("At start.");
       do
       {
-        if (m_pspCur->m_flAccept)
-        {
-          if (t_fSupportLookahead)
-          {
-            // Then need to check the type of accept state:
-            switch (m_pspCur->m_flAccept)
-            {
-            case kucAccept:
-            {
-              m_pspLastAccept = m_pspCur;
-              m_posLastAccept = GetStream().PosCurrent();
-            }
-            break;
-            case kucLookahead:
-            {
-              // The lookahead state ( the last state in the lookahead NFA ).
-              // There are a couple of possibilities:
-              // 1) We haven't seen the associated kucLookaheadAccept state - in which case
-              //		ignore this state.
-              // 2) We have seen the associated kucLookaheadAccept state:
-              //		a) and we have already seen this lookahead state <or>
-              //		b) we haven't yet seen this lookahead state.
-              if (m_pspLookaheadAccept)
-              {
-                // Then might not be the associated accept state:
-                vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
-                vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
-                if (((aiLA < 0) &&
-                     (*(m_pspLookaheadAccept->PBeginValidLookahead() +
-                        aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
-                      (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
-                    (aiLA == aiCur))
-                {
-                  // REVIEW: May be no need for {m_pspLookahead}.
-                  m_pspLastAccept = m_pspLookahead = m_pspCur;
-                  m_posLastAccept = m_posLookaheadAccept;
-                }
-                else
-                {
-                  // Dangerous set of lookahead patterns.
-                  Assert(0); // When does this happen ?
-                             // If and when this does happen then likely due to optimization.
-                             // Then the lookahead state for another lookahead accept state - ignore
-                             //	 it completely.
-                }
-              }
-              // We haven't seen the lookahead accept - ignore.
-            }
-            break;
-            case kucLookaheadAccept:
-            {
-              m_pspLookaheadAccept = m_pspCur;
-              m_posLookaheadAccept = GetStream().PosCurrent();
-            }
-            break;
-            case kucLookaheadAcceptAndAccept:
-            {
-              // We have an ambiguous state that is both an accepting state and a
-              //	lookahead accepting state.
-              m_pspLastAccept = m_pspLookaheadAccept = m_pspCur;
-              m_posLastAccept = m_posLookaheadAccept = GetStream().PosCurrent();
-            }
-            break;
-            case kucLookaheadAcceptAndLookahead:
-            {
-              // We have an ambiguous state that is both a lookahead state and a
-              //	lookahead accepting state.
-              if (m_pspLookaheadAccept)
-              {
-                // Then might not be the associated accept state:
-                vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
-                vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
-                if (((aiLA < 0) &&
-                     (*(m_pspLookaheadAccept->PBeginValidLookahead() +
-                        aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
-                      (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
-                    (aiLA == aiCur))
-                {
-                  // REVIEW: May be no need for {m_pspLookahead}.
-                  m_pspLastAccept = m_pspLookahead = m_pspCur;
-                  m_posLastAccept = m_posLookaheadAccept;
-                }
-                else
-                {
-                  Assert(0); // When does this happen ?
-                             // If and when this does happen then likely due to optimization.
-                             // Then the lookahead state for another lookahead accept state - ignore
-                             //	 it completely.
-                }
-              }
-              // We haven't seen the lookahead accept - ignore the lookahead.
-
-              // Record the lookahead accept:
-              m_pspLookaheadAccept = m_pspCur;
-              m_posLookaheadAccept = GetStream().PosCurrent();
-            }
-            break;
-            }
-          }
-          else
-          {
-            LXOBJ_DOTRACE( "Accept found.");
-            m_pspLastAccept = m_pspCur;
-            m_posLastAccept = GetStream().PosCurrent();
-          }
-        }
-      } while (_getnext());
+        _CheckAcceptState();
+      } 
+      while ( _getnext() );
 
       if ( m_pspLastAccept )
       {
@@ -332,13 +400,15 @@ public:
         {
           // See of the token wants to be accepted as the current action.
           // This method will call SetToken() to set the current token.
+          Assert( !PGetToken() ); // Why should we have a token now.
           __DEBUG_STMT( SetToken(nullptr) );
           if ( (this->*pmfnAccept)() )
           {
             VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
             unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
-            // Delegate to the stream to obtain the token as it needs to get the context from the transport.
-            GetStream().GetPToken( PGetToken(), m_posLastAccept, upToken );
+            _TyAxnObjBase * paobCurToken = PGetToken();
+            SetToken(nullptr);
+            GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
             if ( !_callback( upToken ) )
               return true; // The caller is done with getting tokens for now.
             // else continue to get tokens.

@@ -566,7 +566,7 @@ protected:	// accessed by _nfa_context:
 	void	CreateCompletesNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
 	{
 		_TyNfaCtxt *	pcNfaTemp;
-		_rctxt1_Result.Clone( reinterpret_cast< _TyNfaCtxtBase ** >( &pcNfaTemp ) );
+		_rctxt1_Result.Clone( static_cast< _TyNfaCtxtBase ** >( &pcNfaTemp ) );
 		CMFDtor1_void< _TyNfaCtxt, _TyNfaCtxtBase * >	
 			dtorNfa2( &_rctxt1_Result, &_TyNfaCtxt::DestroyOther, pcNfaTemp );
 

@@ -102,7 +102,18 @@ public:
         LOGSYSLOGERRNO( eslmtError, errno, "~_l_transport_fd(): close() returned an error.")
     }
   }
-  // No need to provide a bunch of utility methods here...
+
+  // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
+  template < class t_TyUserObj >
+  void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
+                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, unique_ptr< _TyToken > & _rupToken )
+  {
+    // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
+
+    _TyValue value;
+    _paobCurToken->GetAndClearValue( value );
+    m_opttpImpl.GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), m_uoUserObj, _rupToken );
+  }
 
   // Transfer the current context and do appropriate housekeeping...
   // This will transfer the current _TySegArrayBuffer to _rcxt because it will then be associated with a _l_token.
@@ -140,7 +151,7 @@ protected:
   // We will do this in all cases when using an fd currently as this simplifies the algorithm and also allows us to use basic_string_views for all data until
   //  we convert it into the character type that the user of the parser is using.
   // In this way we will never have to seek the stream which is preferable as seek is a system call and thus could result in a context switch or blocking, etc.
-  typedef SegArray< t_TyChar, false_Type > _TySegArrayBuffer;
+  typedef SegArrayRotatingBuffer< t_TyChar > _TySegArrayBuffer;
   // We are going to store the SegArrayBuffer for an individual token first here, then we will pass it to the _l_value for the token itself. This is only necessary for non-mapped/in-memory transports.
   typedef std::list< _TySegArrayBuffer > _TyListFreeSegArrays;
   _TyListFreeSegArrays m_lListFreeSegArrays;
@@ -258,26 +269,35 @@ public:
   typedef typename t_TyTransportCtxt::_TyChar _TyChar;
   typedef _l_token< _TyThis > _TyToken;
 
+  _l_user_context() = delete;
+  _l_user_context & operator =( _l_user_context const & ) = delete;
+  _l_user_context( _TyUserObj & _ruo )
+    : m_ruoUserObj( _ruo )
+  {
+  }
+  // We are copyable.
+  _l_user_context( _TyThis const & ) = default; 
+
   template < class t_tyStringView >
   void GetStringView( t_tyStringView & _rsvDest, _TyToken & _rtok, _TyValue & _rval )
   {
     // yet another delegation...and add another parameter.
-    m_uoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
+    m_ruoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
   }
   template < class t_tyStringView, class t_tyString >
   bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
   {
     // yet another delegation...and add another parameter.
-    return m_uoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
+    return m_ruoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
   }
   template < class t_tyString >
   void GetString( t_tyString & _rstrDest, _TyToken & _rtok, _TyValue const & _rval )
   {
     // yet another delegation...and add another parameter.
-    m_uoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
+    m_ruoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
   }
 protected:
-  t_tyUserObj m_uoUserObj;
+  t_tyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
 };
 
 // _l_stream: An input stream for the lexicographical analyzer.
@@ -293,7 +313,19 @@ public:
   typedef _l_value< _TyChar > _TyValue;
   typedef _l_token< _TyUserContext > _TyToken;
 
-  _l_stream() = default;
+  _l_stream() = delete;
+  _l_stream( _l_stream const & ) = delete;
+  _l_stream & operator =( _l_stream const & ) = delete;
+
+  // Use this constructor for non-copyable objects or stateful objects that we don't want to copy, etc.
+  _l_stream( _TyUserObj && _rruo )
+    : m_uoUserObj( std::move( _rruo ) )
+  {
+  }
+  _l_stream( _TyUserObj const & _ruo )
+    : m_uoUserObj( _ruo )
+  {
+  }
 
   // Construct the transport object appropriately.
   template < class... t_TysArgs >
@@ -302,17 +334,18 @@ public:
     m_opttpImpl.emplace( std::forward< t_TysArgs >( _args )... );
   }
 
-  // Read the Convert the strings present in this _TyValue in-place to the character type t_TyCharConvertTo.
-  template < class t_TyCharConvertTo >
-  void ReadAndConvertStrings( _TyValue & _rv )
+  // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
+  void GetPToken( _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, unique_ptr< _TyToken > & _rupToken )
   {
-    
+    _TyValue value;
+    _paobCurToken->GetAndClearValue( value );
+    m_opttpImpl.GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), m_uoUserObj, _rupToken );
   }
 
 protected:
   typedef optional< t_TyTransport > _TyOptTransport;
   _TyOptTransport m_opttpImpl; // The "transport" that implements the stream. Make it optional so that the user can emplace construct the stream after declaration of an _l_stream object.
-  _TyChar m_posCur; // The current position in the stream. This is kept maintained with any transports that also have a current position.
+  _TyUserObj m_uoUserObj; // This is the one copy of the user object that is referenced in each _TyUserContext object. This allows the user object to maintain stateful information is that is desireable.
 };
 
 __LEXOBJ_END_NAMESPACE
