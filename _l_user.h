@@ -315,7 +315,7 @@ public:
     else
     {
       t_TyChar * pcCur = pcBuf; // Current output pointer.
-      kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
+      kdtr.GetSegArrayDataRanges().NApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
         [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
         {
           for ( const _l_data_typed_range * pdtrCur = _pdtrBegin; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )

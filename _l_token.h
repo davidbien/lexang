@@ -18,6 +18,7 @@
 //  involves: perusing values and reacting to them. They can be converted to a given representation that is useful, etc.
 
 #include "_l_ns.h"
+#include "_l_types.h"
 #include "_l_value.h"
 #include "_l_strm.h"
 #include "_l_data.h"
@@ -33,18 +34,38 @@ public:
   typedef t_TyUserContext _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyChar > _TyValue;
+  typedef _l_action_object_base< _TyChar > _TyAxnObjBase;
 
   _l_token() = delete;
-  _l_token & operator =( _l_token const & ) = delete;
   // We could make this protected, etc, but I don't worry that it will be accidetally called.
-  _l_token( _TyUserContext && _rrucxt, _TyValue && _rrvalue, vtyTokenIdent _tid )
+  _l_token( _TyUserContext && _rrucxt, _TyValue && _rrvalue, const _TyAxnObjBase * _paobCurToken )
     : m_scx( std::move( _rrucxt ) ),
       m_value( std::move( _rrvalue ) ),
-      m_tid( _tid )
+      m_paobCurToken( _paobCurToken )
   {
   }
   // We are copyable:
   _l_token( _l_token const & ) = default;
+  _l_token & operator =( _l_token const & _r )
+  {
+    _l_token copy( _r );
+    swap( copy );
+    return *this;
+  }
+  // We are moveable:
+  _l_token( _l_token && ) = default;
+  _l_token & operator =( _l_token && _rr )
+  {
+    _l_token moved( std::move( _rr ) );
+    swap( moved );
+    return *this;
+  }
+  void swap( _TyThis & _r )
+  {
+    m_scx.swap( _r.m_scx );
+    m_value.swap( _r.m_value );
+    std::swap( m_paobCurToken, _r.m_paobCurToken );
+  }
 
   _TyValue & GetValue()
   {
@@ -83,7 +104,7 @@ public:
 protected:
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.
-  vtyTokenIdent m_tid; // We are this here token.
+  const _TyAxnObjBase * m_paobCurToken; // Pointer to the action object for this token - from which the token id is obtainable, etc.
 };
 
 __LEXOBJ_END_NAMESPACE

@@ -40,12 +40,30 @@ class _l_transport_fd_ctxt : public _l_transport_ctxt_base< t_TyChar >
   typedef _l_transport_ctxt_base< t_TyChar > _TyBase;
 public:
   typedef _l_transport_fd< t_TyChar > _TyTransportFd;
-  typedef SegArray< t_TyChar, false_Type > _TySegArrayBuffer;
+  typedef SegArrayRotatingBuffer< t_TyChar > _TySegArrayBuffer;
+
+  _l_transport_fd_ctxt( _TyTransportFd * _ptxpFd )
+    : m_ptxpFd( _ptxpFd )
+  {
+  }
+  _l_transport_fd_ctxt() = default;
+  _l_transport_fd_ctxt( _l_transport_fd_ctxt const & ) = default;
+  _l_transport_fd_ctxt( _l_transport_fd_ctxt && ) = default;
+  _l_transport_fd_ctxt & operator =( _l_transport_fd_ctxt const & ) = default;
+  _l_transport_fd_ctxt & operator =( _l_transport_fd_ctxt && ) = default;
+
+#if 0
+  // void InitTransportCtxt( _TyTransportFd * _ptxpFd, _TySegArrayBuffer && _rrsaTokenBuf )
+  // {
+  //   m_ptxpFd = _ptxpFd;
+  //   m_saTokenBuf = std::move( _rrsaTokenBuf );
+  // }
+#endif //0
 
   _TyTransportFd * PGetTransport() const
   {
     return m_ptxpFd;
-  } 
+  }
   _TySegArrayBuffer & GetTokenBuffer()
   {
     return m_saTokenBuf;
@@ -54,11 +72,9 @@ public:
   {
     return m_saTokenBuf;
   }
-
 protected:
   _TyTransportFd * m_ptxpFd{nullptr}; // We need to be able to return our token buffer to the transport when we are done with it.
   _TySegArrayBuffer m_saTokenBuf{vkstTransportFdTokenBufferSize}; // This contains the piece of the input that corresponds to the entirety of the token.
-  off_t m_posTokenStart{numeric_limits< vtyDataPosition >::max()}; // The position in the stream at the start of the current token.
 };
 
 // _l_transport_fd:
@@ -108,56 +124,20 @@ public:
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
                   _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, unique_ptr< _TyToken > & _rupToken )
   {
+    typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
+    _TyUserContext ucxt( _ruoUserObj, this );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
-
-    _TyValue value;
-    _paobCurToken->GetAndClearValue( value );
-    m_opttpImpl.GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), m_uoUserObj, _rupToken );
-  }
-
-  // Transfer the current context and do appropriate housekeeping...
-  // This will transfer the current _TySegArrayBuffer to _rcxt because it will then be associated with a _l_token.
-  void GetCurTransportContext( _TyTransportCtxt & _rcxt )
-  {
-    typename _TyTransportCtxt::_TySegArrayBuffer & rsab = _rcxt.GetTokenBuffer();
-    rsab.SetSizeSmaller(0,false); // Keep the memory around for reuse - if there is any in this object.
-    rsab.swap( m_saTokenBuf );
-    if ( !m_saTokenBuf.FHasAnyCapacity() && !m_lListFreeSegArrays.empty() )
-    {
-      // We'll cycle through any buffers to be fair to them - pop from the back and push to the front:
-      m_saTokenBuf.swap( m_lListFreeSegArrays.back() );
-      m_lListFreeSegArrays.pop_back();
-    }
-    // else things will just happen normally - just not preallocated this time.
-    _rcxt.m_ptxpFd = this; // So they can call us back to release the context.
-    _rcxt.m_posTokenStart = m_posTokenStart;
-    m_posTokenStart += rsab.m_saTokenBuf.GetSize(); // Set to the next token.
-  }
-  // Return the transport context to the transport so that it can be reused for a another token.
-  // The user should be done using any data associated with the token.
-  void ReturnTransportContext( _TyTransportCtxt & _rcxt )
-  {
-    Assert( _rcxt.m_ptxpFd == this ); // Doesn't matter that much but probably the indication of a bug if this happens.
-    // REVIEW:<dbien>: We'd like to not have a list here and allocate memory every time we add to it but I haven't thought of a better way yet.
-    typename _TyTransportCtxt::_TySegArrayBuffer & rsab = _rcxt.GetTokenBuffer();
-    Assert( rsab.FHasAnyCapacity() ); // If we can get no-capacity segarrays returned then we shouldn't put them on the list.
-    rsab.SetSizeSmaller(0,false);
-    m_lListFreeSegArrays.emplace_front( std::move( rsab ) );
+    m_frrFileDesBuffer.ConsumeData( m_posTokenStart, _kdpEndToken, ucxt.GetTokenBuffer() );
+    m_posTokenStart = _kdpEndToken;
+    unique_ptr< _TyToken > upToken = make_unique( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
+    upToken.swap( _rupToken );
   }
 
 protected:
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
-  // Actually we don't really need the "rotating" functionality because we will store the entire token and then clear it once the data has been moved.
-  // We will do this in all cases when using an fd currently as this simplifies the algorithm and also allows us to use basic_string_views for all data until
-  //  we convert it into the character type that the user of the parser is using.
-  // In this way we will never have to seek the stream which is preferable as seek is a system call and thus could result in a context switch or blocking, etc.
-  typedef SegArrayRotatingBuffer< t_TyChar > _TySegArrayBuffer;
-  // We are going to store the SegArrayBuffer for an individual token first here, then we will pass it to the _l_value for the token itself. This is only necessary for non-mapped/in-memory transports.
-  typedef std::list< _TySegArrayBuffer > _TyListFreeSegArrays;
-  _TyListFreeSegArrays m_lListFreeSegArrays;
-  _TySegArrayBuffer m_saTokenBuf{vkstTransportFdTokenBufferSize}; // We need the token in memory to deal with it.
-  off_t m_posAttached; // The position the fd was at when we were attached to it.
-  off_t m_posTokenStart; // The position in the stream at the start of the current token.
+  typedef FdReadRotating< _TyChar > _TyFdReadRotating;
+  _TyFdReadRotating m_frrFileDesBuffer{vkstTransportFdTokenBufferSize};
+  off_t m_posTokenStart{0}; // The position in the stream at the start of the current token.
   int m_fd{-1};
   bool m_fOwnFd{false};
 };
@@ -275,8 +255,23 @@ public:
     : m_ruoUserObj( _ruo )
   {
   }
+  template < class ... t_tysArgs >
+  _l_user_context( _TyUserObj & _ruo, t_tysArgs && ... _args )
+    : m_ruoUserObj( _ruo ),
+      _TyBase( std::forward< t_tysArgs >(_args) ... )
+  {
+  }
+
   // We are copyable.
   _l_user_context( _TyThis const & ) = default; 
+
+  // Generic initialization of transport context.
+  template < class ... t_tysArgs >
+  void InitTransportCtxt( t_tysArgs && ... _args )
+  {
+    _TyBase::InitTransportCtxt( std::forward< t_TysArgs>( _args ) ... );
+  }
+
 
   template < class t_tyStringView >
   void GetStringView( t_tyStringView & _rsvDest, _TyToken & _rtok, _TyValue & _rval )
