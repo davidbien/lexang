@@ -136,24 +136,14 @@ public:
     m_rNfaCtxt.GetAcceptingNodeSet(*m_pssAcceptingNfa);
 
 		// Copy the alphabet set from the NFA to the DFA:
-#if 0	// Retail version doesn't like this code.
-		__copy_set< _TyAlphabetDfa, _TyAlphabetNfa >::
-			copy( m_rDfa.m_setAlphabet, m_rNfa.m_setAlphabet );
-		if ( m_rDfa.m_setAlphabet.begin()->empty() )
-		{
-			// No empty element in the DFA
-			m_rDfa.m_setAlphabet.erase( m_rDfa.m_setAlphabet.begin() );
-		}
-#else //0	// But it likes this fine.
-		{
+		{//B
 			typename _TyAlphabetNfa::iterator itNfaAlpha = m_rNfa.m_setAlphabet.begin();
 			if ( itNfaAlpha->empty() )
 			{
 				++itNfaAlpha;
 			}
 			m_rDfa.m_setAlphabet.insert( itNfaAlpha, m_rNfa.m_setAlphabet.end() );
-		}		
-#endif //0
+		}//EB
 
 		// Set up max original actions - we will be adding disambiguating actions:
 		m_rDfa.m_iMaxActions = m_rNfa.m_iActionCur;

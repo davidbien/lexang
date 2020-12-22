@@ -150,6 +150,14 @@ public:
       : m_pspLastAccept(0)
   {
   }
+
+  // Construct the transport object appropriately. This is how to open a file, etc.
+  template < class... t_TysArgs >
+  _TyT & emplaceTransport( t_TysArgs&&... _args )
+  {
+    GetStream().emplaceTransport( std::forward< t_TysArgs >( _args )... );
+  }
+
   _TyStream & GetStream()
   {
     return m_stream;
@@ -316,7 +324,7 @@ public:
   // Just return a single token. Return false if you didn't get one.
   bool FGetToken( _TyStateProto *_pspStart, unique_ptr< _TyToken > & _rpuToken )
   {
-    Assert( GetStream().AtTokenStart() ); // We shouldn't be mid-token.
+    Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     do
     {
       m_pspCur = _pspStart; // Start at the beginning again...
@@ -380,7 +388,7 @@ public:
   template < class t_tyCallback >
   bool FGetTokens( _TyStateProto * _pspStart, t_tyCallback _callback )
   {
-    Assert( GetStream().AtTokenStart() ); // We shouldn't be mid-token.
+    Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     do
     {
       m_pspCur = _pspStart; // Start at the beginning again...
