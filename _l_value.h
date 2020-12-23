@@ -23,7 +23,7 @@ struct _VisitHelpOverloadFCall : Ts... { using Ts::operator()...; };
 // explicit deduction guide (not needed as of C++20)
 template<class... Ts> _VisitHelpOverloadFCall(Ts...) -> _VisitHelpOverloadFCall<Ts...>;
 
-template< class t_TyChar, size_t s_knValsSegSize = 32 >
+template< class t_TyChar, size_t s_knValsSegSize >
 class _l_value
 {
   typedef _l_value _TyThis;
@@ -40,23 +40,23 @@ public:
   typedef basic_string< char > _TyStrChar8;
   typedef basic_string< char16_t > _TyStrChar16;
   typedef basic_string< char32_t > _TyStrChar32;
-  template < class t_TyChar >
-  using get_string_type = basic_string< t_TyChar >;
+  template < class t__TyChar >
+  using get_string_type = basic_string< t__TyChar >;
 
   // Also allow basic_string_views of every type since that can be used until character translation is needed.
   typedef basic_string_view< char > _TyStrViewChar8;
   typedef basic_string_view< char16_t > _TyStrViewChar16;
   typedef basic_string_view< char32_t > _TyStrViewChar32;
-  template < class t_TyChar >
-  using get_string_view_type = basic_string_view< t_TyChar >;
+  template < class t__TyChar >
+  using get_string_view_type = basic_string_view< t__TyChar >;
 
   // Also need views into segmented arrays which may not be contiguous memory - i.e. a given view may span chunk boundary(s).
   // Want to avoid translating the string until the reader asks for it to be translated - or even giving it a contiguous chunk of memory.
   typedef SegArrayView< char > _TySegArrayViewChar8;
   typedef SegArrayView< char16_t > _TySegArrayViewChar16;
   typedef SegArrayView< char32_t > _TySegArrayViewChar32;
-  template < class t_TyChar >
-  using get_SegArrayView_type = SegArrayView< t_TyChar >;
+  template < class t__TyChar >
+  using get_SegArrayView_type = SegArrayView< t__TyChar >;
 
   // Our big old variant.
   typedef variant<  monostate, bool, vtyDataPosition, _TyData, 
@@ -97,17 +97,17 @@ public:
   }
 
   template < class t_Ty, class... t_tysArgs>
-  _tyT & emplaceArgs( t_tysArgs &&... _args )
+  t_Ty & emplaceArgs( t_tysArgs &&... _args )
   {
     return m_var.emplace<t_Ty>( std::forward<t_tysArgs>(_args)... );
   }
   template < class t_Ty >
-  _tyT & emplaceVal( t_Ty const & _r )
+  t_Ty & emplaceVal( t_Ty const & _r )
   {
     return m_var.emplace<t_Ty>( _r );
   }
   template < class t_Ty >
-  _tyT & emplaceVal( t_Ty && _rr )
+  t_Ty & emplaceVal( t_Ty && _rr )
   {
     return m_var.emplace<t_Ty>( std::move( _rr ) );
   }
@@ -244,7 +244,7 @@ protected:
   template < class t_TyStrViewDest, class t_TySource >
   static void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
     requires ( is_same_v< t_TyStrViewDest::value_type, t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< t_TySource::value_type > > ) )
+      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     _rsvDest = t_TyStrViewDest( &_rsrc[0], _rsrc.length() );
   }
@@ -252,12 +252,12 @@ protected:
   template < class t_TyStrViewDest, class t_TySource >
   void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
     requires ( !is_same_v< t_TyStrViewDest::value_type, t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< t_TySource::value_type > > ) )
+      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     get_string_type< t_TyStrViewDest::value_type > strConverted;
     ConvertString( strConverted, _rsrc );
-    m_var.emplace< get_string_type< t_TyStrViewDest::value_type > >( std::move( strConverted ) );
-    get_string_type< t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< t_TyStrViewDest::value_type > >( m_var );
+    m_var.emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( strConverted ) );
+    get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
     _rsvDest = t_TyStrViewDest( &rstrInVar[0], rstrInVar.length() );
   }
   // SegArrayView will do the conversion efficiently using alloca() so we just need one version of this method:
@@ -269,8 +269,8 @@ protected:
     bool fGotView = _rsrc.FGetStringViewOrString( _rsvDest, str );
     if ( !fGotView )
     {
-      m_var.emplace< get_string_type< t_TyStrViewDest::value_type > >( std::move( str ) );
-      get_string_type< t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< t_TyStrViewDest::value_type > >( m_var );
+      m_var.emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( str ) );
+      get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
       _rsvDest = t_TyStrViewDest( &rstrInVar[0], rstrInVar.length() );
     }
   }
@@ -348,16 +348,16 @@ protected:
   // Non-converting version for source strings and stringviews:
   template < class t_TyStringDest, class t_TySource >
   static void _GetString( t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( is_same_v< t_TyStringDest::value_type, t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< t_TySource::value_type > > ) )
+    requires ( is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
+      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     _rstrDest.assign( &_rsrc[0], _rsrc.length() );
   }
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStringDest, class t_TySource >
   static void _GetString( t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( !is_same_v< t_TyStringDest::value_type, t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< t_TySource::value_type > > ) )
+    requires ( !is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
+      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     ConvertString( _rstrDest, _rsrc ); // that was easy.
   }
@@ -443,8 +443,8 @@ protected:
   // Non-converting version for source strings and stringviews:
   template < class t_TyStringViewDest, class t_TyStringDest, class t_TySource >
   static bool _FGetStringViewOrString( t_TyStringViewDest & _rsvDest, t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( is_same_v< t_TyStringDest::value_type, t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< t_TySource::value_type > > ) )
+    requires ( is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
+      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
@@ -454,8 +454,8 @@ protected:
   // Converting version for string or view source - we must convert the existing value into the passed string.
   template < class t_TyStringViewDest, class t_TyStringDest, class t_TySource >
   static bool _FGetStringViewOrString( t_TyStringViewDest & _rsvDest, t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( !is_same_v< t_TyStringDest::value_type, t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< t_TySource::value_type > > ) )
+    requires ( !is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
+      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
@@ -673,41 +673,5 @@ protected:
   }
   _TyVariant m_var;
 };
-
-#if 0 // Not sure about this - may store in _l_token.
-// _l_value_w_buffer
-// This is a value object that comes with a buffer the contents of which are referred to by some members of the
-//	aggregated value object. This is all to speed and allow non-seeking file support such that STDIN can be used
-//  as an input stream.
-// Note that only the topmost object is 
-template< class t_TyChar, size_t s_knValsSegSize = 1024 >
-class _l_value_w_buffer : public _l_value< t_TyChar, s_knValsSegSize >
-{
-  typedef _l_value_w_buffer _TyThis;
-  typedef _l_value< t_TyChar, s_knValsSegSize > _TyBase;
-public:
-  using _TyBase::_TyData;
-  using _TyBase::s_knbySegArrayInit;
-  using _TyBase::_TySegArrayValues;
-  using _TyBase::_tySizeType;
-  using _TyBase::size_type;
-  typedef SegArray< t_TyChar, false_Type > _TySegArrayBuffer;
-
-  _l_value_w_buffer() = default;
-  _l_value_w_buffer( vtyDataPosition _posStart, _TySegArrayBuffer && _rrbuf )
-    : m_posStart( _posStart )
-  {
-    m_buf.swap( _rrbuf );
-  }
-
-  void SwapSegArrayBuf( _TySegArrayBuffer & _rbuf )
-  {
-    m_buf.swap( _rbuf );
-  }
-protected:
-  _TySegArrayBuffer m_buf{s_knbySegArrayInit}; // some of the values in the aggregated _l_value may refer to memory in this segarray.
-  vtyDataPosition m_posStart{vkdpNullDataPosition}; // The position in the input stream corresponding to the start of data in m_buf.
-};
-#endif 0
 
 __LEXOBJ_END_NAMESPACE

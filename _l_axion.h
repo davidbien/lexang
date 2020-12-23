@@ -15,6 +15,7 @@
 #include "_aloctrt.h"
 #include "_l_types.h"
 #include "_l_data.h"
+#include "_l_value.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -28,6 +29,7 @@ private:
 public:
 	static const bool s_fInLexGen = t_fInLexGen;
 	typedef t_TyChar	_TyChar;
+	typedef __LEXOBJ_NAMESPACE _l_value< t_TyChar > _TyValue;
 
 	// We have a static set of trigger action disambiguating objects.
 	typedef pair< _type_info_wrap, _type_info_wrap >		_TyPairTI;
@@ -139,7 +141,7 @@ struct _l_action_object_base< t_TyChar, false >
 	typedef _l_action_object_base _TyThis;
 public:
 	static const bool s_fInLexGen = false;
-	typedef _l_value< t_TyChar > _TyValue;
+	typedef __LEXOBJ_NAMESPACE _l_value< t_TyChar > _TyValue;
 
 	// Return the ID for this action object.
 	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
@@ -168,6 +170,8 @@ public:
 	typedef true_type _TyFIsToken; // Must wrap each action with something defining this as true_type.
 	using _TyBase::s_kiToken;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
+
   _l_action_token()
   {
   }
@@ -228,6 +232,7 @@ private:
 public:
 	using _TyBase::s_fInLexGen;	
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
+	using typename _TyBase::_TyValue;
 	_l_action_print() = default;
 	_l_action_print( _TyThis const & _r ) = default;
 	// Return the unique token ID associated with this object.
@@ -288,6 +293,7 @@ public:
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
 
 	_l_trigger_noop() = default;
 	_l_trigger_noop( _TyThis const & _r ) = default;
@@ -361,6 +367,7 @@ public:
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
 
 	_l_trigger_bool() = default;
 	_l_trigger_bool( _TyThis const & _r ) = default;
@@ -438,6 +445,8 @@ public:
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
+
 	_l_trigger_position() = default;
 	_l_trigger_position( _TyThis const & _r ) = default;
 	bool FIsNull() const
@@ -524,6 +533,8 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_fInLexGen;	
 	static constexpr vtyTokenIdent s_kiTriggerBegin = t_kiTriggerBegin;
+	using typename _TyBase::_TyValue;
+
 	_l_trigger_position_end() = default;
 	_l_trigger_position_end( _TyThis const & _r ) = default;
 	// Return the unique token ID associated with this object.
@@ -586,8 +597,10 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
-	typedef _l_data< t_TyChar > _TyData;
+	typedef __LEXOBJ_NAMESPACE _l_data< t_TyChar > _TyData;
 	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
+	using typename _TyBase::_TyValue;
+	
 	_l_trigger_string() = default;
 	_l_trigger_string( _TyThis const & _r ) = default;
 	void Clear()
@@ -690,9 +703,11 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
 	typedef _l_trigger_position< _TyChar, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	typedef t_TyActionStoreData _tyActionStoreData;
 	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
+
 	_l_trigger_string_typed_range() = default;
 	_l_trigger_string_typed_range( _TyThis const & _r ) = default;
 	using _TyBase::Clear;
@@ -783,6 +798,8 @@ public:
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
+
 	_l_action_save_data_single() = default;
 	_l_action_save_data_single( _TyThis const & _r ) = default;
 	void Clear()
@@ -909,6 +926,8 @@ public:
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
+
 	_l_action_save_data_multiple()
 		: m_saTuples( s_kstInitSegArray )
 	{

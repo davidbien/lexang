@@ -22,11 +22,11 @@ __REGEXP_BEGIN_NAMESPACE
 template < class t_TyCharOut, class t_TyAllocator >
 struct _l_gen_action_info
 {
-	typedef std::basic_string< t_TyCharOut, char_traits<t_TyCharOut>, t_TyAllocator > _tyStdStrOut;
+	typedef std::basic_string< t_TyCharOut, char_traits<t_TyCharOut>, t_TyAllocator > _TyStdStrOut;
 	_l_gen_action_info() = default;
 	_l_gen_action_info( _l_gen_action_info const & ) = default;
-	_tyStdStrOut m_strActionName;	// Human readable name for the action.
-	_tyStdStrOut m_strComment; // Comment to be placed in the generated code.
+	_TyStdStrOut m_strActionName;	// Human readable name for the action.
+	_TyStdStrOut m_strComment; // Comment to be placed in the generated code.
 };
 
 template < class t_TyDfa, class t_TyCharOut >
@@ -93,7 +93,6 @@ struct _l_generator
 	_TyString m_sPpBase;				// Preprocessor base name ( for #defines ).
 	bool m_fUseNamespaces;	// Whether to use namespaces when generating.
 	_TyString m_sNamespace;			// The namespace into which we generate.
-	_TyString m_sMDAnalyzer;		// The type for the most-derived lexical analyzer.
 	_TyString m_sBaseStateName;	// The base name for state variables.
 	_TyString m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
 	_TyString m_sVisibleCharPrefix;	// Prefix for a visible character const.
@@ -127,7 +126,6 @@ struct _l_generator
 								const t_TyCharOut *	_pcPpBase,
 								bool _fUseNamespaces,
 								const t_TyCharOut * _pcNamespace,
-								const t_TyCharOut *	_pcMDAnalyzer,
 								const t_TyCharOut * _pcBaseStateName,
 								const t_TyCharOut * _pcCharTypeName,
 								const t_TyCharOut * _pcVisibleCharPrefix,
@@ -139,7 +137,6 @@ struct _l_generator
 			m_sPpBase( _pcPpBase, _rA ),
 			m_fUseNamespaces( _fUseNamespaces ),
 			m_sNamespace( _pcNamespace, _rA ),
-			m_sMDAnalyzer( _pcMDAnalyzer, _rA ),
 			m_sBaseStateName( _pcBaseStateName, _rA ),
 			m_sCharTypeName( _pcCharTypeName, _rA ),
 			m_sVisibleCharPrefix( _pcVisibleCharPrefix, _rA ),
@@ -310,10 +307,10 @@ struct _l_generator
 
 		_ros << "typedef _l_state_proto< " << m_sCharTypeName << " > _TyStateProto;\n";
 		_ros << "typedef _l_transition< " << m_sCharTypeName << " > _TyTransition;\n";
-		_ros << "typedef _l_analyzer< " << m_sCharTypeName
+		_ros << "template < class t_TyTransport, class t_TyUserObj >\nusing TGetAnalyzerBase = _l_analyzer< t_TyTransport, t_TyUserObj"
 					<< ( m_fLookaheads ? ", true" : ", false" )
 					<< ( m_fTriggers ? ", true" : ", false" )
-					<< " > _TyAnalyzerBase;\n";
+					<< " >;\n";
 		_ros << "\n";
 	}
 
@@ -322,11 +319,11 @@ struct _l_generator
 		m_pvtDfaCur = &m_lDfaGen.front();
 
  		_ros << "\n";
-		_ros << "struct _lexical_analyzer : public _TyAnalyzerBase\n";
+		_ros << "template < class t_TyTransport, class t_TyUserObj >\n";
+		_ros << "class _lexical_analyzer : public TGetAnalyzerBase<t_TyTransport,t_TyUserObj>\n";
 		_ros << "{\n";
-		_ros << "private:\n";
-		_ros << "\ttypedef _TyAnalyzerBase		_TyBase;\n";
-		_ros << "\ttypedef _lexical_analyzer	_TyThis;\n";
+		_ros << "\ttypedef TGetAnalyzerBase<t_TyTransport,t_TyUserObj> _TyBase;\n";
+		_ros << "\ttypedef _lexical_analyzer _TyThis;\n";
 		_ros << "public:\n";
 		_ros << "\t_lexical_analyzer()\n";
 		_ros << "\t\t: _TyBase( (_TyStateProto*) & " << m_pvtDfaCur->m_sStartStateName << " )\n";
@@ -346,11 +343,11 @@ struct _l_generator
 				// Define a constant so that we don't just have raw numbers lying around as much:
 				_ros << "\n\tstatic constexpr vtyTokenIdent s_kti" << rvt.second.first.m_strActionName.c_str() << " = " << rvt.first->VGetTokenId() << ";\n";
 				// Get a typedef for the action object for ease of use:
-				_ros << "\tusing _tyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
+				_ros << "\tusing _TyAction" << rvt.second.first.m_strActionName.c_str() << " = ";
 				rvt.first->RenderActionType( _ros, m_sCharTypeName.c_str() );
 				_ros << ";\n";
 				// Define the object as a member of the lexical analyzer class:
-				_ros << "\t_tyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
+				_ros << "\t_TyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
 				_ros << "\ttemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
 							" { return m_axn" << rvt.second.first.m_strActionName.c_str() << "; }\n";
 				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "();\n";
@@ -358,8 +355,8 @@ struct _l_generator
 		}
 
 		_ros << "};\n\n";
-		_ros << "typedef _lexical_analyzer	_TyAnalyzer;\n";
-		_ros << "typedef " << m_sMDAnalyzer <<  " _TyMDAnalyzer;\n";
+		_ros << "template < class t_TyTransport, class t_TyUserObj >\n";
+		_ros << "using TGetLexicalAnalyzer = _lexical_analyzer<t_TyTransport,t_TyUserObj>;\n";
 		_ros << "\n";
 		if ( m_fUseNamespaces )
 		{
@@ -399,7 +396,7 @@ struct _l_generator
 	void	_GenHeaderState(	ostream & _ros, _TyGraphNode * _pgn, 
 													int _nOuts, bool _fAccept )
 	{
-		_ros	<< "extern	";
+		_ros	<< "template < class t_TyTransport, class t_TyUserObj >\nextern ";
 		bool fIsTriggerAction, fIsTriggerGateway;
 		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
 		_TyRangeEl rgelTrigger; 
@@ -579,12 +576,10 @@ struct _l_generator
 		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
 		_TyRangeEl rgelTrigger; 
 		_GenStateType( _ros, _pgn, _nOutsOrig, _fAccept, fIsTriggerAction, fIsTriggerGateway, tidTokenTrigger, rgelTrigger );
-		_ros << "\t\t_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << ";\n";
-
-		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << "\t\t";
-
+		_ros << " _Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << ";\n";
+		_ros << "template < class t_TyTransport, class t_TyUserObj > inline\n";
+		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << " ";
 		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
-
 		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
 		{
 			_ros	<< m_pvtDfaCur->m_sStartStateName;
@@ -673,12 +668,13 @@ struct _l_generator
 			_ros << "(_TyStateProto*)( & ";
 			if ( (*(_pgn->PPGLChildHead()))->PGNChild() == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
 			{
-				_ros	<< m_pvtDfaCur->m_sStartStateName;
+				_ros	<< m_pvtDfaCur->m_sStartStateName << "<t_TyTransport,t_TyUserObj>";
 			}
 			else
 			{
 				_ros	<< m_sBaseStateName << "_" << 
 					( (*(_pgn->PPGLChildHead()))->PGNChild()->RElConst() + m_stStart );
+				_ros << "<t_TyTransport,t_TyUserObj>";
 			}
 			_ros << " ), ";
 		}
@@ -741,12 +737,13 @@ struct _l_generator
 				_ros << ", (_TyStateProto*)( & ";
 				if ( m_pvtDfaCur->m_rDfaCtxt.m_pgnStart == lpi.PGNChild() )
 				{
-					_ros << m_pvtDfaCur->m_sStartStateName;
+					_ros << m_pvtDfaCur->m_sStartStateName << "<t_TyTransport,t_TyUserObj>";
 				}
 				else
 				{
 					_ros << m_sBaseStateName << "_" 
 							<< ( lpi.PGNChild()->RElConst() + m_stStart );
+				_ros << "<t_TyTransport,t_TyUserObj>";
 				}
 				_ros << " ) }";
 
@@ -795,7 +792,7 @@ struct _l_generator
 		typename _TyMapActions::value_type & rvtUnique = *itUnique;
 		rvtUnique.second.second = true;	// referenced this action.
 		
-		_ros	<< "\n\tstatic_cast< _TyAnalyzerBase::_TyPMFnAccept >( &_TyAnalyzer::Action" 
+		_ros	<< "\n\tstatic_cast< typename TGetAnalyzerBase<t_TyTransport,t_TyUserObj>::_TyPMFnAccept >( &TGetLexicalAnalyzer<t_TyTransport,t_TyUserObj>::Action" 
 					<< rvtUnique.second.first.m_strActionName.c_str() << " )";
 	}
 

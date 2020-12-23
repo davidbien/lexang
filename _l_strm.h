@@ -7,11 +7,70 @@
 
 // Transports for the stream objects.
 
-#include "_fdobj.h"
+#include "_fdobjs.h"
+#include "fdrotbuf.h"
 #include "_l_ns.h"
 #include "_l_types.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
+
+// _l_user_context:
+// This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
+template < class t_TyTransportCtxt, class t_TyUserObj >
+class _l_user_context : public t_TyTransportCtxt
+{
+  typedef _l_user_context _TyThis;
+  typedef t_TyTransportCtxt _TyBase;
+public:
+  typedef t_TyUserObj _TyUserObj;
+  typedef typename t_TyTransportCtxt::_TyChar _TyChar;
+  typedef _l_token< _TyThis > _TyToken;
+  typedef _l_value< _TyChar > _TyValue;
+
+  _l_user_context() = delete;
+  _l_user_context & operator =( _l_user_context const & ) = delete;
+  _l_user_context( _TyUserObj & _ruo )
+    : m_ruoUserObj( _ruo )
+  {
+  }
+  template < class ... t_TysArgs >
+  _l_user_context( _TyUserObj & _ruo, t_TysArgs && ... _args )
+    : m_ruoUserObj( _ruo ),
+      _TyBase( std::forward< t_TysArgs >(_args) ... )
+  {
+  }
+
+  // We are copyable.
+  _l_user_context( _TyThis const & ) = default; 
+
+  // Generic initialization of transport context.
+  template < class ... t_TysArgs >
+  void InitTransportCtxt( t_TysArgs && ... _args )
+  {
+    _TyBase::InitTransportCtxt( std::forward< t_TysArgs>( _args ) ... );
+  }
+
+  template < class t_TyStringView >
+  void GetStringView( t_TyStringView & _rsvDest, _TyToken & _rtok, _TyValue & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    m_ruoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
+  }
+  template < class t_TyStringView, class t_TyString >
+  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    return m_ruoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
+  }
+  template < class t_TyString >
+  void GetString( t_TyString & _rstrDest, _TyToken & _rtok, _TyValue const & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    m_ruoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
+  }
+protected:
+  t_TyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
+};
 
 // _l_transport_base: base for all transports.
 // Templatize by the character type contained in the file.
@@ -32,10 +91,9 @@ static_assert( sizeof( off_t ) == sizeof( vtyDataPosition ) );
 // This is the context that is contained in an _l_token allowing the also contained _l_value to exist on its own(ish).
 // Text translation specific to a given parser is built into the most derived class of this object.
 template < class t_TyChar >
-class _l_transport_fd_ctxt : public _l_transport_ctxt_base< t_TyChar >
+class _l_transport_fd_ctxt
 {
   typedef _l_transport_fd_ctxt _TyThis;
-  typedef _l_transport_ctxt_base< t_TyChar > _TyBase;
 public:
   typedef _l_transport_fd< t_TyChar > _TyTransportFd;
   typedef SegArrayRotatingBuffer< t_TyChar > _TySegArrayBuffer;
@@ -84,10 +142,11 @@ class _l_transport_fd : public _l_transport_base< t_TyChar >
   typedef _l_transport_fd _TyThis;
   typedef _l_transport_base< t_TyChar > _TyBase;
 public:
-  using _TyBase::_TyChar;
-  using _TyBase::_TyData;
-  using _TyBase::_TyValue;
+  using typename  _TyBase::_TyChar;
+  using typename _TyBase::_TyData;
+  using typename _TyBase::_TyValue;
   typedef _l_transport_fd_ctxt< t_TyChar > _TyTransportCtxt;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   ~_l_transport_fd() = default;
   _l_transport_fd() = delete;
@@ -121,7 +180,7 @@ public:
   void _InitNonTty( size_t _posEnd = 0 )
   {
     bool fReadAhead = false;
-    _tySizeType posInit = 0;
+    _TySizeType posInit = 0;
     size_t posEnd = 0;
     size_t stchLenRead = std::numeric_limits< size_t >::max();
 
@@ -176,7 +235,7 @@ public:
     return m_frrFileDesBuffer.PosCurrent() == m_frrFileDesBuffer.PosBase();
   }
   // Return the current character and advance the position.
-  bool FGetChar( _tyChar & _rc )
+  bool FGetChar( _TyChar & _rc )
   {
     return m_frrFileDesBuffer.FGetChar( _rc );
   }
@@ -185,7 +244,8 @@ public:
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
   template < class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
-                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, unique_ptr< _TyToken > & _rupToken )
+                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
+                  unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
   {
     typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
     typedef _l_token< _TyUserContext > _TyToken;
@@ -249,11 +309,13 @@ class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
   typedef _l_transport_fixedmem _TyThis;
   typedef _l_transport_base< t_TyChar > _TyBase;
 public:
-  using _TyBase::_TyChar;
-  using _TyBase::_TyData;
-  using _TyBase::_TyValue;
+  using typename _TyBase::_TyChar;
+  using typename _TyBase::_TyData;
+  using typename _TyBase::_TyValue;
   typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyPrMemView _TyPrMemView;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+
 
   _l_transport_fixedmem( _l_transport_fixedmem const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
   _TyThis const & operator = ( _TyThis const & _r ) = delete;
@@ -281,7 +343,7 @@ public:
     return !m_prmvCurrentToken.second;
   }
   // Return the current character and advance the position.
-  bool FGetChar( _tyChar & _rc )
+  bool FGetChar( _TyChar & _rc )
   {
     if ( _FAtEnd() )
       return false;
@@ -292,7 +354,8 @@ public:
   // This also consumes the data in the m_prmvCurrentToken from [m_posTokenStart,_kdpEndToken).
   template < class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
-                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, unique_ptr< _TyToken > & _rupToken )
+                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
+                  unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
   {
     Assert( _kdpEndToken <= m_prmvCurrentToken.first + m_prmvCurrentToken.second );
     typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
@@ -323,10 +386,10 @@ template < class t_TyChar >
 class _l_transport_mapped_ctxt : protected _l_transport_fixedmem_ctxt< t_TyChar >
 {
   typedef _l_transport_mapped_ctxt _TyThis;
-  typedef _l_transport_mapped_ctxt< t_TyChar > _TyBase;
+  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyBase;
 public:
-  using _TyBase::_TyChar;
-  using _TyBase::_TyPrMemView;
+  using typename _TyBase::_TyChar;
+  using typename _TyBase::_TyPrMemView;
   typedef _l_transport_mapped< t_TyChar > _TyTransportMapped;
 
   _l_transport_mapped_ctxt( _TyTransportMapped * _ptxpMapped, _TyPrMemView const & _rprmv )
@@ -355,9 +418,9 @@ class _l_transport_mapped : public _l_transport_fixedmem< t_TyChar >
   typedef _l_transport_mapped _TyThis;
   typedef _l_transport_fixedmem< t_TyChar > _TyBase;
 public:
-  using _TyBase::_TyChar;
-  using _TyBase::_TyData;
-  using _TyBase::_TyValue;
+  using typename _TyBase::_TyChar;
+  using typename _TyBase::_TyData;
+  using typename _TyBase::_TyValue;
   typedef _l_transport_mapped_ctxt< t_TyChar > _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyPrMemView _TyPrMemView;
 
@@ -413,82 +476,28 @@ public:
   using _TyBase::PosCurrent;
   using _TyBase::FAtTokenStart;
   using _TyBase::FGetChar;
-  using _TyBase::void GetPToken;
+  using _TyBase::GetPToken;
   
 protected:
   using _TyBase::m_prmvFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
   using _TyBase::m_prmvCurrentToken; // The view for the current token's exploration.
 };
 
-// _l_user_context:
-// This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
-template < class t_TyTransportCtxt, class t_tyUserObj = _l_default_user_obj >
-class _l_user_context : public t_TyTransportCtxt
-{
-  typedef _l_user_context _TyThis;
-  typedef t_TyTransportCtxt _TyBase;
-public:
-  typedef t_tyUserObj _tyUserObj;
-  typedef typename t_TyTransportCtxt::_TyChar _TyChar;
-  typedef _l_token< _TyThis > _TyToken;
-
-  _l_user_context() = delete;
-  _l_user_context & operator =( _l_user_context const & ) = delete;
-  _l_user_context( _TyUserObj & _ruo )
-    : m_ruoUserObj( _ruo )
-  {
-  }
-  template < class ... t_tysArgs >
-  _l_user_context( _TyUserObj & _ruo, t_tysArgs && ... _args )
-    : m_ruoUserObj( _ruo ),
-      _TyBase( std::forward< t_tysArgs >(_args) ... )
-  {
-  }
-
-  // We are copyable.
-  _l_user_context( _TyThis const & ) = default; 
-
-  // Generic initialization of transport context.
-  template < class ... t_tysArgs >
-  void InitTransportCtxt( t_tysArgs && ... _args )
-  {
-    _TyBase::InitTransportCtxt( std::forward< t_TysArgs>( _args ) ... );
-  }
-
-  template < class t_tyStringView >
-  void GetStringView( t_tyStringView & _rsvDest, _TyToken & _rtok, _TyValue & _rval )
-  {
-    // yet another delegation...and add another parameter.
-    m_ruoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
-  }
-  template < class t_tyStringView, class t_tyString >
-  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
-  {
-    // yet another delegation...and add another parameter.
-    return m_ruoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
-  }
-  template < class t_tyString >
-  void GetString( t_tyString & _rstrDest, _TyToken & _rtok, _TyValue const & _rval )
-  {
-    // yet another delegation...and add another parameter.
-    m_ruoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
-  }
-protected:
-  t_tyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
-};
-
 // _l_stream: An input stream for the lexicographical analyzer.
-template < class t_TyTransport, class t_tyUserObj >
+template < class t_TyTransport, class t_TyUserObj >
 class _l_stream
 {
   typedef _l_stream _TyThis;
 public:
+  typedef t_TyTransport _TyTransport;
   typedef typename t_TyTransport::_TyChar _TyChar;
   typedef typename t_TyTransport::_TyTransportCtxt _TyTransportCtxt;
-  typedef _l_user_context< t_tyUserObj, _TyTransportCtxt > _TyUserContext;
+  typedef t_TyUserObj _TyUserObj;
+  typedef _l_user_context< _TyUserObj, _TyTransportCtxt > _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyChar > _TyValue;
   typedef _l_token< _TyUserContext > _TyToken;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   _l_stream() = delete;
   _l_stream( _l_stream const & ) = delete;
@@ -506,9 +515,9 @@ public:
 
   // Construct the transport object appropriately.
   template < class... t_TysArgs >
-  _TyT & emplaceTransport( t_TysArgs&&... _args )
+  void emplaceTransport( t_TysArgs&&... _args )
   {
-    m_opttpImpl.emplace( std::forward< t_TysArgs >( _args )... );
+    (void))m_opttpImpl.emplace( std::forward< t_TysArgs >( _args )... );
   }
 
   vtyDataPosition PosCurrent() const
@@ -523,7 +532,7 @@ public:
   }
 
   // Get a single character from the transport and advance the input stream.
-  bool FGetChar( _tyChar & _rc )
+  bool FGetChar( _TyChar & _rc )
   {
     Assert( m_opttpImpl.has_value() );
     return m_opttpImpl->FGetChar( _rc );

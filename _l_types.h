@@ -88,6 +88,7 @@ const unsigned char kucLookaheadAcceptAndAccept = 4;
 // Similar to above.
 const unsigned char kucLookaheadAcceptAndLookahead = 5;
 
+// _l_state.h:
 template <class t_TyChar>
 struct _l_state_proto;
 
@@ -106,5 +107,34 @@ struct _l_state;
 template <class t_TyChar>
 struct _l_transition;
 
+// _l_value.h:
+template< class t_TyChar, size_t s_knValsSegSize = 32 >
+class _l_value;
+
+// _l_token.h:
+template < class t_TyUserContext >
+class _l_token;
+
+// _l_stream.h:
+template < class t_TyChar >
+class _l_default_user_obj;
+template < class t_TyTransportCtxt, class t_tyUserObj >
+class _l_user_context;
+template < class t_TyChar >
+class _l_transport_base;
+template < class t_TyChar >
+class _l_transport_fd_ctxt;
+template < class t_TyChar >
+class _l_transport_fd;
+template < class t_TyChar >
+class _l_transport_fixedmem_ctxt;
+template < class t_TyChar >
+class _l_transport_fixedmem;
+template < class t_TyChar >
+class _l_transport_mapped_ctxt;
+template < class t_TyChar >
+class _l_transport_mapped;
+template < class t_TyTransport, class t_tyUserObj >
+class _l_stream;
 
 __LEXOBJ_END_NAMESPACE

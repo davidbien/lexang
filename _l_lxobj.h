@@ -17,13 +17,14 @@
 #include "bienutil.h"
 #include "_basemap.h"
 #include "_l_ns.h"
-#include "_l_Types.h"
+#include "_l_types.h"
 #include "_l_chrtr.h"
 #include "_ticont.h"
 #include <functional>
 #include <algorithm>
 
 #include "_l_axion.h"
+#include "_l_state.h"
 #include "_l_strm.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
@@ -44,6 +45,7 @@ struct _l_an_mostbase
 private:
   typedef _l_an_mostbase<t_TyChar> _TyThis;
 public:
+  typedef t_TyChar _TyChar;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef bool (_TyThis::*_TyPMFnAccept)();
 
@@ -67,7 +69,7 @@ struct _l_an_lookaheadbase<t_TyChar, false>
     : public _l_an_mostbase<t_TyChar>
 {
   typedef _l_state_proto<t_TyChar> _TyStateProto;
-  typedef typename _l_char_Type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
+  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
 
 protected:
   // Declare these so the code will compile - they may be optimized out.
@@ -90,7 +92,7 @@ struct _l_an_lookaheadbase<t_TyChar, true>
     : public _l_an_mostbase<t_TyChar>
 {
   typedef _l_state_proto<t_TyChar> _TyStateProto;
-  typedef typename _l_char_Type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
+  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
 
   _TyStateProto *m_pspLookaheadAccept{nullptr}; // The lookahead accept state.
   vtyDataPosition m_posLookaheadAccept{vkdpNullDataPosition}; // The position in the buffer when lookahead accept encountered.
@@ -118,16 +120,15 @@ public:
   typedef t_TyTransport _TyTransport;
   typedef t_TyUserObj _TyUserObj;
   typedef _l_stream< _TyTransport, _TyUserObj > _TyStream;
+  typedef typename _TyStream::_TyUserContext _TyUserContext;
+  typedef _l_token< _TyUserContext > _TyToken;
 
-private:
-  _TyStateProto *m_pspLastAccept; // The last encountered accept state;
-public:
-  using _TyBase::_TyUnsignedChar;
-  using _TyBase::_TyPMFnAccept;
-  using _TyBase::_TyAxnObjBase;
+  using typename _TyBase::_TyUnsignedChar;
+  using typename _TyBase::_TyPMFnAccept;
+  using typename _TyBase::_TyAxnObjBase;
 
-  typedef _l_transition<t_TyChar> _TyTransition;
-  typedef _l_compare_input_with_range<t_TyChar> _TyCompSearch;
+  typedef _l_transition<_TyChar> _TyTransition;
+  typedef _l_compare_input_with_range<_TyChar> _TyCompSearch;
 
   static constexpr bool s_kfSupportLookahead = t_fSupportLookahead;
   static constexpr bool s_kfSupportTriggers = t_fSupportTriggers;
@@ -135,6 +136,9 @@ public:
 
   _TyStream m_stream; // the stream within which is the transport object and user context, etc.
 
+private: // Not sure why I made this private but it must have been very important!!! (j/k) so I am going to leave it.
+  _TyStateProto *m_pspLastAccept; // The last encountered accept state;
+public:
   _TyStateProto *m_pspCur{nullptr}; // Current state.
   vtyDataPosition m_posLastAccept{vkdpNullDataPosition};
   _TyUnsignedChar *m_pcLastAccept{}; // The position in the buffer when last accept encountered.
@@ -153,7 +157,7 @@ public:
 
   // Construct the transport object appropriately. This is how to open a file, etc.
   template < class... t_TysArgs >
-  _TyT & emplaceTransport( t_TysArgs&&... _args )
+  void emplaceTransport( t_TysArgs&&... _args )
   {
     GetStream().emplaceTransport( std::forward< t_TysArgs >( _args )... );
   }
@@ -446,6 +450,11 @@ public:
   }
 
 protected:
+  void _NextChar()
+  {
+    m_ucCur = 0;
+    (void))m_stream.FGetChar( m_ucCur );
+  }
   void _execute_triggers()
   {
     // Execute the triggers and then advance the state to the trigger state:
@@ -652,15 +661,16 @@ protected:
   }
 };
 
+#if 0 // This code needs updating and it probably will never be used anyway.
 // When the rules indicate unique accepting states ( i.e. with no out transitions )
 //	and no lookaheads then we can use this faster analyzer base:
-
-template <class t_TyChar, bool t_fSupportTriggers>
+template <class t_TyTransport, class t_TyUserObj, bool t_fSupportLookahead,
+          bool t_fSupportTriggers, bool t_fTrace>
 struct _l_analyzer_unique_onematch
-    : public _l_analyzer<t_TyChar, false, t_fSupportTriggers>
+    : public _l_analyzer<t_TyTransport, class t_TyUserObj, false, t_fSupportTriggers, t_fTrace>
 {
 private:
-  typedef _l_analyzer<t_TyChar, false, t_fSupportTriggers> _TyBase;
+  typedef _l_analyzer<t_TyTransport, class t_TyUserObj, false, t_fSupportTriggers, t_fTrace> _TyBase;
   using _TyBase::_getnext;
   using _TyBase::m_pcCur;
   using _TyBase::m_pspCur;
@@ -705,7 +715,9 @@ public:
     }
   }
 };
+#endif //0
 
+#if 0 // unused code - don't see the point.
 // Simple token analyzer - works with _l_action_token:
 template <class t_TyBaseAnalyzer>
 struct _l_token_analyzer
@@ -723,6 +735,7 @@ public:
   {
   }
 };
+#endif //0
 
 __LEXOBJ_END_NAMESPACE
 

@@ -35,7 +35,7 @@ struct _l_data_typed_range_pod : public _l_data_range_pod
 {
   vtyDataType m_nType;
 };
-#endif 0
+#endif //0
 
 // l_token_range: Non-pod version.
 class _l_data_range
@@ -137,7 +137,7 @@ public:
     {
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posEnd ) );
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || !m_dtrData.m_nType );
-      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( vktidInvalidIdTrigger == m_dtrData.m_nType ) );
+      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( vktidInvalidIdTrigger == m_dtrData.m_nIdTrigger ) );
       Assert( m_dtrData.m_posEnd >= m_dtrData.m_posBegin );
     }
     else
@@ -152,6 +152,7 @@ public:
   _l_data()
     : m_dtrData()
   {
+    _SetContainsSingleDataRange();
   }
   _l_data( vtyDataPosition _posBegin, vtyDataPosition _posEnd )
     : m_dtrData( _posBegin, _posEnd )
@@ -342,6 +343,7 @@ public:
     }
   }
 protected:
+  template < class t_TyCharOut >
   static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range const & _rdtr )
   {
     Assert( _rjv.FIsNull() );
