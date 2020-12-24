@@ -9,6 +9,7 @@
 
 // Action objects.
 
+#include <initializer_list>
 #include <set>
 #include <iostream>
 #include <tuple>
@@ -30,6 +31,7 @@ public:
 	static const bool s_fInLexGen = t_fInLexGen;
 	typedef t_TyChar	_TyChar;
 	typedef __LEXOBJ_NAMESPACE _l_value< t_TyChar > _TyValue;
+	typedef _l_action_object_base _TyActionObjectBase;
 
 	// We have a static set of trigger action disambiguating objects.
 	typedef pair< _type_info_wrap, _type_info_wrap >		_TyPairTI;
@@ -39,12 +41,8 @@ public:
                 _TySetSameTriggersAllocator >		_TySetSameTriggers;
 	static _TySetSameTriggers	m_setSameTriggers;
 
-	_l_action_object_base()
-	{
-	}
-	virtual ~_l_action_object_base()
-	{
-	}
+	virtual ~_l_action_object_base() = default;
+	_l_action_object_base() = default;
 
 	virtual string VStrTypeName( const char * _pcCharName ) const = 0;
 
@@ -142,7 +140,20 @@ struct _l_action_object_base< t_TyChar, false >
 public:
 	static const bool s_fInLexGen = false;
 	typedef __LEXOBJ_NAMESPACE _l_value< t_TyChar > _TyValue;
+	typedef _l_action_object_base _TyActionObjectBase;
 
+	~_l_action_object_base() = default;
+	_l_action_object_base() = default;
+	_l_action_object_base( _TyActionObjectBase * _paobNext )
+		: m_paobNext( _paobNext )
+	{
+	}
+	_TyThis * PGetAobNext() const
+	{
+		return m_paobNext;
+	}
+	// Return if the action object is in the null state.
+	virtual bool VFIsNull() const = 0;
 	// Return the ID for this action object.
 	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
 
@@ -151,6 +162,8 @@ public:
 
 	// Get the set of data (the "value") from the object in a generic form. Leave the object empty of data.
 	virtual void GetAndClearValue( _TyValue & _rv ) = 0;
+protected:
+	_l_action_object_base * m_paobNext{nullptr}; // The previous action object in the list.
 };
 
 // Some default action objects - useful for debugging and testing:
@@ -171,14 +184,20 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
   _l_action_token()
   {
   }
+	_l_action_token( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
   _l_action_token(_TyThis const & _r)
     : _TyBase(_r)
   {
   }
+	using _TyBase::VFIsNull;
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
@@ -233,8 +252,18 @@ public:
 	using _TyBase::s_fInLexGen;	
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
+
 	_l_action_print() = default;
+	_l_action_print( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_action_print( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return true;
+	}
 	// Return the unique token ID associated with this object.
 	static constexpr vtyTokenIdent GetTokenId()
 	{
@@ -294,9 +323,18 @@ public:
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_trigger_noop() = default;
+	_l_trigger_noop( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_trigger_noop( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return true;
+	}
 	bool FIsNull() const
 	{
 		return true;
@@ -368,9 +406,18 @@ public:
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_trigger_bool() = default;
+	_l_trigger_bool( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_trigger_bool( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return FIsNull();
+	}
 	bool FIsNull() const
 	{
 		return !m_f;
@@ -425,7 +472,7 @@ public:
 	}
 	void GetAndClearValue( _TyValue & _rv )
 	{
-		_rv.SetValue( m_f );
+		_rv.SetVal( m_f );
 		Clear();
 	}
 protected:
@@ -446,9 +493,18 @@ public:
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_trigger_position() = default;
+	_l_trigger_position( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_trigger_position( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return FIsNull();
+	}
 	bool FIsNull() const
 	{
 		return ( m_tpPos == vkdpNullDataPosition );
@@ -511,7 +567,7 @@ public:
 	}
 	void GetAndClearValue( _TyValue & _rv )
 	{
-		_rv.SetValue( m_tpPos );
+		_rv.SetVal( m_tpPos );
 		Clear();
 	}
 protected:
@@ -534,11 +590,17 @@ public:
 	using _TyBase::s_fInLexGen;	
 	static constexpr vtyTokenIdent s_kiTriggerBegin = t_kiTriggerBegin;
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_trigger_position_end() = default;
+	_l_trigger_position_end( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_trigger_position_end( _TyThis const & _r ) = default;
 	// Return the unique token ID associated with this object.
 	using _TyBase::Clear;
+	using _TyBase::VFIsNull;
 	using _TyBase::FIsNull;
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
@@ -600,17 +662,26 @@ public:
 	typedef __LEXOBJ_NAMESPACE _l_data< t_TyChar > _TyData;
 	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 	
 	_l_trigger_string() = default;
-	_l_trigger_string( _TyThis const & _r ) = default;
-	void Clear()
+	_l_trigger_string( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
 	{
-		_TyBase::Clear();
-		m_dtStrings.Clear();
+	}
+	_l_trigger_string( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return FIsNull();
 	}
 	bool FIsNull() const
 	{
 		return _TyBase::FIsNull() && m_dtStrings.FIsNull();
+	}
+	void Clear()
+	{
+		_TyBase::Clear();
+		m_dtStrings.Clear();
 	}
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
@@ -676,8 +747,8 @@ public:
 	}
 	void GetAndClearValue( _TyValue & _rv )
 	{
-		_rv.SetValue( std::move(m_dtStrings) );
-		Assert( m_dtString.FIsNull() );
+		_rv.SetVal( std::move(m_dtStrings) );
+		Assert( m_dtStrings.FIsNull() );
 	}
 protected:
 	using _TyBase::GetClearPosition;
@@ -707,10 +778,16 @@ public:
 	typedef _l_trigger_position< _TyChar, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	typedef t_TyActionStoreData _tyActionStoreData;
 	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_trigger_string_typed_range() = default;
+	_l_trigger_string_typed_range( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_trigger_string_typed_range( _TyThis const & _r ) = default;
 	using _TyBase::Clear;
+	using _TyBase::VFIsNull;
 	using _TyBase::FIsNull;
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
@@ -799,8 +876,13 @@ public:
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_action_save_data_single() = default;
+	_l_action_save_data_single( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
 	_l_action_save_data_single( _TyThis const & _r ) = default;
 	void Clear()
 	{
@@ -811,6 +893,10 @@ public:
 					( _tuple.Clear(), ... );
         }, m_tuple
     );
+	}
+	bool VFIsNull() const
+	{
+		return FIsNull();
 	}
 	bool FIsNull() const
 	{
@@ -927,19 +1013,29 @@ public:
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
 
 	_l_action_save_data_multiple()
 		: m_saTuples( s_kstInitSegArray )
 	{
 	}
-	_l_action_save_data_multiple( _TyThis const & _r ) = default;
-	void Clear()
+	_l_action_save_data_multiple( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext ),
+			m_saTuples( s_kstInitSegArray )
 	{
-		m_saTuples.Clear();
+	}
+	_l_action_save_data_multiple( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return FIsNull();
 	}
 	bool FIsNull() const
 	{
 		return !m_saTuples.NElements();
+	}
+	void Clear()
+	{
+		m_saTuples.Clear();
 	}
 	// Return the unique token ID associated with this object.
 	static constexpr vtyTokenIdent GetTokenId()
@@ -1014,9 +1110,9 @@ public:
 	}
 	void GetAndClearValue( _TyValue & _rv )
 	{
-		const size_type knEls = m_saTuples.NElements();
+		const typename _TySegArrayTuples::_tySizeType knEls = m_saTuples.NElements();
 		_rv.SetSize( knEls );
-		for ( size_type nEl = 0; nEl < knEls; ++nEl )
+		for ( typename _TySegArrayTuples::_tySizeType nEl = 0; nEl < knEls; ++nEl )
 		{
 			_TyValue & rvEl = _rv[nEl];
 			_TyTuple & rtuple = m_saTuples[nEl];

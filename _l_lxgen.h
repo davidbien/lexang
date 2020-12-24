@@ -89,7 +89,6 @@ struct _l_generator
 	typename _TyDfaList::value_type *	m_pvtDfaCur{nullptr};
 
 	_TyString m_sfnHeader;			// The header file we are generating.
-	_TyString m_sfnImp;					// The implementation file we are generating.
 	_TyString m_sPpBase;				// Preprocessor base name ( for #defines ).
 	bool m_fUseNamespaces;	// Whether to use namespaces when generating.
 	_TyString m_sNamespace;			// The namespace into which we generate.
@@ -122,7 +121,6 @@ struct _l_generator
 	_TyMapActionInfo m_mapActionInfo;
 
 	_l_generator( const t_TyCharOut * _pcfnHeader,
-								const t_TyCharOut * _pcfnImp,
 								const t_TyCharOut *	_pcPpBase,
 								bool _fUseNamespaces,
 								const t_TyCharOut * _pcNamespace,
@@ -133,7 +131,6 @@ struct _l_generator
                 _TyAllocator const & _rA = _TyAllocator() )
 		: m_lDfaGen( _rA ),
 			m_sfnHeader( _pcfnHeader, _rA ),
-			m_sfnImp( _pcfnImp, _rA ),
 			m_sPpBase( _pcPpBase, _rA ),
 			m_fUseNamespaces( _fUseNamespaces ),
 			m_sNamespace( _pcNamespace, _rA ),
@@ -178,29 +175,33 @@ struct _l_generator
     _unique_actions();
 
     ofstream ofsHeader( m_sfnHeader.c_str() );
-    ofstream	ofsImp( m_sfnImp.c_str() );
 
 		_HeaderHeader( ofsHeader );
-		_ImpHeader( ofsImp );
 
-		for ( typename _TyDfaList::iterator lit = m_lDfaGen.begin();
-					lit != m_lDfaGen.end(); ++lit )
-		{
-			m_pvtDfaCur = &*lit;
+		ostringstream ossStateDefinitions; // Stream these to a string first because they reference the unique action objects.
+		{ //B Generate state declarations.
+			Assert( !m_aiStart );
+			Assert( !m_stStart );
+			for ( typename _TyDfaList::iterator lit = m_lDfaGen.begin();
+						lit != m_lDfaGen.end(); ++lit )
+			{
+				m_pvtDfaCur = &*lit;
 
-			m_pvtDfaCur->m_rDfa.GetTriggerUnsatAIRanges( &m_praiTriggers, nullptr );
+				m_pvtDfaCur->m_rDfa.GetTriggerUnsatAIRanges( &m_praiTriggers, nullptr );
 
-			_GenStates( ofsHeader, ofsImp );
+				_GenStateDecls( ofsHeader );
+				_GenStateDefinitions( ossStateDefinitions );
 
-			m_aiStart += m_pvtDfaCur->m_rDfa.m_iMaxActions;
-			m_stStart += m_pvtDfaCur->m_rDfa.NStates();
-		}
+				m_aiStart += m_pvtDfaCur->m_rDfa.m_iMaxActions;
+				m_stStart += m_pvtDfaCur->m_rDfa.NStates();
+			}
+		} //EB
 
-		// We generate a set of unique actions that satisty all DFA's:
-		_GenActions( ofsHeader, ofsImp );
+		_HeaderBody( ofsHeader );
+
+		ofsHeader << ossStateDefinitions.str();
 
 		_HeaderFooter( ofsHeader );
-		_ImpFooter( ofsImp );
 
     // Clear the associated rules:
     m_lDfaGen.clear();
@@ -314,7 +315,7 @@ struct _l_generator
 		_ros << "\n";
 	}
 
-	void	_HeaderFooter( ostream & _ros )
+	void	_HeaderBody( ostream & _ros )
 	{
 		m_pvtDfaCur = &m_lDfaGen.front();
 
@@ -325,14 +326,13 @@ struct _l_generator
 		_ros << "\ttypedef TGetAnalyzerBase<t_TyTransport,t_TyUserObj> _TyBase;\n";
 		_ros << "\ttypedef _lexical_analyzer _TyThis;\n";
 		_ros << "public:\n";
-		_ros << "\t_lexical_analyzer()\n";
-		_ros << "\t\t: _TyBase( (_TyStateProto*) & " << m_pvtDfaCur->m_sStartStateName << " )\n";
-		_ros << "\t{ }\n";
 
 		// Declare the base GetActionObject() template that is not implemented.
 		_ros << "\n\ttemplate < const int t_kiAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();\n";
 
-		// We generate all referenced unique actions:
+
+		// We generate all referenced unique actions, and link them in a singly-linked list.
+		string strPreviousAction;
 		typename _TyMapActions::iterator itMAEnd = m_mapActions.end();
 		typename _TyMapActions::iterator itMA = m_mapActions.begin();
 		for ( ; itMA != itMAEnd; ++itMA )
@@ -347,50 +347,47 @@ struct _l_generator
 				rvt.first->RenderActionType( _ros, m_sCharTypeName.c_str() );
 				_ros << ";\n";
 				// Define the object as a member of the lexical analyzer class:
-				_ros << "\t_TyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str() << ";\n";
+				_ros << "\t_TyAction" << rvt.second.first.m_strActionName.c_str() << " m_axn" << rvt.second.first.m_strActionName.c_str();
+				if ( strPreviousAction.length() )
+					_ros << "{ " << strPreviousAction << " }";
+				_ros << ";\n";
+				{//B
+					ostringstream oss;
+					oss << "&m_axn"	<< rvt.second.first.m_strActionName.c_str();
+					strPreviousAction = oss.str();
+				}//EB
 				_ros << "\ttemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
 							" { return m_axn" << rvt.second.first.m_strActionName.c_str() << "; }\n";
-				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "();\n";
+				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "()\n";
+				_ros << "\t{\n";
+				_ros << "\t\treturn " << "m_axn" << rvt.second.first.m_strActionName.c_str()
+								<< ".action( *this );\n";
+				_ros << "\t}";
 			}
 		}
+
+		_ros << "\t_lexical_analyzer()\n";
+		_ros << "\t\t: _TyBase( (_TyStateProto*) & " << m_pvtDfaCur->m_sStartStateName << "<t_TyTransport,t_TyUserObj>, "; 
+		if ( strPreviousAction.length() )
+			_ros << strPreviousAction;
+		else
+			_ros << "nullptr;";
+		_ros << " )\n\t{ }\n";
 
 		_ros << "};\n\n";
 		_ros << "template < class t_TyTransport, class t_TyUserObj >\n";
 		_ros << "using TGetLexicalAnalyzer = _lexical_analyzer<t_TyTransport,t_TyUserObj>;\n";
 		_ros << "\n";
+	}
+
+	void	_HeaderFooter( ostream & _ros )
+	{
 		if ( m_fUseNamespaces )
 		{
 			_ros << "__" << m_sPpBase << "_END_NAMESPACE\n";
 			_ros << "\n";
 		}
 		_ros << "#endif //__" << m_sPpBase << "_H\n";
-	}
-
-	void	_ImpHeader( ostream & _ros )
-	{
-		_ros << "\n";
-		_ros << "// " << m_sfnImp << "\n";
-		_ros << "// Generated DFA.\n";
-		_ros << "\n";
-		_ros << "#include \"" << m_sfnHeader << "\"\n";
-		_ros << "#include \"syslogmgr.inl\"\n";
-			_ros << "\n";
-		if ( m_fUseNamespaces )
-		{
-			_ros << "__" << m_sPpBase << "_BEGIN_NAMESPACE\n";
-			_ros << "\n";
-			_ros << "__LEXOBJ_USING_NAMESPACE\n";
-			_ros << "\n";
-		}
-	}
-
-	void	_ImpFooter( ostream & _ros )
-	{
-		if ( m_fUseNamespaces )
-		{
-			_ros << "\n";
-			_ros << "__" << m_sPpBase << "_END_NAMESPACE\n";
-		}
 	}
 
 	void	_GenHeaderState(	ostream & _ros, _TyGraphNode * _pgn, 
@@ -796,8 +793,8 @@ struct _l_generator
 					<< rvtUnique.second.first.m_strActionName.c_str() << " )";
 	}
 
-	// Generate the accept function pointer:
-	void	_GenActionMFnP( ostream & _ros, _TyState _stAccept )
+	// Generate the accept function pointer:	
+	void _GenActionMFnP( ostream & _ros, _TyState _stAccept )
 	{
 		const typename _TyPartAcceptStates::value_type *	pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _stAccept );
 
@@ -903,7 +900,7 @@ struct _l_generator
 		
 	}
 
-	void	_GenStates( ostream & _rosHeader, ostream & _rosImp )
+	void	_GenStateDecls( ostream & _rosHeader )
 	{
 		typename _TyNodeLookup::iterator	nit = m_pvtDfaCur->m_rDfa.m_nodeLookup.begin();
 		typename _TyNodeLookup::iterator	nitEnd = m_pvtDfaCur->m_rDfa.m_nodeLookup.end();
@@ -913,32 +910,21 @@ struct _l_generator
 			int	nOuts = pgn->UChildren();	// We could record this earlier - like during both creation and optimization.
 			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( pgn->RElConst() );
 			_GenHeaderState( _rosHeader, pgn, nOuts, fAccept );
-			_GenImpState( _rosImp, pgn, nOuts, fAccept );
 		}
-		_rosImp << "\n";
 		_rosHeader << "\n";
 	}
-
-	void	_GenActions( ostream & _rosHeader, ostream & _rosImp )
+	void	_GenStateDefinitions( ostream & _rosHeader )
 	{
-		_rosImp << "\n";
-
-		// Generate the action objects and the calls from the action methods:
-		// We generate all referenced unique actions:
-		typename _TyMapActions::iterator itMAEnd = m_mapActions.end();
-		typename _TyMapActions::iterator itMA = m_mapActions.begin();
-		for ( ; itMA != itMAEnd; ++itMA )
+		typename _TyNodeLookup::iterator	nit = m_pvtDfaCur->m_rDfa.m_nodeLookup.begin();
+		typename _TyNodeLookup::iterator	nitEnd = m_pvtDfaCur->m_rDfa.m_nodeLookup.end();
+		for ( ; nit != nitEnd; ++nit )
 		{
-			typename _TyMapActions::value_type & rvt = *itMA;
-			if ( rvt.second.second )
-			{
-					_rosImp << "bool\t_TyAnalyzer::Action" << rvt.second.first.m_strActionName.c_str() << "()\n";
-					_rosImp << "{\n";
-					_rosImp << "\treturn " << "m_axn" << rvt.second.first.m_strActionName.c_str()
-									<< ".action< _TyMDAnalyzer >( static_cast< _TyMDAnalyzer & >( *this ) );\n";
-					_rosImp << "}\n\n";
-			}
+			_TyGraphNode *	pgn = static_cast< _TyGraphNode * >( *nit );
+			int	nOuts = pgn->UChildren();	// We could record this earlier - like during both creation and optimization.
+			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( pgn->RElConst() );
+			_GenImpState( _rosHeader, pgn, nOuts, fAccept );
 		}
+		_rosHeader << "\n";
 	}
 };
 

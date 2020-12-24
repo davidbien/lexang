@@ -79,13 +79,14 @@ public:
   }
   void Clear()
   {
-    m_var.emplace<monostate>();
+    m_var.template emplace<monostate>();
   }
 
   template < class t_Ty >
   bool FIsA() const
   {
-    return holds_alternative<t_Ty>( m_var );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    return holds_alternative<_TyRemoveRef>( m_var );
   }
   bool FIsArray() const
   {
@@ -99,54 +100,61 @@ public:
   template < class t_Ty, class... t_tysArgs>
   t_Ty & emplaceArgs( t_tysArgs &&... _args )
   {
-    return m_var.emplace<t_Ty>( std::forward<t_tysArgs>(_args)... );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    return m_var.template emplace<_TyRemoveRef>( std::forward<t_tysArgs>(_args)... );
   }
   template < class t_Ty >
   t_Ty & emplaceVal( t_Ty const & _r )
   {
-    return m_var.emplace<t_Ty>( _r );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    return m_var.template emplace<_TyRemoveRef>( _r );
   }
   template < class t_Ty >
   t_Ty & emplaceVal( t_Ty && _rr )
   {
-    return m_var.emplace<t_Ty>( std::move( _rr ) );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    return m_var.template emplace<_TyRemoveRef>( std::move( _rr ) );
   }
 
   template < class t_Ty >
   t_Ty & GetVal()
   {
-    Assert( holds_alternative<t_Ty>( m_var) ); // assert before we throw...
-    return get< t_Ty >( m_var );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    Assert( holds_alternative<_TyRemoveRef>( m_var) ); // assert before we throw...
+    return get< _TyRemoveRef >( m_var );
   }
   template < class t_Ty >
   const t_Ty & GetVal() const
   {
-    Assert( holds_alternative<t_Ty>( m_var) ); // assert before we throw...
-    return get< t_Ty >( m_var );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    Assert( holds_alternative<_TyRemoveRef>( m_var) ); // assert before we throw...
+    return get< _TyRemoveRef >( m_var );
   }
   // These should work in many cases.
   template < class t_Ty >
   t_Ty & SetVal( t_Ty const & _rv )
   {
-    if ( holds_alternative< t_Ty >( m_var ) )
-      return get< t_Ty >( m_var ) = _rv;
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    if ( holds_alternative< _TyRemoveRef >( m_var ) )
+      return get< _TyRemoveRef >( m_var ) = _rv;
     else
-      return m_var.emplace<t_Ty>( _rv );
+      return m_var.template emplace<_TyRemoveRef>( _rv );
   }
   template < class t_Ty >
   t_Ty & SetVal( t_Ty && _rrv )
   {
-    if ( holds_alternative< t_Ty >( m_var ) )
-      return get< t_Ty >( m_var ) = std::move( _rrv );
+    using _TyRemoveRef = remove_reference_t< t_Ty >;
+    if ( holds_alternative< _TyRemoveRef >( m_var ) )
+      return get< _TyRemoveRef >( m_var ) = std::move( _rrv );
     else
-      return m_var.emplace<t_Ty>(std::move(_rrv));
+      return m_var.template emplace<_TyRemoveRef>(std::move(_rrv));
   }
 
   // This ensures we have an array of _l_values within and then sets the size to the passed size.
   void SetSize( size_type _stNEls )
   {
     if ( !FIsArray() )
-      m_var.emplace<_TySegArrayValues>( s_knbySegArrayInit );
+      m_var.template emplace<_TySegArrayValues>( s_knbySegArrayInit );
     get< _TySegArrayValues >( m_var ).SetSize( _stNEls );
   }
   // This fails with a throw if we don't contain an array.
@@ -256,7 +264,7 @@ protected:
   {
     get_string_type< t_TyStrViewDest::value_type > strConverted;
     ConvertString( strConverted, _rsrc );
-    m_var.emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( strConverted ) );
+    m_var.template emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( strConverted ) );
     get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
     _rsvDest = t_TyStrViewDest( &rstrInVar[0], rstrInVar.length() );
   }

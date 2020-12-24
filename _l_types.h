@@ -44,29 +44,6 @@ class _l_action_save_data_single;
 template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
 class _l_action_save_data_multiple;
 
-// Transports:
-template < class t_TyChar >
-class _l_transport_base;
-
-template < class t_TyChar >
-class _l_transport_fd_ctxt;
-template < class t_TyChar >
-class _l_transport_fd;
-
-template < class t_TyChar >
-class _l_transport_fixedmem_ctxt;
-template < class t_TyChar >
-class _l_transport_fixedmem;
-
-template < class t_TyChar >
-class _l_transport_mapped_ctxt;
-
-template < class t_TyChar >
-class _l_transport_mapped;
-
-template < class t_TyTransport >
-class _l_stream;
-
 __REGEXP_END_NAMESPACE
 
 __LEXOBJ_BEGIN_NAMESPACE

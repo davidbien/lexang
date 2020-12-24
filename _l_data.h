@@ -51,6 +51,13 @@ public:
   }
   _l_data_range & operator =( _TyThis const & _r ) = default;
 
+  void AssertValid() const
+  {
+#ifndef NDEBUG
+    Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_posEnd == numeric_limits< vtyDataPosition >::max() ) );
+#endif //!NDEBUG    
+  }
+
   vtyDataPosition begin() const
   {
     return m_posBegin;
@@ -75,9 +82,20 @@ public:
   _l_data_typed_range( _l_data_typed_range const & ) = default;
   _l_data_typed_range & operator = ( _l_data_typed_range const & ) = default;
 
-  _l_data_typed_range( _l_data_range const & _r )
-    : _TyBase( _r )
+  _l_data_typed_range( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
+    : _TyBase( _posBegin, _posEnd ),
+      m_nType( _nType ),
+      m_nIdTrigger( _nIdTrigger )
   {
+  }
+
+  void AssertValid() const
+  {
+#ifndef NDEBUG
+    _TyBase::AssertValid();
+    Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_nIdTrigger == vktidInvalidIdTrigger ) );
+    Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || !m_nType );
+#endif //!NDEBUG    
   }
 
   // Provide access to base class via explicit accessor:
@@ -300,7 +318,7 @@ public:
   {
     Append( _l_data_typed_range( _rdr ) );
   }
-  void Append( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _id )
+  void Append( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {
     Append( _l_data_typed_range( _posBegin, _posEnd, _nType, _nIdTrigger ) );
   }

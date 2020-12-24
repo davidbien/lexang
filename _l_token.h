@@ -34,7 +34,8 @@ public:
   typedef t_TyUserContext _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyChar > _TyValue;
-  typedef _l_action_object_base< _TyChar > _TyAxnObjBase;
+  typedef typename _TyValue::size_type size_type;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   _l_token() = delete;
   // We could make this protected, etc, but I don't worry that it will be accidetally called.

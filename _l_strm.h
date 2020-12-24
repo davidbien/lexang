@@ -11,6 +11,7 @@
 #include "fdrotbuf.h"
 #include "_l_ns.h"
 #include "_l_types.h"
+#include "_l_user.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
 
@@ -255,7 +256,10 @@ public:
     unique_ptr< _TyToken > upToken = make_unique< _TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
     upToken.swap( _rupToken );
   }
-
+  void DiscardData( const vtyDataPosition _kdpEndToken )
+  {
+    m_frrFileDesBuffer.DiscardData( _kdpEndToken );
+  }
 protected:
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
   typedef FdReadRotating< _TyChar > _TyFdReadRotating;
@@ -357,16 +361,25 @@ public:
                   _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
                   unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
   {
-    Assert( _kdpEndToken <= m_prmvCurrentToken.first + m_prmvCurrentToken.second );
+    Assert( _kdpEndToken >= _PosTokenStart() );
+    Assert( _kdpEndToken <= _PosTokenStart() + m_prmvCurrentToken.second );
     typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
     typedef _l_token< _TyUserContext > _TyToken;
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
     Assert( nLenToken <= m_prmvCurrentToken.second );
-    _TyUserContext ucxt( _ruoUserObj, this, nLenToken );
+    _TyUserContext ucxt( _ruoUserObj, this, _TyPrMemView( m_prmvCurrentToken.first, nLenToken ) );
     m_prmvCurrentToken.first += nLenToken;
     m_prmvCurrentToken.second = 0;
     unique_ptr< _TyToken > upToken = make_unique< _TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
     upToken.swap( _rupToken );
+  }
+  void DiscardData( const vtyDataPosition _kdpEndToken )
+  {
+    Assert( _kdpEndToken >= _PosTokenStart() );
+    Assert( _kdpEndToken <= _PosTokenStart() + m_prmvCurrentToken.second );
+    vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
+    m_prmvCurrentToken.first += nLenToken;
+    m_prmvCurrentToken.second = 0;
   }
 
 protected:
@@ -493,15 +506,17 @@ public:
   typedef typename t_TyTransport::_TyChar _TyChar;
   typedef typename t_TyTransport::_TyTransportCtxt _TyTransportCtxt;
   typedef t_TyUserObj _TyUserObj;
-  typedef _l_user_context< _TyUserObj, _TyTransportCtxt > _TyUserContext;
+  typedef _l_user_context< _TyTransportCtxt, _TyUserObj > _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyChar > _TyValue;
   typedef _l_token< _TyUserContext > _TyToken;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
-  _l_stream() = delete;
+  _l_stream() = default;
   _l_stream( _l_stream const & ) = delete;
   _l_stream & operator =( _l_stream const & ) = delete;
+  _l_stream( _l_stream && ) = default;
+  _l_stream & operator =( _l_stream && ) = default;
 
   // Use this constructor for non-copyable objects or stateful objects that we don't want to copy, etc.
   _l_stream( _TyUserObj && _rruo )
@@ -517,7 +532,7 @@ public:
   template < class... t_TysArgs >
   void emplaceTransport( t_TysArgs&&... _args )
   {
-    (void))m_opttpImpl.emplace( std::forward< t_TysArgs >( _args )... );
+    (void)m_opttpImpl.emplace( std::forward< t_TysArgs >( _args )... );
   }
 
   vtyDataPosition PosCurrent() const
@@ -543,7 +558,14 @@ public:
     Assert( m_opttpImpl.has_value() );
     _TyValue value;
     _paobCurToken->GetAndClearValue( value );
-    m_opttpImpl.GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), m_uoUserObj, _rupToken );
+    m_opttpImpl->GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), m_uoUserObj, _rupToken );
+  }
+  // This method is called when an action object returns false from its action() method.
+  // This will cause the entire token found to be discarded without further processing - the fastest way if ignoring a token.
+  void DiscardData( const vtyDataPosition _kdpEndToken )
+  {
+    Assert( m_opttpImpl.has_value() );
+    m_opttpImpl->DiscardData( _kdpEndToken );
   }
 
 protected:

@@ -136,12 +136,13 @@ public:
 
   _TyStream m_stream; // the stream within which is the transport object and user context, etc.
 
+  _TyAxnObjBase * m_paobActionListHead{nullptr};
 private: // Not sure why I made this private but it must have been very important!!! (j/k) so I am going to leave it.
-  _TyStateProto *m_pspLastAccept; // The last encountered accept state;
+  _TyStateProto *m_pspLastAccept{nullptr}; // The last encountered accept state;
 public:
+  _TyStateProto *m_pspStart{nullptr}; // The last encountered accept state;
   _TyStateProto *m_pspCur{nullptr}; // Current state.
   vtyDataPosition m_posLastAccept{vkdpNullDataPosition};
-  _TyUnsignedChar *m_pcLastAccept{}; // The position in the buffer when last accept encountered.
   // The start of the current token is stored in the transport.
   _TyUnsignedChar m_ucCur; // The current character obtained from the transport.
   _TyCompSearch m_compSearch;        // search object.
@@ -150,8 +151,10 @@ public:
   _l_analyzer(const _l_analyzer &) = delete;
   _l_analyzer &operator=(_l_analyzer const &) = delete;
 
-  _l_analyzer(_TyStateProto *_pspStart)
-      : m_pspLastAccept(0)
+  // There may be no action objects at all (actually that's not true, given the design - but I allow for it).
+  _l_analyzer(_TyStateProto *_pspStart, _TyAxnObjBase * _paobActionListHead )
+      : m_pspStart(_pspStart),
+        m_paobActionListHead( _paobActionListHead )
   {
   }
 
@@ -162,6 +165,8 @@ public:
     GetStream().emplaceTransport( std::forward< t_TysArgs >( _args )... );
   }
 
+  using _TyBase::SetToken;
+  using _TyBase::PGetToken;
   _TyStream & GetStream()
   {
     return m_stream;
@@ -181,6 +186,15 @@ public:
   size_t GetCurrentPosition() const
   {
     return GetStream().PosCurrent();
+  }
+  bool FIsClearOfTokenData() const
+  {
+    for ( _TyAxnObjBase * paxnCur = m_paobActionListHead; !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
+    {
+      if ( !paxnCur->VFIsNull() )
+        return false;
+    }
+    return true;
   }
 #define LXOBJ_DOTRACE(MESG...) _DoTrace( __FILE__, __LINE__, __PRETTY_FUNCTION__, MESG)
   void _DoTrace(const char *_szFile, unsigned int _nLine, const char *_szFunction, const char *_szMesg, ...)
@@ -325,77 +339,75 @@ public:
     }
   }
 
-  // Just return a single token. Return false if you didn't get one.
-  bool FGetToken( _TyStateProto *_pspStart, unique_ptr< _TyToken > & _rpuToken )
+  void _InitGetToken( _TyStateProto *_pspStart )
   {
+    m_pspCur = !_pspStart ? m_pspStart : _pspStart; // Start at the beginning again...
+    m_pspLastAccept = 0; // Regardless.
+    if (t_fSupportLookahead)
+      m_pspLookaheadAccept = 0;
+    m_posLastAccept = vkdpNullDataPosition;
+  }
+
+  // Just return a single token. Return false if you didn't get one.
+  bool FGetToken( unique_ptr< _TyToken > & _rpuToken, _TyStateProto *_pspStart = nullptr )
+  {
+    _InitGetToken( _pspStart );
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
+    LXOBJ_DOTRACE("At start.");
     do
     {
-      m_pspCur = _pspStart; // Start at the beginning again...
-      LXOBJ_DOTRACE("At start.");
-      do
-      {
-        _CheckAcceptState();
-      } 
-      while ( _getnext() );
+      _CheckAcceptState();
+    } 
+    while ( _getnext() );
 
-      if ( m_pspLastAccept )
+    if ( m_pspLastAccept )
+    {
+      _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
+      m_pspLastAccept = 0; // Regardless.
+      Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
+      if ( !!pmfnAccept )
       {
-        _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
-        m_pspLastAccept = 0; // Regardless.
-        Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
-        if ( !!pmfnAccept )
+        // See of the token wants to be accepted as the current action.
+        // This method will call SetToken() to set the current token.
+        Assert( !PGetToken() ); // Why should we have a token now.
+        __DEBUG_STMT( SetToken(nullptr) );
+        if ( (this->*pmfnAccept)() )
         {
-          // See of the token wants to be accepted as the current action.
-          // This method will call SetToken() to set the current token.
-          Assert( !PGetToken() ); // Why should we have a token now.
-          __DEBUG_STMT( SetToken(nullptr) );
-          if ( (this->*pmfnAccept)() )
-          {
-            VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
-            unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
-            // Delegate to the stream to obtain the token as it needs to get the context from the transport.
-            _TyAxnObjBase * paobCurToken = PGetToken();
-            SetToken(nullptr);
-            GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
-            if ( !_callback( upToken ) )
-              return true; // The caller is done with getting tokens for now.
-            // else continue to get tokens.
-          }
-          else
-          {
-            Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
-            // We had hit a dead end. To continue from here we must return to the start state.
-            // If the token action didn't accept then it should have cleared all token data:
-            Assert( FIsClearOfTokenData() );
-            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
-            // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
-          }
-          m_posLastAccept = vkdpNullDataPosition; // sanity.
+          VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
+          unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
+          // Delegate to the stream to obtain the token as it needs to get the context from the transport.
+          _TyAxnObjBase * paobCurToken = PGetToken();
+          SetToken(nullptr);
+          GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+          // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
+          VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
+          return true;
         }
-        if (t_fSupportLookahead)
+        else
         {
-          m_pspLookaheadAccept = 0;
+          Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
+          // We had hit a dead end. To continue from here we must return to the start state.
+          // If the token action didn't accept then it should have cleared all token data:
+          VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
+          GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
+          // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
         }
       }
-      else
-      {
-        // No accepting state found.
-        return false;
-      }
-    } while (m_ucCur);
+    }
+    // No accepting state found.
+    return false;
   }
 
   // Keep getting tokens until we hit eof or the callback method returns false.
   // If we process things as much as possible - i.e. get tokens until we are supposed to, then we return true and _pspStateFailing is set to nullptr.
   // If we encounter a state where we cannot move forward on input then we return false. The current state is then still set to the state from which we were unable to continue.
   template < class t_tyCallback >
-  bool FGetTokens( _TyStateProto * _pspStart, t_tyCallback _callback )
+  bool FGetTokens( t_tyCallback _callback, _TyStateProto *_pspStart = nullptr )
   {
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     do
     {
-      m_pspCur = _pspStart; // Start at the beginning again...
+      _InitGetToken( _pspStart );
       LXOBJ_DOTRACE("At start.");
       do
       {
@@ -421,6 +433,7 @@ public:
             _TyAxnObjBase * paobCurToken = PGetToken();
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+            VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
             if ( !_callback( upToken ) )
               return true; // The caller is done with getting tokens for now.
             // else continue to get tokens.
@@ -430,15 +443,10 @@ public:
             Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
             // We had hit a dead end. To continue from here we must return to the start state.
             // If the token action didn't accept then it should have cleared all token data:
-            Assert( FIsClearOfTokenData() );
+            VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh..
             // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
           }
-          m_posLastAccept = vkdpNullDataPosition; // sanity.
-        }
-        if (t_fSupportLookahead)
-        {
-          m_pspLookaheadAccept = 0;
         }
       }
       else
@@ -453,7 +461,7 @@ protected:
   void _NextChar()
   {
     m_ucCur = 0;
-    (void))m_stream.FGetChar( m_ucCur );
+    (void)m_stream.FGetChar( m_ucCur );
   }
   void _execute_triggers()
   {
