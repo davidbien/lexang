@@ -187,12 +187,18 @@ public:
   {
     return GetStream().PosCurrent();
   }
-  bool FIsClearOfTokenData() const
+  bool FIsClearOfTokenData( vtyTokenIdent * _ptidNonNull = 0 ) const
   {
     for ( _TyAxnObjBase * paxnCur = m_paobActionListHead; !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
     {
       if ( !paxnCur->VFIsNull() )
+      {
+        DEBUG_BREAK;
+        bool fIsNull = paxnCur->VFIsNull();
+        if ( !!_ptidNonNull )
+          *_ptidNonNull = paxnCur->VGetTokenId();
         return false;
+      }
     }
     return true;
   }
@@ -353,6 +359,7 @@ public:
   {
     _InitGetToken( _pspStart );
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
+    _NextChar();
     LXOBJ_DOTRACE("At start.");
     do
     {
@@ -370,7 +377,7 @@ public:
         // See of the token wants to be accepted as the current action.
         // This method will call SetToken() to set the current token.
         Assert( !PGetToken() ); // Why should we have a token now.
-        __DEBUG_STMT( SetToken(nullptr) );
+        AssertStatement( SetToken(nullptr) );
         if ( (this->*pmfnAccept)() )
         {
           VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
@@ -380,7 +387,8 @@ public:
           SetToken(nullptr);
           GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
           // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
-          VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
+          vtyTokenIdent tidNonNull;
+          VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
           return true;
         }
         else
@@ -388,7 +396,8 @@ public:
           Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
           // We had hit a dead end. To continue from here we must return to the start state.
           // If the token action didn't accept then it should have cleared all token data:
-          VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
+          vtyTokenIdent tidNonNull;
+          VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
           GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
           // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
         }
@@ -408,6 +417,8 @@ public:
     do
     {
       _InitGetToken( _pspStart );
+      Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
+      _NextChar();
       LXOBJ_DOTRACE("At start.");
       do
       {
@@ -433,7 +444,8 @@ public:
             _TyAxnObjBase * paobCurToken = PGetToken();
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
-            VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
+            vtyTokenIdent tidNonNull;
+            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
             if ( !_callback( upToken ) )
               return true; // The caller is done with getting tokens for now.
             // else continue to get tokens.
@@ -443,7 +455,8 @@ public:
             Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
             // We had hit a dead end. To continue from here we must return to the start state.
             // If the token action didn't accept then it should have cleared all token data:
-            VerifyThrowSz( FIsClearOfTokenData(), "Uhhhh, you have a problem in that there is leftover data in the action objects which could result in bogus translation." ); 
+            vtyTokenIdent tidNonNull;
+            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh..
             // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
           }

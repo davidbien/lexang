@@ -1116,7 +1116,7 @@ public:
 		{
 			_TyValue & rvEl = _rv[nEl];
 			_TyTuple & rtuple = m_saTuples[nEl];
-			_rv.SetSize( sizeof...(t_TysTriggers) );
+			rvEl.SetSize( sizeof...(t_TysTriggers) );
 			std::apply
 			(
 					[&rvEl]( t_TysTriggers &... _tuple )
@@ -1126,6 +1126,7 @@ public:
 					}, rtuple
 			);
 		}
+		m_saTuples.SetSize( 0 ); // Don't Clear() it because that deallocates all the blocks - this leaves them allocated for the next token.
 	}
 protected:
 	// We save multiple sets of tuple values in a SegArray.

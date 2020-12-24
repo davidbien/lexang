@@ -569,16 +569,12 @@ public:
   }
 
   // Convert stream position ranges to strings throughout the entire value (i.e. recursively) using the stream _rs.
-  // If there are strings that are present which are not in the representation t_TyCharOut then these are converted to t_TyCharOut.
-  // This will turn all strings into "usable" version - according to the transport backing the stream.
-  //  1) All _TyData _l_values are converted into either:
-  //		a) SegArrayView<t_TyChar>s if they are single, simple, _TyData(s) with no processing required and the backing an fd or other non-in-memory backing.
-  //    b) basic_string_view<t_TyChar>s if they are single, simple, _TyData(s) with no processing required and the backing an mapped file or in-memory backing.
-  //    c) basic_string<t_TyChar>s if processing is required for single- or multi-part _TyData(s).
-  //  2) Any other values that aren't represented in t_TyCharOut form are converted to t_TyCharOut form.
-  template < class t_TyTransportCtxt, class t_TyCharOut = t_TyChar >
-  void ProcessStrings( t_TyTransportCtxt & _rcxt )
+  template < class t_TyToken, class t_TyCharOut = t_TyChar >
+  void ProcessStrings( t_TyToken & _rtok )
   {
+    // Just need to get a string view to process the strings:
+    basic_string_view< t_TyCharOut > sv;
+    GetStringView( _rtok, sv );
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) {},
       [](bool _f) {},

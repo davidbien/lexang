@@ -292,6 +292,7 @@ struct _l_generator
 		_ros << "// Generated DFA.\n";
 		_ros << "\n";
 		_ros << "#include \"_l_lxobj.h\"\n";
+		_ros << "#include \"_l_token.h\"\n";
 		_ros << "\n";
 		if ( m_fUseNamespaces )
 		{
