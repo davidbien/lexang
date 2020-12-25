@@ -58,7 +58,9 @@ public:
 
 	friend _TyOstream & operator << ( _TyOstream & _ros, _TyThis const & _r )
 	{
-		_r.Dump( _ros );
+    typename _TyOstream::sentry s(_ros);
+    if ( s ) 
+			_r.Dump( _ros );
 		return _ros;
 	}
 

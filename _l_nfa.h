@@ -163,11 +163,11 @@ public:
 		DeallocClosureCache();
 	}
 
-	void AssertValid()
+	void AssertValid() const
 	{
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		Assert( m_nTriggers == m_mapTokenIdToTriggerTransition.size() * 2 );
-#endif //!NDEBUG		
+#endif //ASSERTSENABLED
 	}
 
 	t_TyAllocator get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }

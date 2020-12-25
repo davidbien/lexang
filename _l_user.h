@@ -47,7 +47,7 @@ public:
     requires ( !is_same_v< typename t_TyStringView::value_type, _TyChar > )
   {
     typedef typename t_TyStringView::value_type _TyCharConvertTo;
-    typedef typename _TyValue::get_string_type< _TyCharConvertTo > _TyStrConvertTo;
+    typedef typename _TyValue::template get_string_type< _TyCharConvertTo > _TyStrConvertTo;
     _TyStrConvertTo strConverted;
     GetString( strConverted, _rcxt, _rtok, _rval );
     _rsvDest = _rval.emplaceVal( std::move( strConverted ) );
@@ -67,9 +67,9 @@ public:
 // Non-converting GetString* for fd transport.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
   static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
+    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     if ( !kdtr.FContainsSingleDataRange() || !_rcxt.GetTokenBuffer().FGetStringView( _rsvDest, kdtr.begin(), kdtr.end() ) )
@@ -86,11 +86,11 @@ public:
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
+    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     if ( !kdtr.FContainsSingleDataRange() || !_rcxt.GetTokenBuffer().FGetStringView( _rsvDest, kdtr.begin(), kdtr.end() ) )
@@ -106,9 +106,9 @@ public:
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
-    requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
+    requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a string:
@@ -145,15 +145,15 @@ public:
 // Converting GetString* for fd transport.
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
-    requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, _rcxt > ) // we act specially for fd transport.
+    requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
     typedef typename t_TyString::value_type _TyCharConvertTo;
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyData kdtr = _rval.GetVal< _TyData >();
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
+    const _TyData kdtr = _rval.template GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a converted string, attempt to use an alloca() buffer:
-    static const _tySizeType knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
-    typename _TyValue::get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
+    static const size_t knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
+    typename _TyValue::template get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
     vtyDataPosition nCharsCount = kdtr.CountChars();
     vtyDataPosition nCharsRemaining = nCharsCount;
     _TyChar * pcBuf;
@@ -166,7 +166,7 @@ public:
       pcBuf = (_TyChar*)alloca( nCharsCount * sizeof( _TyChar ) );
     if ( kdtr.FContainsSingleDataRange() )
     {
-      _tySizeType nCharsRead = _rcxt.GetTokenBuffer().Read( kdtr.begin(), pcBuf, nCharsRemaining );
+      size_t nCharsRead = _rcxt.GetTokenBuffer().Read( kdtr.begin(), pcBuf, nCharsRemaining );
       Assert( nCharsRead == nCharsRemaining );
       nCharsRemaining -= nCharsRead;
     }
@@ -201,9 +201,9 @@ public:
 // Non-converting GetString* for fixed-memory transport.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
   static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
+    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > ) // all fixed mem context is handled the same - easy.
   {
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
@@ -222,11 +222,11 @@ public:
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
+    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > ) // all fixed mem context is handled the same - easy.
   {
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
@@ -246,9 +246,9 @@ public:
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
-    requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > ) // all fixed mem context is handled the same - easy.
+    requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > ) // all fixed mem context is handled the same - easy.
   {
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
@@ -287,16 +287,17 @@ public:
 // Converting GetString* for fixed-memory transport.
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
-    requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, _rcxt > )
+    requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > )
   {
     typedef typename t_TyString::value_type _TyCharConvertTo;
-    Assert( _rval.HasTypedData() ); // We are converting the _TyData object that is in _rval.
+    typedef typename _TyTransportCtxtFixedMem::_TyPrMemView _TyPrMemView;
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
-    const _TyData kdtr = _rval.GetVal< _TyData >();
+    const _TyData kdtr = _rval.template GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a converted string, attempt to use an alloca() buffer:
-    static const _tySizeType knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
-    typename _TyValue::get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
+    static const size_t knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
+    typename _TyValue::template get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
     vtyDataPosition nCharsCount = kdtr.CountChars();
     vtyDataPosition nCharsRemaining = nCharsCount;
     _TyChar * pcBuf;
@@ -309,8 +310,8 @@ public:
       pcBuf = (_TyChar*)alloca( nCharsCount * sizeof( _TyChar ) );
     if ( kdtr.FContainsSingleDataRange() )
     {
-      memcpy( pcBuf, prmvFull.first + kdtr.begin(), kdtr.length() );
-      nCharsRemaining -= kdtr.length();
+      memcpy( pcBuf, prmvFull.first + kdtr.DataRangeGetSingle().begin(), kdtr.DataRangeGetSingle().length() );
+      nCharsRemaining -= kdtr.DataRangeGetSingle().length();
     }
     else
     {
@@ -318,17 +319,20 @@ public:
       kdtr.GetSegArrayDataRanges().NApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
         [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
         {
-          for ( const _l_data_typed_range * pdtrCur = _pdtrBegin; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )
+          const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
+          const _l_data_typed_range * pdtrCur;
+          for ( pdtrCur = _pdtrBegin; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )
           {
             vtyDataPosition nToRead = pdtrCur->length();
             Assert( nCharsRemaining >= nToRead );
             if ( nToRead > nCharsRemaining )
               nToRead = nCharsRemaining;
-            Assert( nToRead + pdtrCur->begin() )
             memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead );
             nCharsRemaining -= nToRead;
             pcCur += nToRead;
           }
+          Assert( _pdtrEnd == pdtrCur );
+          return pdtrCur - _pdtrBegin;
         }
       );
     }

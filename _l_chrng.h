@@ -126,8 +126,12 @@ public:
 
 	friend std::ostream & operator << ( std::ostream & _ros, const _TyThis & _r )
 	{
-		_ros << "['" << ( _r.first ? _r.first : ' ' ) << 
-					 "'-'" << ( _r.second ? _r.second : ' ' ) << "']";
+    std::ostream::sentry s(_ros);
+    if ( s ) 
+		{
+			_ros << "['" << ( _r.first ? _r.first : ' ' ) << 
+						"'-'" << ( _r.second ? _r.second : ' ' ) << "']";
+		}
 		return _ros;
 	}
 

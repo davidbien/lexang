@@ -53,9 +53,10 @@ public:
 
   void AssertValid() const
   {
-#ifndef NDEBUG
+#if ASSERTSENABLED
     Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_posEnd == numeric_limits< vtyDataPosition >::max() ) );
-#endif //!NDEBUG    
+    Assert( m_posEnd >= m_posBegin );
+#endif //ASSERTSENABLED
   }
 
   vtyDataPosition begin() const
@@ -65,6 +66,11 @@ public:
   vtyDataPosition end() const
   {
     return m_posEnd;
+  }
+  vtyDataPosition length() const
+  {
+    AssertValid();
+    return m_posEnd - m_posBegin;
   }
   
 // Make these accessible.
@@ -91,11 +97,11 @@ public:
 
   void AssertValid() const
   {
-#ifndef NDEBUG
+#if ASSERTSENABLED
     _TyBase::AssertValid();
     Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_nIdTrigger == vktidInvalidIdTrigger ) );
     Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || !m_nType );
-#endif //!NDEBUG    
+#endif //ASSERTSENABLED  
   }
 
   // Provide access to base class via explicit accessor:
@@ -110,6 +116,7 @@ public:
   
   using _TyBase::begin;
   using _TyBase::end;
+  using _TyBase::length;
   vtyDataType type() const
   {
     return m_nType;
@@ -149,8 +156,8 @@ public:
   };
 
   void AssertValid() const
-#if ASSERTSENABLED
   {
+#if ASSERTSENABLED
     if ( FContainsSingleDataRange() )
     {
       Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posEnd ) );
@@ -162,10 +169,8 @@ public:
     {
       _PSegArray()->AssertValid();
     }
+#endif //ASSERTSENABLED
   }
-#else //!ASSERTSENABLED
-  { }
-#endif //!ASSERTSENABLED
 
   _l_data()
     : m_dtrData()
@@ -258,6 +263,27 @@ public:
     else
       return !!_PSegArray()->NElements(); // Assuming we don't put empty elements in the segarray.
   }
+  // Return the count of characters comprising all the ranges in this.
+  size_t CountChars() const
+  {
+    if ( FIsNull() )
+      return 0;
+    else
+    if ( FContainsSingleDataRange() )
+      return m_dtrData.length();
+    else
+    {
+      size_t nChars = 0;
+      _PSegArray()->ApplyContiguous( 0, _PSegArray()->NElements(),
+        [&nChars]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+        {
+          for ( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            nChars += _pdtrBegin->length();
+        }
+      );
+      return nChars;
+    }
+  }
   bool FIsNull() const
   {
     AssertValid();
@@ -294,7 +320,7 @@ public:
   }
   _l_data_typed_range DataRangeGetSingle() const
   {
-    VerifyThrowSz( FContainsSingleDataRange(), "This _l_data object contains an array." );
+    Assert( FContainsSingleDataRange() );
     return m_dtrData;
   }
   void Set( _l_data_range const & _rdr )
@@ -357,7 +383,7 @@ public:
     {
       const size_type knEls = _PSegArray()->NElements();
       for ( size_type n = 0; n < knEls; ++n )
-        _ToJsoValue( _rjv[n] );
+        _ToJsoValue( _rjv[n], _PSegArray()->ElGet( n ) );
     }
   }
 protected:
@@ -365,11 +391,11 @@ protected:
   static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range const & _rdtr )
   {
     Assert( _rjv.FIsNull() );
-    _rjv.SetValueType( ejvtObject );
-    _rjv.SetValue( "b", _rdtr.m_posBegin );
-    _rjv.SetValue( "e", _rdtr.m_posEnd );
-    _rjv.SetValue( "t", _rdtr.m_nType );
-    _rjv.SetValue( "i", _rdtr.m_nIdTrigger );
+    _rjv.SetValueType(ejvtObject);
+    _rjv("b").SetValue(_rdtr.m_posBegin);
+    _rjv("e").SetValue(_rdtr.m_posEnd );
+    _rjv("t").SetValue( _rdtr.m_nType );
+    _rjv("i").SetValue( _rdtr.m_nIdTrigger );
   }
   void _SetContainsSingleDataRange()
   {

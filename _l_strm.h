@@ -98,6 +98,7 @@ class _l_transport_fd_ctxt
 public:
   typedef _l_transport_fd< t_TyChar > _TyTransportFd;
   typedef SegArrayRotatingBuffer< t_TyChar > _TySegArrayBuffer;
+  typedef _l_data< t_TyChar > _TyData;
 
   _l_transport_fd_ctxt( _TyTransportFd * _ptxpFd )
     : m_ptxpFd( _ptxpFd ),
@@ -129,6 +130,25 @@ public:
   const _TySegArrayBuffer & GetTokenBuffer() const
   {
     return m_saTokenBuf;
+  }
+  void AssertValidDataRange( _TyData const & _rdt ) const
+  {
+#if ASSERTSENABLED
+    if ( _rdt.FContainsSingleDataRange() )
+    {
+      m_saTokenBuf.AssertValidRange( _rdt.begin(), _rdt.end() );
+    }
+    else
+    {
+      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+        {
+          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            m_saTokenBuf.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+        }
+      );
+    }
+#endif //ASSERTSENABLED  
   }
 protected:
   _TyTransportFd * m_ptxpFd{nullptr}; // We need to be able to return our token buffer to the transport when we are done with it.
@@ -260,6 +280,25 @@ public:
   {
     m_frrFileDesBuffer.DiscardData( _kdpEndToken );
   }
+  void AssertValidDataRange( _TyData const & _rdt ) const
+  {
+#if ASSERTSENABLED
+    if ( _rdt.FContainsSingleDataRange() )
+    {
+      m_frrFileDesBuffer.AssertValidRange( _rdt.begin(), _rdt.end() );
+    }
+    else
+    {
+      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+        {
+          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            m_frrFileDesBuffer.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+        }
+      );
+    }
+#endif //ASSERTSENABLED  
+  }
 protected:
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
   typedef FdReadRotating< _TyChar > _TyFdReadRotating;
@@ -276,6 +315,7 @@ public:
   typedef t_TyChar _TyChar;
   typedef _l_transport_fixedmem< t_TyChar > _TyTransportFixedMem;
   typedef std::pair< const t_TyChar *, vtyDataPosition > _TyPrMemView;
+  typedef _l_data< _TyChar > _TyData;
 
   _l_transport_fixedmem_ctxt( _TyTransportFixedMem * _ptxpFixedMem, _TyPrMemView const & _rprmv )
     : m_ptxpFixedMem( _ptxpFixedMem ),
@@ -300,7 +340,35 @@ public:
   {
     return m_ptxpFixedMem->m_prmvFull;
   }
-public:
+  void AssertValidDataRange( _TyData const & _rdt ) const
+  {
+#if ASSERTSENABLED
+    if ( _rdt.FContainsSingleDataRange() )
+    {
+      _AssertValidRange( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end() );
+    }
+    else
+    {
+      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+        {
+          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+        }
+      );
+    }
+#endif //ASSERTSENABLED  
+  }
+protected:
+  void _AssertValidRange( vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const
+  {
+#if ASSERTSENABLED
+    Assert( _posEnd >= _posBegin );
+    vtyDataPosition posTokenStart = m_prmvCurrentToken.first - RPrmvFull().first;
+    Assert( _posBegin >= posTokenStart );
+    Assert( _posEnd <= posTokenStart + m_prmvCurrentToken.second );
+#endif //ASSERTSENABLED  
+  }
   _TyPrMemView m_prmvCurrentToken;
   _TyTransportFixedMem * m_ptxpFixedMem;
 };
@@ -312,6 +380,7 @@ class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
 {
   typedef _l_transport_fixedmem _TyThis;
   typedef _l_transport_base< t_TyChar > _TyBase;
+  friend _l_transport_fixedmem_ctxt< t_TyChar >;
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
@@ -332,10 +401,10 @@ public:
   
   void AssertValid() const
   {
-#ifndef NDEBUG
+#if ASSERTSENABLED
     Assert( m_prmvCurrentToken.first >= m_prmvFull.first );
     Assert( ( m_prmvCurrentToken.first + m_prmvCurrentToken.second ) <= ( m_prmvFull.first + m_prmvFull.second ) );
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
   }
 
   vtyDataPosition PosCurrent() const
@@ -362,7 +431,7 @@ public:
                   unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
   {
     Assert( _kdpEndToken >= _PosTokenStart() );
-    Assert( _kdpEndToken <= _PosTokenStart() + m_prmvCurrentToken.second );
+    Assert( _kdpEndToken <= _PosTokenEnd() );
     typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
     typedef _l_token< _TyUserContext > _TyToken;
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
@@ -376,13 +445,39 @@ public:
   void DiscardData( const vtyDataPosition _kdpEndToken )
   {
     Assert( _kdpEndToken >= _PosTokenStart() );
-    Assert( _kdpEndToken <= _PosTokenStart() + m_prmvCurrentToken.second );
+    Assert( _kdpEndToken <= _PosTokenEnd() );
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
     m_prmvCurrentToken.first += nLenToken;
     m_prmvCurrentToken.second = 0;
   }
-
+  void AssertValidDataRange( _TyData const & _rdt ) const
+  {
+#if ASSERTSENABLED
+    if ( _rdt.FContainsSingleDataRange() )
+    {
+      _AssertValidRange( _rdt.begin(), _rdt.end() );
+    }
+    else
+    {
+      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+        {
+          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+        }
+      );
+    }
+#endif //ASSERTSENABLED  
+  }
 protected:
+  void _AssertValidRange( vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const
+  {
+#if ASSERTSENABLED  
+    Assert( _posEnd >= _posBegin );
+    Assert( _posBegin >= _PosTokenStart() );
+    Assert( _posEnd <= _PosTokenEnd() );
+#endif //ASSERTSENABLED  
+  }
   bool _FAtEnd() const
   {
     return ( m_prmvCurrentToken.first + m_prmvCurrentToken.second ) == ( m_prmvFull.first + m_prmvFull.second );
@@ -390,6 +485,10 @@ protected:
   vtyDataPosition _PosTokenStart() const
   {
     return m_prmvCurrentToken.first - m_prmvFull.first;
+  }
+  vtyDataPosition _PosTokenEnd() const
+  {
+    return _PosTokenStart() + m_prmvCurrentToken.second;
   }
   _TyPrMemView m_prmvFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
   _TyPrMemView m_prmvCurrentToken; // The view for the current token's exploration.
@@ -481,9 +580,9 @@ public:
   
   void AssertValid() const
   {
-#ifndef NDEBUG
+#if ASSERTSENABLED
     _TyBase::AssertValid();
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
   }
 
   using _TyBase::PosCurrent;
