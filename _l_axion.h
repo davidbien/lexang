@@ -550,7 +550,7 @@ public:
 	bool action( t_TyAnalyzer & _rA )
 	{
 		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
-		m_tpPos = _rA.GetCurrentPosition();
+		m_tpPos = _rA.GetCurrentPosition() - 1; // We know that the lex has already read the next character 
 		return true;
 	}
 	// "consume" a token position. This should keep all action objects clear after usage with no additional work.

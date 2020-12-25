@@ -58,7 +58,11 @@ public:
     Assert( m_posEnd >= m_posBegin );
 #endif //ASSERTSENABLED
   }
-
+  bool FIsNull() const
+  {
+    AssertValid();
+    return m_posBegin == numeric_limits< vtyDataPosition >::max();
+  }
   vtyDataPosition begin() const
   {
     return m_posBegin;
@@ -72,7 +76,6 @@ public:
     AssertValid();
     return m_posEnd - m_posBegin;
   }
-  
 // Make these accessible.
   vtyDataPosition m_posBegin{ numeric_limits< vtyDataPosition >::max() };
   vtyDataPosition m_posEnd{ numeric_limits< vtyDataPosition >::max() };
@@ -102,6 +105,11 @@ public:
     Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_nIdTrigger == vktidInvalidIdTrigger ) );
     Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || !m_nType );
 #endif //ASSERTSENABLED  
+  }
+  bool FIsNull() const
+  {
+    AssertValid();
+    return _TyBase::FIsNull();
   }
 
   // Provide access to base class via explicit accessor:
@@ -318,7 +326,7 @@ public:
     }
     return false;
   }
-  _l_data_typed_range DataRangeGetSingle() const
+  _l_data_typed_range const & DataRangeGetSingle() const
   {
     Assert( FContainsSingleDataRange() );
     return m_dtrData;

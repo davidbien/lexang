@@ -134,19 +134,25 @@ public:
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
-    if ( _rdt.FContainsSingleDataRange() )
+    if ( !_rdt.FIsNull() )
     {
-      m_saTokenBuf.AssertValidRange( _rdt.begin(), _rdt.end() );
-    }
-    else
-    {
-      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
-        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-        {
-          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
-            m_saTokenBuf.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
-        }
-      );
+      if ( _rdt.FContainsSingleDataRange() )
+      {
+        m_saTokenBuf.AssertValidRange( _rdt.begin(), _rdt.end() );
+      }
+      else
+      {
+        _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+          [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+          {
+            for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            {
+              if ( !_pdtrBegin->FIsNull() )
+                m_saTokenBuf.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+            }
+          }
+        );
+      }
     }
 #endif //ASSERTSENABLED  
   }
@@ -283,19 +289,25 @@ public:
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
-    if ( _rdt.FContainsSingleDataRange() )
+    if ( !_rdt.FIsNull() )
     {
-      m_frrFileDesBuffer.AssertValidRange( _rdt.begin(), _rdt.end() );
-    }
-    else
-    {
-      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
-        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-        {
-          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
-            m_frrFileDesBuffer.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
-        }
-      );
+      if ( _rdt.FContainsSingleDataRange() )
+      {
+        m_frrFileDesBuffer.AssertValidRange( _rdt.begin(), _rdt.end() );
+      }
+      else
+      {
+        _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+          [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+          {
+            for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            {
+              if ( !_pdtrBegin->FIsNull() )
+                m_frrFileDesBuffer.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+            }
+          }
+        );
+      }
     }
 #endif //ASSERTSENABLED  
   }
@@ -343,19 +355,25 @@ public:
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
-    if ( _rdt.FContainsSingleDataRange() )
+    if ( !_rdt.FIsNull() )
     {
-      _AssertValidRange( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end() );
-    }
-    else
-    {
-      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
-        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-        {
-          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
-            _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
-        }
-      );
+      if ( _rdt.FContainsSingleDataRange() )
+      {
+        _AssertValidRange( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end() );
+      }
+      else
+      {
+        _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+          [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+          {
+            for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            {
+              if ( !_pdtrBegin->FIsNull() )
+                _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+            }
+          }
+        );
+      }
     }
 #endif //ASSERTSENABLED  
   }
@@ -453,19 +471,25 @@ public:
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
-    if ( _rdt.FContainsSingleDataRange() )
+    if ( !_rdt.FIsNull() )
     {
-      _AssertValidRange( _rdt.begin(), _rdt.end() );
-    }
-    else
-    {
-      _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
-        [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
-        {
-          for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
-            _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
-        }
-      );
+      if ( _rdt.FContainsSingleDataRange() )
+      {
+        _AssertValidRange( _rdt.begin(), _rdt.end() );
+      }
+      else
+      {
+        _rdt.GetSegArrayDataRanges().ApplyContiguous( 0, _rdt.GetSegArrayDataRanges().NElements(), 
+          [this]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
+          {
+            for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
+            {
+              if ( !_pdtrBegin->FIsNull() )
+                _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+            }
+          }
+        );
+      }
     }
 #endif //ASSERTSENABLED  
   }

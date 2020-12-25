@@ -69,6 +69,7 @@ public:
   static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
     requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
+    Assert( _rsvDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyData kdtr = _rval.GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
@@ -100,16 +101,17 @@ public:
       return false;
     }
     else
-    {
       return true;
-    }
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
     requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
+    Assert( _rstrDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyData kdtr = _rval.GetVal< _TyData >();
+    if ( kdtr.FIsNull() )
+      return;
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a string:
     vtyDataPosition nCharsCount = kdtr.CountChars();
@@ -147,9 +149,12 @@ public:
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
+    Assert( _rstrDest.empty() );
     typedef typename t_TyString::value_type _TyCharConvertTo;
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyData kdtr = _rval.template GetVal< _TyData >();
+    if ( kdtr.FIsNull() )
+      return;
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a converted string, attempt to use an alloca() buffer:
     static const size_t knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
@@ -203,6 +208,7 @@ public:
   static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
     requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > ) // all fixed mem context is handled the same - easy.
   {
+    Assert( _rstrDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.GetVal< _TyData >();
@@ -217,7 +223,7 @@ public:
     else
     {
       // We could set the stringview into the object since it doesn't really hurt:
-      _rsvDest = _rval.emplaceArgs< typename _TyValue::get_string_view_type< _TyChar > >( prmvFull.first + kdtr.begin(), kdtr.length() );
+      _rsvDest = _rval.emplaceArgs< typename _TyValue::get_string_view_type< _TyChar > >( kdtr.FIsNull() ? 0 : ( prmvFull.first + kdtr.begin() ), kdtr.length() );
     }
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
@@ -229,6 +235,8 @@ public:
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.GetVal< _TyData >();
+    if ( kdtr.FIsNull() )
+      return true;
     _rcxt.AssertValidDataRange( kdtr );
     if ( !kdtr.FContainsSingleDataRange() )
     {
@@ -248,9 +256,12 @@ public:
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > ) // all fixed mem context is handled the same - easy.
   {
+    Assert( _rstrDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.GetVal< _TyData >();
+    if ( kdtr.FIsNull() )
+      return;
     _rcxt.AssertValidDataRange( kdtr );
     vtyDataPosition nCharsCount = kdtr.CountChars();
     vtyDataPosition nCharsRemaining = nCharsCount;
@@ -272,7 +283,7 @@ public:
             if ( nToRead > nCharsRemaining )
               nToRead = nCharsRemaining;
             Assert( nToRead + pdtrCur->begin() )
-            memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead );
+            memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead * sizeof( _TyChar ) );
             nCharsRemaining -= nToRead;
             pcCur += nToRead;
           }
@@ -289,11 +300,14 @@ public:
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
     requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFixedMem, t_TyTransportCtxt > )
   {
+    Assert( _rstrDest.empty() );
     typedef typename t_TyString::value_type _TyCharConvertTo;
     typedef typename _TyTransportCtxtFixedMem::_TyPrMemView _TyPrMemView;
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
     const _TyPrMemView prmvFull = _rcxt.RPrmvFull();
     const _TyData kdtr = _rval.template GetVal< _TyData >();
+    if ( kdtr.FIsNull() )
+      return; // empty string.
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a converted string, attempt to use an alloca() buffer:
     static const size_t knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
@@ -310,7 +324,7 @@ public:
       pcBuf = (_TyChar*)alloca( nCharsCount * sizeof( _TyChar ) );
     if ( kdtr.FContainsSingleDataRange() )
     {
-      memcpy( pcBuf, prmvFull.first + kdtr.DataRangeGetSingle().begin(), kdtr.DataRangeGetSingle().length() );
+      memcpy( pcBuf, prmvFull.first + kdtr.DataRangeGetSingle().begin(), kdtr.DataRangeGetSingle().length() * sizeof( _TyChar ) );
       nCharsRemaining -= kdtr.DataRangeGetSingle().length();
     }
     else
@@ -327,7 +341,7 @@ public:
             Assert( nCharsRemaining >= nToRead );
             if ( nToRead > nCharsRemaining )
               nToRead = nCharsRemaining;
-            memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead );
+            memcpy( pcCur, prmvFull.first + pdtrCur->begin(), nToRead * sizeof( _TyChar ) );
             nCharsRemaining -= nToRead;
             pcCur += nToRead;
           }

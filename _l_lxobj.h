@@ -388,7 +388,10 @@ public:
           GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
           // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
           vtyTokenIdent tidNonNull;
-          VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+          VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+            "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+            "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+          _rpuToken.swap( upToken );
           return true;
         }
         else
@@ -445,7 +448,10 @@ public:
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
             vtyTokenIdent tidNonNull;
-            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+            vtyTokenIdent tidNonNull;
+            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+              "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+              "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
             if ( !_callback( upToken ) )
               return true; // The caller is done with getting tokens for now.
             // else continue to get tokens.

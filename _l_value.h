@@ -485,7 +485,7 @@ public:
   template < class t_TyCharOut >
   void ToJsoValue( JsoValue< t_TyCharOut > & _rjv ) const
   {
-    Assert( _rjv.FIsNull() );
+    Assert( _rjv.FIsNullOrEmpty() );
     std::visit(_VisitHelpOverloadFCall {
       [&_rjv](monostate) 
       {
