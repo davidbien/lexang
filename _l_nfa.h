@@ -471,6 +471,40 @@ protected:	// accessed by _nfa_context:
 			}
 		}
 	}
+	void CreateLiteralAnyInSetNFA( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
+	{
+		Assert( !_rctxt.m_pgnStart );
+		VerifyThrowSz( !!*_pc, "For 'any in set' an empty string is not valid - the set must not be empty.");
+		_TyString str( _pc );
+		std::sort( str.begin(), str.end() );
+		// If we see duplicate characters specified then we will throw an exception because it shouldn't be intended and may indicate a bug in the specification.
+		{//B
+			typename _TyString::const_iterator citDupe;
+			VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
+				"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+		}//EB
+		// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
+		{//B
+			typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
+			VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
+				"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+		}//EB
+
+		const _TyUnsignedChar * pcCur = str.c_str();
+		do
+		{
+			// Find any adjacent characters:
+			_TyRange rgNew( *pcCur, *pcCur );
+			for ( ; *pcCur == pcCur[1]+1; ++pcCur )
+				;
+			rgNew.second = *pcCur++;
+			if ( !_rctxt.m_pgnStart )
+				CreateRangeNFA( _rctxt, rgNew );
+			else
+				_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+		}
+		while ( *pcCur );
+	}
 	void	CreateFollowsNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
 	{
 		// Need to do a node-splice - easy since each has no siblings in the right direction:
@@ -1233,6 +1267,10 @@ public:
 	void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc )
 	{
 		RNfa().CreateLiteralNotInSetNFANoSurrogates( *this, (_TyUnsignedChar*)_pc );
+	}
+	void CreateLiteralAnyInSetNFA( t_TyChar const * _pc )
+	{
+		RNfa().CreateLiteralAnyInSetNFA( *this, (_TyUnsignedChar*)_pc );
 	}
 	void CreateFollowsNFA( _TyBase & _rcb )
 	{

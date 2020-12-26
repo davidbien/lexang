@@ -364,21 +364,18 @@ public:
 		_ros << "[^" << m_s << "]";
 	}
 };
-
 template < class t_TyChar >
 __INLINE _regexp_litnotset< t_TyChar >
 litnotset( const t_TyChar * _pc )
 {
 	return _regexp_litnotset< t_TyChar >( _pc );
 }
-
 template < class t_TyChar, class t_TyAllocator >
 __INLINE _regexp_litnotset< t_TyChar, t_TyAllocator >
 litnotset( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
 {
 	return _regexp_litnotset< t_TyChar >( _pc, _rAlloc );
 }
-
 // _regexp_litnotset_no_surrogates: a single literal not in the set given in the string.
 // This class ensures that no surrogate UTF16 (which are also not valid as characters in UTF32)
 //	are added to the recognition set.
@@ -430,19 +427,80 @@ public:
 		_ros << "[^" << m_s << "]";
 	}
 };
-
 template < class t_TyChar >
 __INLINE _regexp_litnotset_no_surrogates< t_TyChar >
 litnotset_no_surrogates( const t_TyChar * _pc )
 {
 	return _regexp_litnotset_no_surrogates< t_TyChar >( _pc );
 }
-
 template < class t_TyChar, class t_TyAllocator >
 __INLINE _regexp_litnotset_no_surrogates< t_TyChar, t_TyAllocator >
 litnotset_no_surrogates( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
 {
 	return _regexp_litnotset_no_surrogates< t_TyChar >( _pc, _rAlloc );
+}
+
+// _regexp_litanyinset: a single literal present in the set given in the string.
+template < class t_TyChar, class t_TyAllocator = __L_DEFAULT_ALLOCATOR >
+class _regexp_litanyinset 
+	: public _regexp_base< t_TyChar >
+{
+private:
+	typedef _regexp_base< t_TyChar > _TyBase;
+	typedef _regexp_litanyinset _TyThis;
+protected:
+	using _TyBase::_CloneHelper;
+public:
+	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
+
+	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
+	typedef typename _TyBase::_TyOstream _TyOstream;
+	
+	_TyString	m_s;
+
+	_regexp_litanyinset(	const t_TyChar * _pc,
+											t_TyAllocator const & _alloc = t_TyAllocator() )
+		: m_s( _pc, _alloc )
+	{
+	}
+	// REVIEW:<dbien>: Don't remember why I have this for the copy constructor...
+	_regexp_litanyinset( _TyThis const & _r, std::false_type = std::false_type() )
+    : m_s( _r.m_s )
+  {
+  }
+
+	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	{
+		_rNfaCtxt.CreateLiteralAnyInSetNFA( m_s.c_str() );
+	}
+
+	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
+	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; }
+
+	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	{
+		_CloneHelper( this, _prbCopier, _pprbStorage );
+	}
+
+	virtual void	Dump( _TyOstream & _ros ) const
+	{
+		// Note that this could look pretty ugly in the output...
+		_ros << "[" << m_s << "]";
+	}
+};
+
+template < class t_TyChar >
+__INLINE _regexp_litanyinset< t_TyChar >
+litanyinset( const t_TyChar * _pc )
+{
+	return _regexp_litanyinset< t_TyChar >( _pc );
+}
+
+template < class t_TyChar, class t_TyAllocator >
+__INLINE _regexp_litanyinset< t_TyChar, t_TyAllocator >
+litanyinset( const t_TyChar * _pc, t_TyAllocator const & _rAlloc )
+{
+	return _regexp_litanyinset< t_TyChar >( _pc, _rAlloc );
 }
 
 template < class t_TyRegExp1, class t_TyRegExp2 >

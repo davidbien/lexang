@@ -144,6 +144,7 @@ public:
 	virtual void CreateRangeNFA( _TyRange const & _rr ) = 0;
 	virtual void CreateLiteralNotInSetNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc ) = 0;
+	virtual void CreateLiteralAnyInSetNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateTriggerNFA( _TyActionObjectBase const & _raob ) = 0;
