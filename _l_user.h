@@ -15,6 +15,77 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
+// _l_user_context:
+// This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
+template < class t_TyTransportCtxt, class t_TyUserObj >
+class _l_user_context : public t_TyTransportCtxt
+{
+  typedef _l_user_context _TyThis;
+  typedef t_TyTransportCtxt _TyBase;
+public:
+  typedef t_TyUserObj _TyUserObj;
+  typedef typename t_TyTransportCtxt::_TyChar _TyChar;
+  typedef _l_token< _TyThis > _TyToken;
+  typedef _l_value< _TyChar > _TyValue;
+
+  _l_user_context() = delete;
+  _l_user_context & operator =( _l_user_context const & ) = delete;
+  _l_user_context( _TyUserObj & _ruo )
+    : m_ruoUserObj( _ruo )
+  {
+  }
+  template < class ... t_TysArgs >
+  _l_user_context( _TyUserObj & _ruo, t_TysArgs && ... _args )
+    : m_ruoUserObj( _ruo ),
+      _TyBase( std::forward< t_TysArgs >(_args) ... )
+  {
+  }
+
+  // We are copyable.
+  _l_user_context( _TyThis const & ) = default; 
+
+  // Generic initialization of transport context.
+  template < class ... t_TysArgs >
+  void InitTransportCtxt( t_TysArgs && ... _args )
+  {
+    _TyBase::InitTransportCtxt( std::forward< t_TysArgs>( _args ) ... );
+  }
+
+  template < class t_TyStringView >
+  void GetStringView( t_TyStringView & _rsvDest, _TyToken & _rtok, _TyValue & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    m_ruoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
+  }
+  template < class t_TyStringView, class t_TyString >
+  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    return m_ruoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
+  }
+  template < class t_TyString >
+  void GetString( t_TyString & _rstrDest, _TyToken & _rtok, _TyValue const & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    m_ruoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
+  }
+protected:
+  t_TyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
+};
+
+template < class t_ty >
+class TFIsTransportVarCtxt
+{
+  static constexpr bool value = false;  
+};
+template < class ... t_tys >
+class TFIsTransportVarCtxt< _l_transport_var_ctxt< t_tys ... > >
+{
+  static constexpr bool value = false;  
+};
+template < class ... t_tys >
+inline constexpr bool TFIsTransportVarCtxt_v = TFIsTransportVarCtxt< t_tys ... >::value;
+
 template < class t_TyChar >
 class _l_default_user_obj
 {
@@ -62,6 +133,40 @@ public:
     GetString( strConverted, _rcxt, _rtok, _rval );
     _rstrDest = std::move( strConverted );
     return true;
+  }
+// var transport:
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+    requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    return visit(_VisitHelpOverloadFCall {
+      [&_rsvDest,&_rtok,&_rval]( auto & _rcxtTransport )
+      {
+        GetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
+      }
+    }, _rcxt.GetVariant() );
+  }
+  template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+    requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    return visit(_VisitHelpOverloadFCall {
+      [&_rsvDest,&_rstrDest,&_rtok,&_rval]( auto & _rcxtTransport )
+      {
+        FGetStringViewOrString( _rsvDest, _rstrDest, _rcxtTransport, _rtok, _rval );
+      }
+    }, _rcxt.GetVariant() );
+  }
+  template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+    requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    return visit(_VisitHelpOverloadFCall {
+      [&_rstrDest,&_rtok,&_rval]( auto & _rcxtTransport )
+      {
+        GetString( _rstrDest, _rcxtTransport, _rtok, _rval );
+      }
+    }, _rcxt.GetVariant() );
   }
 // fd transport:
 // Non-converting GetString* for fd transport.

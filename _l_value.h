@@ -13,15 +13,10 @@
 #include "_l_inc.h"
 #include <string_view>
 #include <variant>
+#include "_util.h"
 #include "segarray.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
-
-// Note that these to templates represent the standard pattern "overload" for variants.
-template< class... Ts > 
-struct _VisitHelpOverloadFCall : Ts... { using Ts::operator()...; };
-// explicit deduction guide (not needed as of C++20)
-template<class... Ts> _VisitHelpOverloadFCall(Ts...) -> _VisitHelpOverloadFCall<Ts...>;
 
 template< class t_TyChar, size_t s_knValsSegSize >
 class _l_value

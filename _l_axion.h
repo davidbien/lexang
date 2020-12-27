@@ -13,6 +13,7 @@
 #include <set>
 #include <iostream>
 #include <tuple>
+#include <vector>
 #include "_aloctrt.h"
 #include "_l_types.h"
 #include "_l_data.h"
@@ -50,6 +51,10 @@ public:
 	// This is the virtual call. The non-virtual call is defined at most-derived class level.
 	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
 
+	// This will return the set of dependent triggers for this action object, recursively.
+	virtual void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const = 0;
+
+// REVIEW:<dbien>: Since triggers are now unique the below stuff is kinda meaningless at this point - should cull it and will eventually.
 	// Indicates that these trigger actions are equivalent and, when ambiguity is found between both
 	//	on a single state, then the one with the lower action id is to be chosen.
 	//	( during NFA->DFA conversion )
@@ -202,6 +207,7 @@ public:
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
 	using _TyBase::Clear;
+	using _TyBase::VGetDependentTriggerSet;
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -275,6 +281,10 @@ public:
 	}
 	void Clear()
 	{
+	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_rbv[s_kiTrigger] = true;
 	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
@@ -350,6 +360,10 @@ public:
 	}
 	void Clear()
 	{
+	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_rbv[s_kiTrigger] = true;
 	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
@@ -435,6 +449,10 @@ public:
 	{
 		m_f = false;
 	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_rbv[s_kiTrigger] = true;
+	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -509,11 +527,6 @@ public:
 	{
 		return ( m_tpPos == vkdpNullDataPosition );
 	}
-	void Clear()
-	{
-		m_tpPos = vkdpNullDataPosition;
-	}
-	// Return the unique token ID associated with this object.
 	static constexpr vtyTokenIdent GetTokenId()
 	{
 		return t_kiTrigger;
@@ -521,6 +534,14 @@ public:
 	constexpr vtyTokenIdent VGetTokenId() const
 	{
 		return t_kiTrigger;
+	}
+	void Clear()
+	{
+		m_tpPos = vkdpNullDataPosition;
+	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_rbv[s_kiTrigger] = true;
 	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
@@ -683,6 +704,11 @@ public:
 		_TyBase::Clear();
 		m_dtStrings.Clear();
 	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_TyBase::VGetDependentTriggerSet( _rbv );
+		_rbv[s_kiTriggerBegin] = true;
+	}
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
@@ -786,12 +812,19 @@ public:
 	{
 	}
 	_l_trigger_string_typed_range( _TyThis const & _r ) = default;
-	using _TyBase::Clear;
 	using _TyBase::VFIsNull;
 	using _TyBase::FIsNull;
-	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
+	using _TyBase::Clear;
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_TyBase::VGetDependentTriggerSet( _rbv );
+		_rbv[s_kiTriggerBegin] = true;
+		// We must also call t_TyActionStoreData's trigger(s) dependent:
+		t_TyActionStoreData asdTemp;
+		asdTemp.VGetDependentTriggerSet( _rbv );
+	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -884,16 +917,6 @@ public:
 	{
 	}
 	_l_action_save_data_single( _TyThis const & _r ) = default;
-	void Clear()
-	{
-		std::apply
-    (
-        []( t_TysTriggers &... _tuple )
-        {
-					( _tuple.Clear(), ... );
-        }, m_tuple
-    );
-	}
 	bool VFIsNull() const
 	{
 		return FIsNull();
@@ -908,7 +931,6 @@ public:
         }, m_tuple
     );
 	}
-	// Return the unique token ID associated with this object.
 	static constexpr vtyTokenIdent GetTokenId()
 	{
 		return t_kiTrigger;
@@ -916,6 +938,27 @@ public:
 	constexpr vtyTokenIdent VGetTokenId() const
 	{
 		return t_kiTrigger;
+	}
+	void Clear()
+	{
+		std::apply
+    (
+        []( t_TysTriggers &... _tuple )
+        {
+					( _tuple.Clear(), ... );
+        }, m_tuple
+    );
+	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_rbv[s_kiTrigger] = true;
+		std::apply
+    (
+        [&_rbv]( t_TysTriggers &... _tuple )
+        {
+					( _tuple.VGetDependentTriggerSet( _rbv ), ... );
+        }, m_tuple
+    );
 	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
@@ -1045,6 +1088,18 @@ public:
 	constexpr vtyTokenIdent VGetTokenId() const
 	{
 		return t_kiTrigger;
+	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_rbv[s_kiTrigger] = true;
+		_TyTuple tupleLocal;
+		std::apply
+    (
+        [&_rbv]( t_TysTriggers &... _tuple )
+        {
+					( _tuple.VGetDependentTriggerSet( _rbv ), ... );
+        }, tupleLocal
+    );
 	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {

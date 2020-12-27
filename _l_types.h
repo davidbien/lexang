@@ -111,6 +111,10 @@ template < class t_TyChar >
 class _l_transport_mapped_ctxt;
 template < class t_TyChar >
 class _l_transport_mapped;
+template < class ... t_TysTransportContexts >
+class _l_transport_var_ctxt;
+template < class ... t_TysTransports >
+class _l_transport_var;
 template < class t_TyTransport, class t_tyUserObj >
 class _l_stream;
 

@@ -354,7 +354,7 @@ public:
     m_posLastAccept = vkdpNullDataPosition;
   }
 
-  // Just return a single token. Return false if you didn't get one.
+  // Just return a single token. Return false if one isn't found.
   bool FGetToken( unique_ptr< _TyToken > & _rpuToken, _TyStateProto *_pspStart = nullptr )
   {
     _InitGetToken( _pspStart );
