@@ -162,6 +162,9 @@ public:
 	// Return the ID for this action object.
 	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
 
+	// This will return the set of dependent triggers for this action object, recursively.
+	virtual void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const = 0;
+
 	// Clear any data that is residing within this object.
 	virtual void Clear() = 0;
 
@@ -620,11 +623,16 @@ public:
 	}
 	_l_trigger_position_end( _TyThis const & _r ) = default;
 	// Return the unique token ID associated with this object.
-	using _TyBase::Clear;
 	using _TyBase::VFIsNull;
 	using _TyBase::FIsNull;
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
+	using _TyBase::Clear;
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_TyBase::VGetDependentTriggerSet( _rbv );
+		_rbv[s_kiTriggerBegin] = true;
+	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
     return StaticRenderActionType(_ros, _pcCharName);
@@ -704,11 +712,7 @@ public:
 		_TyBase::Clear();
 		m_dtStrings.Clear();
 	}
-	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
-	{
-		_TyBase::VGetDependentTriggerSet( _rbv );
-		_rbv[s_kiTriggerBegin] = true;
-	}
+	using _TyBase::VGetDependentTriggerSet;
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
@@ -820,7 +824,6 @@ public:
 	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
 	{
 		_TyBase::VGetDependentTriggerSet( _rbv );
-		_rbv[s_kiTriggerBegin] = true;
 		// We must also call t_TyActionStoreData's trigger(s) dependent:
 		t_TyActionStoreData asdTemp;
 		asdTemp.VGetDependentTriggerSet( _rbv );
@@ -954,9 +957,9 @@ public:
 		_rbv[s_kiTrigger] = true;
 		std::apply
     (
-        [&_rbv]( t_TysTriggers &... _tuple )
+        [&_rbv]( t_TysTriggers const &... _tuple )
         {
-					( _tuple.VGetDependentTriggerSet( _rbv ), ... );
+					( ..., _tuple.VGetDependentTriggerSet( _rbv ) );
         }, m_tuple
     );
 	}

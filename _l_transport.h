@@ -25,48 +25,104 @@ public:
 static const size_t vknchTransportFdTokenBufferSize = 256;
 static_assert( sizeof( off_t ) == sizeof( vtyDataPosition ) );
 
-// _l_transport_fd_ctxt:
-// This is the context that is contained in an _l_token allowing the also contained _l_value to exist on its own(ish).
+// A very simple buffer that only needs a pointer and a length.
+template < class t_TyChar >
+class _l_backing_buf : public pair< t_TyChar, vtyDataPosition >
+{
+  typedef _l_backing_buf _TyThis;
+  typedef pair< t_TyChar *, vtyDataPosition > _TyBase;
+public:
+  typedef t_TyChar _TyChar;
+  _l_backing_buf( vtyDataPosition _len )
+  {
+    m_buf.first = ::new _TyChar[ _len * sizeof( _TyChar ) ];
+    m_buf.second = _len;
+  }
+  ~_l_backing_buf()
+  {
+    if ( m_buf.first )
+      ::delete [] m_buf.first;
+  }
+  _l_backing_buf() = default;
+  _l_backing_buf( _l_backing_buf const & _r )
+  {
+    m_buf.second = _r.second;
+    m_buf.first = ::new _TyChar[ m_buf.second ];
+    memcpy( m_buf.first, _r.m_buf.first, m_buf.second * sizeof( _TyChar ) );
+  }
+  _l_backing_buf & operator =( _TyThis const & _r )
+  {
+    _l_backing_buf copy( _r );
+    swap( copy );
+  }
+  _l_backing_buf( _l_backing_buf && _rr )
+  {
+    swap( _rr );
+  }
+  _l_backing_buf & operator =( _TyThis && _rr )
+  {
+    _l_backing_buf acquire( std::move( _rr ) );
+    swap( acquire );
+  }
+  void swap( _TyThis & _r )
+  {
+    m_buf.swap( _r.m_buf );
+  }
+  _TyChar * begin()
+  {
+    return m_buf.first;
+  }
+  const _TyChar * begin() const
+  {
+    return m_buf.first;
+  }
+  _TyChar * end()
+  {
+    return m_buf.first + m_buf.second;
+  }
+  const _TyChar * end() const
+  {
+    return m_buf.first + m_buf.second;
+  }
+  vtyDataPosition length() const
+  {
+    return m_buf.second;
+  }  
+protected:
+  _l_backing_buf m_buf{nullptr,0};
+};
+
+// _l_transport_backed_ctxt:
+// This is the context that is contained in an _l_token allowing the also contained _l_value to exist on its own entirely.
 // Text translation specific to a given parser is built into the most derived class of this object.
 template < class t_TyChar >
-class _l_transport_fd_ctxt
+class _l_transport_backed_ctxt
 {
-  typedef _l_transport_fd_ctxt _TyThis;
+  typedef _l_transport_backed_ctxt _TyThis;
 public:
-  typedef _l_transport_fd< t_TyChar > _TyTransportFd;
-  typedef SegArrayRotatingBuffer< t_TyChar > _TySegArrayBuffer;
+  typedef _l_backing_buf< t_TyChar > _TyBuffer;
   typedef _l_data< t_TyChar > _TyData;
 
-  _l_transport_fd_ctxt( _TyTransportFd * _ptxpFd )
-    : m_ptxpFd( _ptxpFd ),
-      m_saTokenBuf( 0 ) // This is always set later.
+  _l_transport_backed_ctxt( vtyDataPosition _posTokenStart, vtyDataPosition _posTokenEnd )
+    : m_posTokenStart( _posTokenStart ),
+      m_buf( _posTokenEnd > _posTokenStart ? ( _posTokenEnd - _posTokenStart ) : 0 )
   {
+    VerifyThrowSz( _posTokenEnd >= _posTokenStart, "duh" ); // Above we don't try to allocate a huge amount of memory and then we also throw if passed bogus parameters.
   }
-  _l_transport_fd_ctxt() = default;
-  _l_transport_fd_ctxt( _l_transport_fd_ctxt const & ) = default;
-  _l_transport_fd_ctxt( _l_transport_fd_ctxt && ) = default;
-  _l_transport_fd_ctxt & operator =( _l_transport_fd_ctxt const & ) = default;
-  _l_transport_fd_ctxt & operator =( _l_transport_fd_ctxt && ) = default;
+  ~_l_transport_backed_ctxt() = default;
+  _l_transport_backed_ctxt() = default;
+  _l_transport_backed_ctxt( _l_transport_backed_ctxt const & ) = default;
+  _l_transport_backed_ctxt( _l_transport_backed_ctxt && ) = default;
+  _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt const & ) = default;
+  _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt && ) = default;
 
-#if 0
-  // void InitTransportCtxt( _TyTransportFd * _ptxpFd, _TySegArrayBuffer && _rrsaTokenBuf )
-  // {
-  //   m_ptxpFd = _ptxpFd;
-  //   m_saTokenBuf = std::move( _rrsaTokenBuf );
-  // }
-#endif //0
-
-  _TyTransportFd * PGetTransport() const
+  _TyBuffer & GetTokenBuffer()
   {
-    return m_ptxpFd;
+    return m_bufTokenData;
   }
-  _TySegArrayBuffer & GetTokenBuffer()
+  const _TyBuffer & GetTokenBuffer() const
   {
-    return m_saTokenBuf;
-  }
-  const _TySegArrayBuffer & GetTokenBuffer() const
-  {
-    return m_saTokenBuf;
+    return m_bufTokenData;
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -75,7 +131,7 @@ public:
     {
       if ( _rdt.FContainsSingleDataRange() )
       {
-        m_saTokenBuf.AssertValidRange( _rdt.begin(), _rdt.end() );
+        _AssertValidRange( _rdt.begin(), _rdt.end() );
       }
       else
       {
@@ -85,7 +141,7 @@ public:
             for( ; _pdtrEnd != _pdtrBegin; ++_pdtrBegin )
             {
               if ( !_pdtrBegin->FIsNull() )
-                m_saTokenBuf.AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
+                _AssertValidRange( _pdtrBegin->begin(), _pdtrBegin->end() );
             }
           }
         );
@@ -94,8 +150,16 @@ public:
 #endif //ASSERTSENABLED  
   }
 protected:
-  _TyTransportFd * m_ptxpFd{nullptr};
-  _TySegArrayBuffer m_saTokenBuf{ vknchTransportFdTokenBufferSize * sizeof( t_TyChar ) }; // This contains the piece of the input that corresponds to the entirety of the token.
+  void _AssertValidRange( vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const
+  {
+#if ASSERTSENABLED
+    Assert( _posEnd >= _posBegin );
+    Assert( _posBegin >= m_posTokenStart );
+    Assert( _posEnd <= m_posTokenStart + m_bufTokenData.length() );
+#endif //ASSERTSENABLED  
+  }
+  vtyDataPosition m_posTokenStart{ numeric_limits< vtyDataPosition >::max() };
+  _TyBuffer m_bufTokenData;
 };
 
 // _l_transport_fd:
@@ -109,7 +173,7 @@ public:
   using typename  _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyValue;
-  typedef _l_transport_fd_ctxt< t_TyChar > _TyTransportCtxt;
+  typedef _l_transport_backed_ctxt< t_TyChar > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   ~_l_transport_fd() = default;
@@ -207,17 +271,25 @@ public:
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
   template < class t_TyUserObj >
-  void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
+  void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken,
                   _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
                   unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
   {
     typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
     typedef _l_token< _TyUserContext > _TyToken;
-    _TyUserContext ucxt( _ruoUserObj, this );
+    Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
+    _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _kdpEndToken );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
-    m_frrFileDesBuffer.ConsumeData( _kdpEndToken, ucxt.GetTokenBuffer() );
+    m_frrFileDesBuffer.ConsumeData( ucxt.GetTokenBuffer().begin(), ucxt.GetTokenBuffer().length() );
     unique_ptr< _TyToken > upToken = make_unique< _TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
     upToken.swap( _rupToken );
+  }
+  _TyTransportCtxt CtxtEatCurrentToken( const vtyDataPosition _kdpEndToken )
+  {
+    Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
+    _TyTransportCtxt tcxt( m_frrFileDesBuffer.PosBase(), _kdpEndToken );
+    m_frrFileDesBuffer.ConsumeData( tcxt.GetTokenBuffer().begin(), tcxt.GetTokenBuffer().length() );
+    return _TyTransportCtxt( std::move( tcxt ) );
   }
   void DiscardData( const vtyDataPosition _kdpEndToken )
   {
@@ -266,8 +338,8 @@ public:
   typedef std::pair< const t_TyChar *, vtyDataPosition > _TyPrMemView;
   typedef _l_data< _TyChar > _TyData;
 
-  _l_transport_fixedmem_ctxt( _TyTransportFixedMem * _ptxpFixedMem, _TyPrMemView const & _rprmv )
-    : m_ptxpFixedMem( _ptxpFixedMem ),
+  _l_transport_fixedmem_ctxt( vtyDataPosition _posTokenStart, _TyPrMemView const & _rprmv )
+    : m_posTokenStart( _posTokenStart ),
       m_prmvCurrentToken( _rprmv )
   {
   }
@@ -277,17 +349,9 @@ public:
   _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt const & ) = default;
   _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt && ) = default;
 
-  _TyTransportFixedMem * PGetTransport() const
-  {
-    return m_ptxpFixedMem;
-  }
   _TyPrMemView const & RPrmvCurrentToken() const
   {
     return m_prmvCurrentToken;
-  }
-  _TyPrMemView const & RPrmvFull() const
-  {
-    return m_ptxpFixedMem->m_prmvFull;
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -319,13 +383,12 @@ protected:
   {
 #if ASSERTSENABLED
     Assert( _posEnd >= _posBegin );
-    vtyDataPosition posTokenStart = m_prmvCurrentToken.first - RPrmvFull().first;
-    Assert( _posBegin >= posTokenStart );
-    Assert( _posEnd <= posTokenStart + m_prmvCurrentToken.second );
+    Assert( _posBegin >= m_posTokenStart );
+    Assert( _posEnd <= m_posTokenStart + m_prmvCurrentToken.second );
 #endif //ASSERTSENABLED  
   }
+  vtyDataPosition m_posTokenStart{ numeric_limits< vtyDataPosition >::max() };
   _TyPrMemView m_prmvCurrentToken;
-  _TyTransportFixedMem * m_ptxpFixedMem;
 };
 
 // _l_transport_fixedmem:
@@ -391,11 +454,21 @@ public:
     typedef _l_token< _TyUserContext > _TyToken;
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
     Assert( nLenToken <= m_prmvCurrentToken.second );
-    _TyUserContext ucxt( _ruoUserObj, this, _TyPrMemView( m_prmvCurrentToken.first, nLenToken ) );
+    _TyUserContext ucxt( _ruoUserObj, _PosTokenStart(), _TyPrMemView( m_prmvCurrentToken.first, nLenToken ) );
     m_prmvCurrentToken.first += nLenToken;
     m_prmvCurrentToken.second = 0;
     unique_ptr< _TyToken > upToken = make_unique< _TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
     upToken.swap( _rupToken );
+  }
+  _TyTransportCtxt CtxtEatCurrentToken( const vtyDataPosition _kdpEndToken )
+  {
+    Assert( _kdpEndToken >= _PosTokenStart() );
+    Assert( _kdpEndToken <= _PosTokenEnd() );
+    _TyPrMemView prmvToken( m_prmvCurrentToken.first, nLenToken );
+    vtyDataPosition posTokenStart = _PosTokenStart();
+    m_prmvCurrentToken.first += nLenToken;
+    m_prmvCurrentToken.second = 0;
+    return _TyTransportCtxt( posTokenStart, prmvToken );
   }
   void DiscardData( const vtyDataPosition _kdpEndToken )
   {
@@ -455,34 +528,6 @@ protected:
   _TyPrMemView m_prmvCurrentToken; // The view for the current token's exploration.
 };
 
-template < class t_TyChar >
-class _l_transport_mapped_ctxt : protected _l_transport_fixedmem_ctxt< t_TyChar >
-{
-  typedef _l_transport_mapped_ctxt _TyThis;
-  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyBase;
-public:
-  using typename _TyBase::_TyChar;
-  using typename _TyBase::_TyPrMemView;
-  typedef _l_transport_mapped< t_TyChar > _TyTransportMapped;
-
-  _l_transport_mapped_ctxt( _TyTransportMapped * _ptxpMapped, _TyPrMemView const & _rprmv )
-    : _TyBase( _ptxpMapped, _rprmv )
-  {
-  }
-  _l_transport_mapped_ctxt() = default;
-  _l_transport_mapped_ctxt( _l_transport_mapped_ctxt const & ) = default;
-  _l_transport_mapped_ctxt( _l_transport_mapped_ctxt && ) = default;
-  _l_transport_mapped_ctxt & operator =( _l_transport_mapped_ctxt const & ) = default;
-  _l_transport_mapped_ctxt & operator =( _l_transport_mapped_ctxt && ) = default;
-
-  _TyTransportMapped * PGetTransport() const
-  {
-    return static_cast< _TyTransportMapped * >( m_ptxpFixedMem );
-  }
-  using _TyBase::RPrmvCurrentToken;
-  using _TyBase::RPrmvFull;
-};
-
 // _l_transport_mapped
 // Transport that uses mapped memory.
 template < class t_TyChar >
@@ -494,7 +539,7 @@ public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyValue;
-  typedef _l_transport_mapped_ctxt< t_TyChar > _TyTransportCtxt;
+  typedef _l_transport_fixed_ctxt< t_TyChar > _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyPrMemView _TyPrMemView;
 
   ~_l_transport_mapped()
@@ -550,7 +595,7 @@ public:
   using _TyBase::FAtTokenStart;
   using _TyBase::FGetChar;
   using _TyBase::GetPToken;
-  
+  using _TyBase::CtxtEatCurrentToken;
 protected:
   using _TyBase::m_prmvFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
   using _TyBase::m_prmvCurrentToken; // The view for the current token's exploration.
@@ -563,7 +608,8 @@ class _l_transport_var_ctxt
 {
   typedef _l_transport_var_ctxt _TyThis;
 public:
-  typedef variant< t_TysTransportContexts... > _TyVariant;
+  // We only want uniquely typed transport contexts here.
+  typedef unique_variant_t< variant< t_TysTransportContexts... > > _TyVariant;
   // Construction by moved contained context:
   template < class t_TyTransportContext >
   _l_transport_var_ctxt( t_TyTransportContext && _rrtcxt )
@@ -599,7 +645,7 @@ public:
     return m_var;
   }
 protected:
-  variant< t_TysTransportContexts... > m_var;
+  _TyVariant m_var;
 };
 
 template < class ... t_TysTransports >

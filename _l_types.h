@@ -100,15 +100,13 @@ class _l_user_context;
 template < class t_TyChar >
 class _l_transport_base;
 template < class t_TyChar >
-class _l_transport_fd_ctxt;
+class _l_transport_backed_ctxt;
 template < class t_TyChar >
 class _l_transport_fd;
 template < class t_TyChar >
 class _l_transport_fixedmem_ctxt;
 template < class t_TyChar >
 class _l_transport_fixedmem;
-template < class t_TyChar >
-class _l_transport_mapped_ctxt;
 template < class t_TyChar >
 class _l_transport_mapped;
 template < class ... t_TysTransportContexts >

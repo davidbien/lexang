@@ -94,7 +94,7 @@ public:
   typedef t_TyChar _TyChar;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyChar > _TyValue;
-  typedef _l_transport_fd_ctxt< _TyChar > _TyTransportCtxtFd;
+  typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxtBacked;
   typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxtFixedMem;
 
   // These are the default GetString*() impls. They just concatenates segmented strings regardless of the m_nType value.
@@ -172,7 +172,7 @@ public:
 // Non-converting GetString* for fd transport.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
   static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
+    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtBacked, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
     Assert( _rsvDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
@@ -192,7 +192,7 @@ public:
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
-    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
+    requires ( is_same_v< typename t_TyStringView::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtBacked, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
@@ -210,7 +210,7 @@ public:
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
-    requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
+    requires ( is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtBacked, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
     Assert( _rstrDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
@@ -252,7 +252,7 @@ public:
 // Converting GetString* for fd transport.
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
-    requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtFd, t_TyTransportCtxt > ) // we act specially for fd transport.
+    requires ( !is_same_v< typename t_TyString::value_type, _TyChar > && is_base_of_v< _TyTransportCtxtBacked, t_TyTransportCtxt > ) // we act specially for fd transport.
   {
     Assert( _rstrDest.empty() );
     typedef typename t_TyString::value_type _TyCharConvertTo;
