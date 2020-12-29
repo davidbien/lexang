@@ -185,7 +185,7 @@ public:
   }
   size_t GetCurrentPosition() const
   {
-    return GetStream().PosCurrent();
+    return GetStream().PosCurrent() - !!m_ucCur;
   }
   bool FIsClearOfTokenData( vtyTokenIdent * _ptidNonNull = 0 ) const
   {
@@ -247,7 +247,7 @@ public:
         case kucAccept:
         {
           m_pspLastAccept = m_pspCur;
-          m_posLastAccept = GetStream().PosCurrent();
+          m_posLastAccept = GetCurrentPosition();
         }
         break;
         case kucLookahead:
@@ -289,7 +289,7 @@ public:
         case kucLookaheadAccept:
         {
           m_pspLookaheadAccept = m_pspCur;
-          m_posLookaheadAccept = GetStream().PosCurrent();
+          m_posLookaheadAccept = GetCurrentPosition();
         }
         break;
         case kucLookaheadAcceptAndAccept:
@@ -297,7 +297,7 @@ public:
           // We have an ambiguous state that is both an accepting state and a
           //	lookahead accepting state.
           m_pspLastAccept = m_pspLookaheadAccept = m_pspCur;
-          m_posLastAccept = m_posLookaheadAccept = GetStream().PosCurrent();
+          m_posLastAccept = m_posLookaheadAccept = GetCurrentPosition();
         }
         break;
         case kucLookaheadAcceptAndLookahead:
@@ -331,7 +331,7 @@ public:
 
           // Record the lookahead accept:
           m_pspLookaheadAccept = m_pspCur;
-          m_posLookaheadAccept = GetStream().PosCurrent();
+          m_posLookaheadAccept = GetCurrentPosition();
         }
         break;
         }
@@ -340,7 +340,7 @@ public:
       {
         LXOBJ_DOTRACE( "Accept found.");
         m_pspLastAccept = m_pspCur;
-        m_posLastAccept = GetStream().PosCurrent();
+        m_posLastAccept = GetCurrentPosition();
       }
     }
   }
