@@ -242,7 +242,7 @@ public:
             Assert( nCharsRemaining >= pdtrCur->length() );
             vtyDataPosition nCharsCopy = min( nCharsRemaining, pdtrCur->length() );
             Assert( nCharsCopy == pdtrCur->length() ); // should have reserved enough.
-            memcpy( pcCur, _rcxt.GetTokenBuffer().begin() + pdtrCur->begin() - _rcxt.PosTokenStart(), nCharsCopy );
+            memcpy( pcCur, _rcxt.GetTokenBuffer().begin() + pdtrCur->begin() - _rcxt.PosTokenStart(), nCharsCopy * sizeof( _TyChar ) );
             pcCur += nCharsCopy;
             nCharsRemaining -= nCharsCopy;
           }
@@ -267,7 +267,7 @@ public:
       return;
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a converted string, attempt to use an alloca() buffer:
-    static const size_t knchMaxAllocaSize = ( 1 << 19 ) / sizeof( _TyChar ); // Allow 512KB on the stack. After that we go to a string.
+    static size_t knchMaxAllocaSize = vknbyMaxAllocaSize / sizeof( _TyChar );
     typename _TyValue::template get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
     vtyDataPosition nCharsCount = kdtr.CountChars();
     vtyDataPosition nCharsRemaining = nCharsCount;
@@ -296,7 +296,7 @@ public:
             Assert( nCharsRemaining >= pdtrCur->length() );
             vtyDataPosition nCharsCopy = min( nCharsRemaining, pdtrCur->length() );
             Assert( nCharsCopy == pdtrCur->length() ); // should have reserved enough.
-            memcpy( pcCur, _rcxt.GetTokenBuffer().begin() + pdtrCur->begin() - _rcxt.PosTokenStart(), nCharsCopy );
+            memcpy( pcCur, _rcxt.GetTokenBuffer().begin() + pdtrCur->begin() - _rcxt.PosTokenStart(), nCharsCopy * sizeof( _TyChar ) );
             pcCur += nCharsCopy;
             nCharsRemaining -= nCharsCopy;
           }

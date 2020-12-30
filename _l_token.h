@@ -77,6 +77,14 @@ public:
     return m_value;
   }
 
+  const _TyAxnObjBase * PAxnObjGet() const
+  {
+    return m_paobCurToken;
+  }
+  vtyTokenIdent TokenGet() const
+  {
+    return m_paobCurToken->VGetTokenId();
+  }
   _TyValue & operator [] ( size_type _nEl )
   {
     return m_value[_nEl];

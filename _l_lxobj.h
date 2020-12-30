@@ -9,12 +9,14 @@
 // _l_lxobj.h
 
 #include <memory>
+#include <string>
 #include <stddef.h>
 #include "_assert.h"
 #include <wchar.h>
 #include <unordered_set>
 #include <typeinfo>
 #include "bienutil.h"
+#include "_namdexc.h"
 #include "_basemap.h"
 #include "_l_ns.h"
 #include "_l_types.h"
@@ -28,6 +30,23 @@
 #include "_l_strm.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
+
+// This exception is thrown when a token is not found in a non-empty stream.
+class _l_no_token_found_exception : public std::_t__Named_exception<>
+{
+  typedef std::_t__Named_exception<> _tyBase;
+public:
+  _l_no_token_found_exception(const string_type &__s)
+      : _tyBase(__s)
+  {
+  }
+  _l_no_token_found_exception(const char *_pcFmt, va_list args)
+  {
+    RenderVA(_pcFmt, args);
+  }
+};
+// By default we will always add the __FILE__, __LINE__ even in retail for debugging purposes.
+#define THROWNOTOKENFOUND(MESG...) ExceptionUsage<_l_no_token_found_exception>::ThrowFileLineFunc(__FILE__, __LINE__, __PRETTY_FUNCTION__, MESG)
 
 template <class t_TyChar>
 struct _l_compare_input_with_range
@@ -117,6 +136,7 @@ protected:
 public:
   typedef typename _TyBase::_TyStateProto _TyStateProto;
   typedef typename t_TyTransport::_TyChar _TyChar;
+  typedef basic_string< _TyChar > _TyStdStr;
   typedef t_TyTransport _TyTransport;
   typedef t_TyUserObj _TyUserObj;
   typedef _l_stream< _TyTransport, _TyUserObj > _TyStream;
@@ -186,6 +206,13 @@ public:
   size_t GetCurrentPosition() const
   {
     return GetStream().PosCurrent() - !!m_ucCur;
+  }
+  // This clear the data out of all triggers and tokens. This should be used after input is given to the lex which it fails
+  //  to regognize as a token. In that case the various triggers tha may have fired along the way will still contain data.
+  void ClearTokenData()
+  {
+    for ( _TyAxnObjBase * paxnCur = m_paobActionListHead; !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
+      paxnCur->Clear();
   }
   bool FIsClearOfTokenData( vtyTokenIdent * _ptidNonNull = 0 ) const
   {
@@ -357,6 +384,12 @@ public:
   // Just return a single token. Return false if one isn't found.
   bool FGetToken( unique_ptr< _TyToken > & _rpuToken, _TyStateProto *_pspStart = nullptr )
   {
+    {//B: We should be clear at the beginning of GetToken.
+      vtyTokenIdent tidNonNull;
+      VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "At beginning: Token id[%u] still has data in it - this will result in bogus translations."
+        "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+        "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+    }//EB
     _InitGetToken( _pspStart );
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     _NextChar();
@@ -406,7 +439,13 @@ public:
         }
       }
     }
-    // No accepting state found.
+    // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
+    if ( !!m_ucCur || !GetStream().FAtTokenStart() )
+    {
+      _TyStdStr strCurToken;
+      GetStream().GetCurTokenString( strCurToken );
+      THROWNOTOKENFOUND("Not at EOF, m_ucCur[%c] current token:[%s]", (char)m_ucCur, strCurToken.c_str() );
+    }
     return false;
   }
 
@@ -448,7 +487,6 @@ public:
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
             vtyTokenIdent tidNonNull;
-            vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
@@ -470,7 +508,13 @@ public:
       }
       else
       {
-        // No accepting state found.
+        // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
+        if ( !!m_ucCur || !GetStream().FAtTokenStart() )
+        {
+          _TyStdStr strCurToken;
+          GetStream().GetCurTokenString( strCurToken );
+          THROWNOTOKENFOUND("Not at EOF, m_ucCur[%c] current token:[%s]", (char)m_ucCur, strCurToken.c_str() );
+        }
         return false;
       }
     } while (m_ucCur);

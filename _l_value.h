@@ -246,7 +246,7 @@ protected:
   // Non-converting version for source strings and stringviews:
   template < class t_TyStrViewDest, class t_TySource >
   static void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
-    requires ( is_same_v< t_TyStrViewDest::value_type, t_TySource::value_type > 
+    requires ( is_same_v< typename t_TyStrViewDest::value_type, typename t_TySource::value_type > 
       && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     _rsvDest = t_TyStrViewDest( &_rsrc[0], _rsrc.length() );
@@ -254,7 +254,7 @@ protected:
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStrViewDest, class t_TySource >
   void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
-    requires ( !is_same_v< t_TyStrViewDest::value_type, t_TySource::value_type > 
+    requires ( !is_same_v< typename t_TyStrViewDest::value_type, typename t_TySource::value_type > 
       && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
     get_string_type< t_TyStrViewDest::value_type > strConverted;

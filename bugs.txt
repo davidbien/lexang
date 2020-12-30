@@ -1,0 +1,7 @@
+
+
+<name attr="1" atrt="2" attr="2&reference;&#99;fart" astrojds="saoihdsaoihdoisadas"/>
+<name attr="2&reference;&#99;fart">
+<name a="&foobar;">
+
+Not clearing out references within an attr etc when not referenced by the cnotaining ditty - so need to reference them.

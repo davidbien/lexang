@@ -86,6 +86,13 @@ public:
     Assert( m_opttpImpl.has_value() );
     m_opttpImpl->DiscardData( _kdpEndToken );
   }
+  // Return the current token string that has been read until this point.
+  template < class t_TyString >
+  void GetCurTokenString( t_TyString & _rstr ) const
+  {
+    Assert( m_opttpImpl.has_value() );
+    m_opttpImpl->GetCurTokenString( _rstr );
+  }
 
 protected:
   typedef optional< t_TyTransport > _TyOptTransport;

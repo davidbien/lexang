@@ -229,6 +229,11 @@ public:
   {
     m_frrFileDesBuffer.DiscardData( _kdpEndToken );
   }
+  template < class t_TyString >
+  void GetCurTokenString( t_TyString & _rstr ) const
+  {
+    m_frrFileDesBuffer.GetCurrentString( _rstr );
+  }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
@@ -413,6 +418,18 @@ public:
     m_bufCurrentToken.RCharP() += nLenToken;
     m_bufCurrentToken.RLength() = 0;
   }
+  template < class t_TyString >
+  void GetCurTokenString( t_TyString & _rstr ) const
+    requires( is_same_v< typename t_TyString::value_type, _TyChar > ) // non-converting.
+  {
+    _rstr.assign( m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
+  }
+  template < class t_TyString >
+  void GetCurTokenString( t_TyString & _rstr ) const
+    requires( !is_same_v< typename t_TyString::value_type, _TyChar > ) // non-converting.
+  {
+    ConvertString( _rstr, m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
+  }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
@@ -531,6 +548,8 @@ public:
   using _TyBase::FGetChar;
   using _TyBase::GetPToken;
   using _TyBase::CtxtEatCurrentToken;
+  using _TyBase::DiscardData;
+  using _TyBase::GetCurTokenString;
 protected:
   using _TyBase::m_bufFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
   using _TyBase::m_bufCurrentToken; // The view for the current token's exploration.
