@@ -106,7 +106,7 @@ class _l_transport_base;
 template < class t_TyChar >
 class _l_transport_backed_ctxt;
 template < class t_TyChar >
-class _l_transport_fd;
+class _l_transport_file;
 template < class t_TyChar >
 class _l_transport_fixedmem_ctxt;
 template < class t_TyChar >

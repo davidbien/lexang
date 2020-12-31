@@ -96,12 +96,12 @@ protected:
   _TyBuffer m_bufTokenData;
 };
 
-// _l_transport_fd:
-// Transport using a file descriptor.
+// _l_transport_file:
+// Transport using a file.
 template < class t_TyChar >
-class _l_transport_fd : public _l_transport_base< t_TyChar >
+class _l_transport_file : public _l_transport_base< t_TyChar >
 {
-  typedef _l_transport_fd _TyThis;
+  typedef _l_transport_file _TyThis;
   typedef _l_transport_base< t_TyChar > _TyBase;
 public:
   using typename  _TyBase::_TyChar;
@@ -110,34 +110,34 @@ public:
   typedef _l_transport_backed_ctxt< t_TyChar > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
-  ~_l_transport_fd() = default;
-  _l_transport_fd() = delete;
-  _l_transport_fd( const _l_transport_fd & ) = delete;
-  _l_transport_fd & operator =( _l_transport_fd const & ) = delete;
+  ~_l_transport_file() = default;
+  _l_transport_file() = delete;
+  _l_transport_file( const _l_transport_file & ) = delete;
+  _l_transport_file & operator =( _l_transport_file const & ) = delete;
   // We could allow move construction but it isn't needed because we can emplace construct.
-  _l_transport_fd( _l_transport_fd && ) = delete;
-  _l_transport_fd & operator =( _l_transport_fd && ) = delete;
+  _l_transport_file( _l_transport_file && ) = delete;
+  _l_transport_file & operator =( _l_transport_file && ) = delete;
 
-  _l_transport_fd( const char * _pszFileName )
+  _l_transport_file( const char * _pszFileName )
   {
-    errno = 0;
-    int fd = open( _pszFileName, O_RDONLY );
-    if ( -1 == fd )
-      THROWNAMEDEXCEPTIONERRNO( errno, "Open of [%s] failed.", _pszFileName );
-    m_fd.SetFd( fd, true );
+    PrepareErrNo();
+    vtyFileHandle hFile = OpenReadOnlyFile( _pszFileName );
+    if ( vkhInvalidFileHandle == hFile )
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "Open of [%s] failed.", _pszFileName );
+    m_file.SetHFile( hFile, true );
     _InitNonTty();
   }
-  // Attach to an fd like STDIN - in which case you would set _fOwnFd to false.
-  // The fd will 
-  _l_transport_fd( int _fd, size_t _posEnd = 0, bool _fOwnFd = false )
-    : m_fd( _fd, _fOwnFd )
+  // Attach to an hFile like STDIN - in which case you would set _fOwnFd to false.
+  // The hFile will 
+  _l_transport_file( vtyFileHandle _hFile, size_t _posEnd = 0, bool _fOwnFd = false )
+    : m_file( _hFile, _fOwnFd )
   {
-    m_fisatty = isatty( m_fd.FdGet() );
+    m_fisatty = FIsConsoleFileHandle( m_file.HFileGet() );
     m_fisatty ? _InitTty() : _InitNonTty( _posEnd );
   }
   void _InitTty()
   {
-    m_frrFileDesBuffer.Init( m_fd.FdGet(), 0, false, numeric_limits< vtyDataPosition >::max() );
+    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, false, numeric_limits< vtyDataPosition >::max() );
   }
   void _InitNonTty( size_t _posEnd = 0 )
   {
@@ -147,35 +147,33 @@ public:
     size_t stchLenRead = std::numeric_limits< size_t >::max();
 
     // Then stat will return meaningful info:
-    struct stat statBuf;
-    errno = 0;
-    int iStatRtn = ::stat( m_fd.FdGet(), &statBuf );
-    if ( !!iStatRtn )
+    vtyHandleAttr attrHandle;
+    int iGetAttrRtn = GetHandleAttrs( m_file.HFileGet(), attrHandle );
+    if ( !!iGetAttrRtn )
     {
-      Assert( -1 == iStatRtn );
-      THROWNAMEDEXCEPTIONERRNO( errno, "::stat() of fd[0x%x] failed.", m_fd.FdGet() );
+      Assert( -1 == iGetAttrRtn );
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "GetHandleAttrs() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
     }
-    // We will support any fd type here but we will only use read ahead on regular files.
-    fReadAhead = !!S_ISREG( statBuf.st_mode );
+    // We will support any hFile type here but we will only use read ahead on regular files.
+    fReadAhead = FIsRegularFile_HandleAttr( attrHandle );
     if ( fReadAhead )
     {
-      errno = 0;
-      off_t nbySeekCur = ::lseek( m_fd.FdGet(), 0, SEEK_CUR );
-      errno = 0;
-      if ( nbySeekCur < 0 )
+      vtySeekOffset nbySeekCur;
+      int iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekCur, &nbySeekCur );
+      if ( !!iSeekResult )
       {
-        Assert( -1 == nbySeekCur );
-        THROWNAMEDEXCEPTIONERRNO( errno, "::seek() of fd[0x%x] failed.", m_fd.FdGet() );
+        Assert( -1 == iSeekResult );
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
       }
       VerifyThrowSz( !( nbySeekCur % sizeof( t_TyChar ) ), "Current offset in file is not a multiple of a character byte length." );
       posInit = nbySeekCur / sizeof( t_TyChar );
       // Validate any ending position given to us, also find the end regardless:
-      errno = 0;
-      off_t nbySeekEnd = ::lseek( m_fd.FdGet(), 0, SEEK_END );
-      if ( nbySeekEnd < 0 )
+      vtySeekOffset nbySeekEnd;
+      iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekEnd, &nbySeekEnd );
+      if ( !!iSeekResult )
       {
-        Assert( -1 == nbySeekCur );
-        THROWNAMEDEXCEPTIONERRNO( errno, "::seek() of fd[0x%x] failed.", m_fd.FdGet() );
+        Assert( -1 == iSeekResult );
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
       }
       posEnd = nbySeekEnd / sizeof( t_TyChar );
       VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( t_TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
@@ -185,7 +183,7 @@ public:
         posEnd = _posEnd;
       stchLenRead = posEnd - posInit;
     }
-    m_frrFileDesBuffer.Init( m_fd.FdGet(), posInit, fReadAhead, stchLenRead );
+    m_frrFileDesBuffer.Init( m_file.HFileGet(), posInit, fReadAhead, stchLenRead );
   }
 
   vtyDataPosition PosCurrent() const
@@ -263,7 +261,7 @@ protected:
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
   typedef FdReadRotating< _TyChar > _TyFdReadRotating;
   _TyFdReadRotating m_frrFileDesBuffer{ vknchTransportFdTokenBufferSize * sizeof( t_TyChar ) };
-  FdObj m_fd;
+  FileObj m_file;
   bool m_fisatty{false};
 };
 
@@ -496,37 +494,37 @@ public:
 
   ~_l_transport_mapped()
   {
-    if ( m_bufFull.first != (const _TyChar*)MAP_FAILED )
+    if ( m_bufFull.first != (const _TyChar*)vkpvNullMapping )
     {
       int iRet = ::munmap( m_bufFull.first, m_bufFull.second );
       Assert( !iRet ); // not much to do about this...could log.
     }
   }
-  // We are keeping the fd open for now for diagnostic purposes, etc. It would be referenced in the background
+  // We are keeping the hFile open for now for diagnostic purposes, etc. It would be referenced in the background
   //  by the mapping and remaing open but we wouldn't know what the descriptor value was.
   _l_transport_mapped( const char * _pszFileName )
-    : _TyBase( (const _TyChar*)MAP_FAILED, 0 )// in case of throw so we don't call munmap with some random number in ~_l_transport_mapped().
+    : _TyBase( (const _TyChar*)vkpvNullMapping, 0 )// in case of throw so we don't call munmap with some random number in ~_l_transport_mapped().
   {
-    errno = 0;
-    int fd = open( _pszFileName, O_RDONLY );
-    if ( -1 == fd )
-      THROWNAMEDEXCEPTIONERRNO( errno, "Open of [%s] failed.", _pszFileName );
-    m_fd.SetFd( fd, true );
+    PrepareErrNo();
+    int hFile = open( _pszFileName, O_RDONLY );
+    if ( -1 == hFile )
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "Open of [%s] failed.", _pszFileName );
+    m_file.SetHFile( hFile, true );
 
     struct stat statBuf;
-    errno = 0;
-    int iStatRtn = ::stat( m_fd.FdGet(), &statBuf );
+    PrepareErrNo();
+    int iStatRtn = ::stat( m_file.HFileGet(), &statBuf );
     if ( !!iStatRtn )
     {
       Assert( -1 == iStatRtn );
-      THROWNAMEDEXCEPTIONERRNO( errno, "::stat() of fd[0x%x] failed.", m_fd.FdGet() );
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::stat() of hFile[0x%x] failed.", m_file.HFileGet() );
     }
     VerifyThrowSz( !!S_ISREG( statBuf.st_mode ), "Can only map a regular file, _pszFileName[%s].", _pszFileName );
-    errno = 0;
+    PrepareErrNo();
     m_bufFull.second = statBuf.st_size;
-    m_bufFull.first = (const _TyChar*)mmap( 0, m_bufFull.second, PROT_READ, MAP_SHARED | MAP_NORESERVE, m_fd.FdGet(), 0 );
-    if ( m_bufFull.first == (const _TyChar*)MAP_FAILED )
-        THROWNAMEDEXCEPTIONERRNO( errno, "mmap() failed for _pszFileName[%s] st_size[%lu].", m_fd.FdGet(), statBuf.st_size );
+    m_bufFull.first = (const _TyChar*)mmap( 0, m_bufFull.second, PROT_READ, MAP_SHARED | MAP_NORESERVE, m_file.HFileGet(), 0 );
+    if ( m_bufFull.first == (const _TyChar*)vkpvNullMapping )
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "mmap() failed for _pszFileName[%s] st_size[%lu].", m_file.HFileGet(), statBuf.st_size );
     m_bufCurrentToken.first = m_bufFull.first;
     Assert( !m_bufCurrentToken.second );
   }
