@@ -192,7 +192,7 @@ public:
 
 		typedef typename _TyDfa::_TyAlphaIndex _TyAlphaIndex;
 #ifdef __GNUC__ // <dbien>: can't get this to compile on VC14.
-		const typename _TyDfa::_TyAlphaIndex iaMax = numeric_limits< _TyAlphaIndex >::max();
+		const typename _TyDfa::_TyAlphaIndex iaMax = (numeric_limits< _TyAlphaIndex >::max)();
 		if ( m_rDfa.m_setAlphabet.size() > iaMax )
 			throw alpha_index_overflow("_create(): Alphabet size overflowed maximum alphabet index (__TyDfa::_TyAlphaIndex).");
 #endif //__GNUC__

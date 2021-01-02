@@ -23,9 +23,9 @@ template < class t_TyChar, class t_TyAllocator > class _nfa_context;
 
 // class regexp_trigger_first:
 // We throw this when we encounter a trigger as the first state in an NFA - it will fire all the time regardless of input - so it is dumb
-class regexp_trigger_found_first_exception : public std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
+class regexp_trigger_found_first_exception : public _t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
 {
-  typedef std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
+  typedef _t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
 public:
   regexp_trigger_found_first_exception() 
 		: _TyBase("regexp_trigger_found_first_exception") 

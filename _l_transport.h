@@ -92,7 +92,7 @@ protected:
     Assert( _posEnd <= m_posTokenStart + m_bufTokenData.length() );
 #endif //ASSERTSENABLED  
   }
-  vtyDataPosition m_posTokenStart{ numeric_limits< vtyDataPosition >::max() };
+  vtyDataPosition m_posTokenStart{ (numeric_limits< vtyDataPosition >::max)() };
   _TyBuffer m_bufTokenData;
 };
 
@@ -137,14 +137,14 @@ public:
   }
   void _InitTty()
   {
-    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, false, numeric_limits< vtyDataPosition >::max() );
+    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, false, (numeric_limits< vtyDataPosition >::max)() );
   }
   void _InitNonTty( size_t _posEnd = 0 )
   {
     bool fReadAhead = false;
     _TySizeType posInit = 0;
     size_t posEnd = 0;
-    size_t stchLenRead = std::numeric_limits< size_t >::max();
+    size_t stchLenRead = (std::numeric_limits<size_t>::max);
 
     // Then stat will return meaningful info:
     vtyHandleAttr attrHandle;
@@ -328,7 +328,7 @@ protected:
     Assert( _posEnd <= m_posTokenStart + m_bufTokenData.length() );
 #endif //ASSERTSENABLED  
   }
-  vtyDataPosition m_posTokenStart{ numeric_limits< vtyDataPosition >::max() };
+  vtyDataPosition m_posTokenStart{ (numeric_limits< vtyDataPosition >::max)() };
   _TyBuffer m_bufTokenData;
 };
 

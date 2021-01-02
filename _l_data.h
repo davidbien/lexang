@@ -54,14 +54,14 @@ public:
   void AssertValid() const
   {
 #if ASSERTSENABLED
-    Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_posEnd == numeric_limits< vtyDataPosition >::max() ) );
+    Assert( ( m_posBegin != (numeric_limits< vtyDataPosition >::max)() ) || ( m_posEnd == (numeric_limits< vtyDataPosition >::max)() ) );
     Assert( m_posEnd >= m_posBegin );
 #endif //ASSERTSENABLED
   }
   bool FIsNull() const
   {
     AssertValid();
-    return m_posBegin == numeric_limits< vtyDataPosition >::max();
+    return m_posBegin == (numeric_limits< vtyDataPosition >::max)();
   }
   vtyDataPosition begin() const
   {
@@ -77,8 +77,8 @@ public:
     return m_posEnd - m_posBegin;
   }
 // Make these accessible.
-  vtyDataPosition m_posBegin{ numeric_limits< vtyDataPosition >::max() };
-  vtyDataPosition m_posEnd{ numeric_limits< vtyDataPosition >::max() };
+  vtyDataPosition m_posBegin{ (numeric_limits< vtyDataPosition >::max)() };
+  vtyDataPosition m_posEnd{ (numeric_limits< vtyDataPosition >::max)() };
 };
 
 // _l_data_typed_range: Use protected inheritance to hide conversion to base.
@@ -102,8 +102,8 @@ public:
   {
 #if ASSERTSENABLED
     _TyBase::AssertValid();
-    Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || ( m_nIdTrigger == vktidInvalidIdTrigger ) );
-    Assert( ( m_posBegin != numeric_limits< vtyDataPosition >::max() ) || !m_nType );
+    Assert( ( m_posBegin != (numeric_limits< vtyDataPosition >::max)() ) || ( m_nIdTrigger == vktidInvalidIdTrigger ) );
+    Assert( ( m_posBegin != (numeric_limits< vtyDataPosition >::max)() ) || !m_nType );
 #endif //ASSERTSENABLED  
   }
   bool FIsNull() const
@@ -168,9 +168,9 @@ public:
 #if ASSERTSENABLED
     if ( FContainsSingleDataRange() )
     {
-      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posEnd ) );
-      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || !m_dtrData.m_nType );
-      Assert( ( numeric_limits< vtyDataPosition >::max() != m_dtrData.m_posBegin ) || ( vktidInvalidIdTrigger == m_dtrData.m_nIdTrigger ) );
+      Assert( ( (numeric_limits< vtyDataPosition >::max)() != m_dtrData.m_posBegin ) || ( (numeric_limits< vtyDataPosition >::max)() == m_dtrData.m_posEnd ) );
+      Assert( ( (numeric_limits< vtyDataPosition >::max)() != m_dtrData.m_posBegin ) || !m_dtrData.m_nType );
+      Assert( ( (numeric_limits< vtyDataPosition >::max)() != m_dtrData.m_posBegin ) || ( vktidInvalidIdTrigger == m_dtrData.m_nIdTrigger ) );
       Assert( m_dtrData.m_posEnd >= m_dtrData.m_posBegin );
     }
     else
@@ -295,7 +295,7 @@ public:
   bool FIsNull() const
   {
     AssertValid();
-    return FContainsSingleDataRange() && ( numeric_limits< vtyDataPosition >::max() == m_dtrData.m_posBegin );
+    return FContainsSingleDataRange() && ( (numeric_limits< vtyDataPosition >::max)() == m_dtrData.m_posBegin );
   }
   void SetNull()
   {
@@ -412,8 +412,8 @@ protected:
   void _SetMembersNull()
   {
     _SetContainsSingleDataRange();
-    m_dtrData.m_posBegin = numeric_limits< vtyDataPosition >::max();
-    m_dtrData.m_posEnd = numeric_limits< vtyDataPosition >::max();
+    m_dtrData.m_posBegin = (numeric_limits< vtyDataPosition >::max)();
+    m_dtrData.m_posEnd = (numeric_limits< vtyDataPosition >::max)();
     m_dtrData.m_nType = 0;
     m_dtrData.m_nIdTrigger = vktidInvalidIdTrigger;
   }

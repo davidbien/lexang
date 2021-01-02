@@ -448,7 +448,7 @@ struct _l_generator
 		}
 		_rfIsTriggerAction = ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) );		
 		_rfIsTriggerGateway = false;
-		_rtidTokenTrigger = numeric_limits< vtyTokenIdent >::max();
+		_rtidTokenTrigger = (numeric_limits< vtyTokenIdent >::max)();
 		_rrgelTrigger = 0;
 #ifndef LXGEN_OUTPUT_TRIGGERS
 		// We check for trigger links at the beginning of the the link list.
@@ -527,7 +527,7 @@ struct _l_generator
 				{
           Assert(pvtAction->second.m_psrTriggers->countsetbits());
 					size_t stBits = pvtAction->second.m_psrTriggers->countsetbits();
-					if ( ( stBits > 1 ) && ( _rtidTokenTrigger != numeric_limits< vtyTokenIdent >::max() ) )
+					if ( ( stBits > 1 ) && ( _rtidTokenTrigger != (numeric_limits< vtyTokenIdent >::max)() ) )
 					{
 						// Then we are going to filter out the actions that do not match the input trigger transition and we are going to print a warning because this
 						//	is very likely a bug:
@@ -539,7 +539,7 @@ struct _l_generator
 							if ( (*itTrigger->second.m_pSdpAction)->VGetTokenId() != _rtidTokenTrigger )
 							{
 								n_SysLog::Log( eslmtError, "%s: Filtering out token [%ld] since it doesn't match the input transition. This looks like a bug in NFA->DFA conversion.", 
-									__PRETTY_FUNCTION__, (*itTrigger->second.m_pSdpAction)->VGetTokenId() );
+									FUNCTION_PRETTY_NAME, (*itTrigger->second.m_pSdpAction)->VGetTokenId() );
 								pvtAction->second.m_psrTriggers->clearbit( stTrigger );
 							}
 							// else we leave the bit.

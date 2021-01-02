@@ -13,10 +13,10 @@ __REGEXP_BEGIN_NAMESPACE
 
 typedef int32_t	vtyActionIdent;
 typedef int32_t	vtyTokenIdent; // allow negative numbers to signify something, not sure yet.
-typedef unsigned long vtyLookaheadVector;
+typedef uint64_t vtyLookaheadVector;
 
 typedef size_t vtyDataPosition;
-static constexpr vtyDataPosition vkdpNullDataPosition = numeric_limits< vtyDataPosition >::max();
+static constexpr vtyDataPosition vkdpNullDataPosition = (numeric_limits< vtyDataPosition >::max)();
 typedef uint32_t vtyDataType;
 typedef vtyTokenIdent vtyDataTriggerId;
 vtyDataTriggerId vktidInvalidIdTrigger = numeric_limits< vtyDataTriggerId >::min();

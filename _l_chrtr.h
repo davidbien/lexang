@@ -116,6 +116,7 @@ struct _l_char_type_map< int32_t >
   // static constexpr int32_t ms_kcMax = INT32_MAX;
 };
 #else //0
+#error these are wrong.
 template <>
 struct _l_char_type_map< signed short >
 {

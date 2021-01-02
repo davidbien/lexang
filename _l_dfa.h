@@ -347,7 +347,7 @@ public:
 					prngFound->contains( _rc ) )
 		{
 			size_type st = prngFound - m_rgrngLookup.begin();
-			if (st > numeric_limits< _TyAlphaIndex >::max())
+			if (st > (numeric_limits< _TyAlphaIndex >::max)())
 				throw alpha_index_overflow("_LookupAlphaSetNum(): Alpha index overflowed.");
 			return prngFound - m_rgrngLookup.begin();
 		}

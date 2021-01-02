@@ -32,9 +32,9 @@
 __LEXOBJ_BEGIN_NAMESPACE
 
 // This exception is thrown when a token is not found in a non-empty stream.
-class _l_no_token_found_exception : public std::_t__Named_exception<>
+class _l_no_token_found_exception : public _t__Named_exception<>
 {
-  typedef std::_t__Named_exception<> _tyBase;
+  typedef _t__Named_exception<> _tyBase;
 public:
   _l_no_token_found_exception(const string_type &__s)
       : _tyBase(__s)
@@ -46,7 +46,7 @@ public:
   }
 };
 // By default we will always add the __FILE__, __LINE__ even in retail for debugging purposes.
-#define THROWNOTOKENFOUND(MESG...) ExceptionUsage<_l_no_token_found_exception>::ThrowFileLineFunc(__FILE__, __LINE__, __PRETTY_FUNCTION__, MESG)
+#define THROWNOTOKENFOUND(MESG...) ExceptionUsage<_l_no_token_found_exception>::ThrowFileLineFunc(__FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG)
 
 template <class t_TyChar>
 struct _l_compare_input_with_range
@@ -229,7 +229,7 @@ public:
     }
     return true;
   }
-#define LXOBJ_DOTRACE(MESG...) _DoTrace( __FILE__, __LINE__, __PRETTY_FUNCTION__, MESG)
+#define LXOBJ_DOTRACE(MESG...) _DoTrace( __FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG)
   void _DoTrace(const char *_szFile, unsigned int _nLine, const char *_szFunction, const char *_szMesg, ...)
   {
     std::string strCur;
