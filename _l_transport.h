@@ -144,7 +144,7 @@ public:
     bool fReadAhead = false;
     _TySizeType posInit = 0;
     size_t posEnd = 0;
-    size_t stchLenRead = (std::numeric_limits<size_t>::max);
+    size_t stchLenRead = (std::numeric_limits<size_t>::max)();
 
     // Then stat will return meaningful info:
     vtyHandleAttr attrHandle;

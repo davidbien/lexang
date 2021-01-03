@@ -19,7 +19,7 @@ typedef size_t vtyDataPosition;
 static constexpr vtyDataPosition vkdpNullDataPosition = (numeric_limits< vtyDataPosition >::max)();
 typedef uint32_t vtyDataType;
 typedef vtyTokenIdent vtyDataTriggerId;
-vtyDataTriggerId vktidInvalidIdTrigger = numeric_limits< vtyDataTriggerId >::min();
+vtyDataTriggerId vktidInvalidIdTrigger = (numeric_limits< vtyDataTriggerId >::min)();
 
 template < class t_TyChar, bool t_fInLexGen >
 struct _l_action_object_base;
