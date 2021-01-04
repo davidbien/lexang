@@ -14,6 +14,7 @@
 #include <string_view>
 #include <variant>
 #include "_util.h"
+#include "_namdexc.h"
 #include "segarray.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
@@ -185,15 +186,15 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.");
       },
       [](bool)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
       },
       [](vtyDataPosition)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
       [this,&_rtok,&_rsv](_TyData const &)
       {
@@ -238,7 +239,7 @@ public:
       },
       [](_TySegArrayValues &)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
     }, m_var );
   }
@@ -257,7 +258,7 @@ protected:
     requires ( !is_same_v< typename t_TyStrViewDest::value_type, typename t_TySource::value_type > 
       && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
   {
-    get_string_type< t_TyStrViewDest::value_type > strConverted;
+    get_string_type< typename t_TyStrViewDest::value_type > strConverted;
     ConvertString( strConverted, _rsrc );
     m_var.template emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( strConverted ) );
     get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
@@ -268,11 +269,11 @@ protected:
   void _GetStringView( t_TyStrViewDest & _rsvDest, const t_TySource & _rsrc )
     // requires are satisfied by being every scenario except for the above.
   {
-    get_string_type< t_TyStrViewDest::value_type > str;
+    get_string_type< typename t_TyStrViewDest::value_type > str;
     bool fGotView = _rsrc.FGetStringViewOrString( _rsvDest, str );
     if ( !fGotView )
     {
-      m_var.emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( str ) );
+      m_var.template emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( str ) );
       get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
       _rsvDest = t_TyStrViewDest( &rstrInVar[0], rstrInVar.length() );
     }
@@ -289,15 +290,15 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.");
       },
       [](bool)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
       },
       [](vtyDataPosition)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
       [this,&_rtok,&_rstr](_TyData const &)
       {
@@ -342,7 +343,7 @@ public:
       },
       [](_TySegArrayValues const &)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
     }, m_var );
   }
@@ -385,15 +386,15 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.");
       },
       [](bool)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
       },
       [](vtyDataPosition)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
       [this,&_rtok,&_rsv,&_rstr](_TyData const & _rdt)
       {
@@ -438,7 +439,7 @@ public:
       },
       [](_TySegArrayValues const &)
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
     }, m_var );
   }

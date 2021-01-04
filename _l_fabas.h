@@ -277,9 +277,7 @@ public:
 		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
-			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
-						it != m_setAlphabet.end();
-						( ++it == m_setAlphabet.end() ) || ( _ros << "," ) )
+			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin(); it != m_setAlphabet.end(); ++it )
 			{
 				JsonValueLife< t_tyJsonOutputStream > jvl( _jvl, ejvtArray );
 				it->ToJSONStream( jvl );

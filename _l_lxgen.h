@@ -165,7 +165,7 @@ struct _l_generator
 
 	void add_action_info( vtyTokenIdent _tid, _TyGenActionInfo const & _rgai )
 	{
-		pair< _TyMapActionInfo::iterator, bool > pib = m_mapActionInfo.insert( _TyMapActionInfo::value_type( _tid, _rgai ) );
+		pair< typename _TyMapActionInfo::iterator, bool > pib = m_mapActionInfo.insert( _TyMapActionInfo::value_type( _tid, _rgai ) );
 		VerifyThrowSz( pib.second, "TokenId[%d] has already been populated in the map.", _tid );
 		// There is the possibility that the caller has duplicated a m_strActionName but if so the resultant code won't compile so no worries there.
 	}

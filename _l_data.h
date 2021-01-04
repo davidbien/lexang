@@ -185,14 +185,14 @@ public:
   {
     _SetContainsSingleDataRange();
   }
-  _l_data( vtyDataPosition _posBegin, vtyDataPosition _posEnd )
-    : m_dtrData( _posBegin, _posEnd )
+  _l_data( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
+    : m_dtrData( _posBegin, _posEnd, _nType, _nIdTrigger )
   {
     _SetContainsSingleDataRange();
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
-  _l_data( _l_data_range const & _rdr )
-    : m_dtrData( _rdr )
+  _l_data( _l_data_range const & _rdr, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
+    : m_dtrData(_rdr.begin(),_rdr.end(), _nType, _nIdTrigger )
   {
     _SetContainsSingleDataRange();
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
@@ -331,9 +331,9 @@ public:
     Assert( FContainsSingleDataRange() );
     return m_dtrData;
   }
-  void Set( _l_data_range const & _rdr )
+  void Set( _l_data_range const & _rdr, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {
-    Set( _l_data_typed_range( _rdr ) );
+    Set( _l_data_typed_range( _rdr.begin(), _rdr.end(), _nType, _nIdTrigger ) );
   }
   void Set( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {
@@ -348,9 +348,9 @@ public:
     m_dtrData = _rdtr;
     AssertValid();
   }
-  void Append( _l_data_range const & _rdr )
+  void Append( _l_data_range const & _rdr, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {
-    Append( _l_data_typed_range( _rdr ) );
+    Append( _l_data_typed_range( _rdr.begin(), _rdr.end(), _nType, _nIdTrigger ) );
   }
   void Append( vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {

@@ -32,12 +32,9 @@ public:
 	typedef _nfa_context_base< t_TyChar >		_TyCtxtBase;
 	typedef typename _TyCtxtBase::_TyRange	_TyRange;
 	
-	_regexp_base()
-	{
-	}
-	virtual ~_regexp_base()
-	{
-	}
+	_TyThis & operator = ( _TyThis const & _r ) = delete;
+	_regexp_base() = default;
+	virtual ~_regexp_base() = default;
 
 	virtual void	ConstructNFA( _TyCtxtBase & _rNfa, size_t _stLevel = 0 ) const = 0;
 
@@ -51,10 +48,6 @@ public:
 	virtual void	Dump( _TyOstream & _ros ) const = 0;
 
 	// no assignment supported.
-	void	operator = ( _TyThis const & _r )
-	{
-		___semantic_error_object	error;
-	}
 
 	friend _TyOstream & operator << ( _TyOstream & _ros, _TyThis const & _r )
 	{
