@@ -39,7 +39,7 @@ public:
 
   _l_transport_backed_ctxt( vtyDataPosition _posTokenStart, vtyDataPosition _posTokenEnd )
     : m_posTokenStart( _posTokenStart ),
-      m_buf( _posTokenEnd > _posTokenStart ? ( _posTokenEnd - _posTokenStart ) : 0 )
+      m_bufTokenData( _posTokenEnd > _posTokenStart ? ( _posTokenEnd - _posTokenStart ) : 0 )
   {
     VerifyThrowSz( _posTokenEnd >= _posTokenStart, "duh" ); // Above we don't try to allocate a huge amount of memory and then we also throw if passed bogus parameters.
   }
@@ -142,7 +142,7 @@ public:
   void _InitNonTty( size_t _posEnd = 0 )
   {
     bool fReadAhead = false;
-    _TySizeType posInit = 0;
+    size_t posInit = 0;
     size_t posEnd = 0;
     size_t stchLenRead = (std::numeric_limits<size_t>::max)();
 
@@ -505,26 +505,15 @@ public:
   _l_transport_mapped( const char * _pszFileName )
     : _TyBase( (const _TyChar*)vkpvNullMapping, 0 )// in case of throw so we don't call munmap with some random number in ~_l_transport_mapped().
   {
-    PrepareErrNo();
-    int hFile = open( _pszFileName, O_RDONLY );
-    if ( -1 == hFile )
-      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "Open of [%s] failed.", _pszFileName );
-    m_file.SetHFile( hFile, true );
-
-    struct stat statBuf;
-    PrepareErrNo();
-    int iStatRtn = ::stat( m_file.HFileGet(), &statBuf );
-    if ( !!iStatRtn )
-    {
-      Assert( -1 == iStatRtn );
-      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::stat() of hFile[0x%x] failed.", m_file.HFileGet() );
-    }
-    VerifyThrowSz( !!S_ISREG( statBuf.st_mode ), "Can only map a regular file, _pszFileName[%s].", _pszFileName );
-    PrepareErrNo();
-    m_bufFull.second = statBuf.st_size;
-    m_bufFull.first = (const _TyChar*)mmap( 0, m_bufFull.second, PROT_READ, MAP_SHARED | MAP_NORESERVE, m_file.HFileGet(), 0 );
-    if ( m_bufFull.first == (const _TyChar*)vkpvNullMapping )
-        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "mmap() failed for _pszFileName[%s] st_size[%lu].", m_file.HFileGet(), statBuf.st_size );
+    FileObj foFile( OpenReadOnlyFile( _pszFileName ) );
+    if ( foFile.FIsOpen() )
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "OpenReadOnlyFile() of [%s] failed.", _pszFileName );
+    size_t stSizeMapping;
+    FileMappingObj fmoFile( MapReadOnlyHandle( foFile.HFileGet(), &stSizeMapping ) );
+    if ( !fmoFile.FIsOpen() )
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of [%s] failed, stSizeMapping[%lu].", _pszFileName, stSizeMapping );
+    m_bufFull.second = stSizeMapping;
+    m_bufFull.first = (const _TyChar*)fmoFile.PvTransferHandle();
     m_bufCurrentToken.first = m_bufFull.first;
     Assert( !m_bufCurrentToken.second );
   }
@@ -622,10 +611,10 @@ public:
   _l_transport_var( _l_transport_var const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
   _TyThis const & operator = ( _TyThis const & _r ) = delete;
 
-  template < class t_tyTransport, class ... t_TysArgs >
+  template < class t_TyTransport, class ... t_TysArgs >
   void emplaceTransport( t_TysArgs ... _args )
   {
-    m_var.emplace< t_Transport >( std::forward< t_TysArgs >( _args ) ... );
+    m_var.template emplace< t_TyTransport >( std::forward< t_TysArgs >( _args ) ... );
   }
   
   void AssertValid() const
@@ -634,7 +623,7 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
       []( auto _transport )
       {
@@ -649,7 +638,7 @@ public:
     return std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
       []( auto _transport )
       {
@@ -662,7 +651,7 @@ public:
     return std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
       []( auto _transport )
       {
@@ -676,7 +665,7 @@ public:
     return std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
       [&_rc]( auto _transport )
       {
@@ -696,9 +685,9 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
-      [_paobCurToken,_kdpEndToken,_rrvalue{move(_rrvalue)},&ruoUserObj,&_rupToken]( auto _transport )
+      [_paobCurToken,_kdpEndToken,_rrvalue{move(_rrvalue)},&_ruoUserObj,&_rupToken]( auto _transport )
       {
         _TyUserContext ucxt( _ruoUserObj, _transport.CtxtEatCurrentToken( _kdpEndToken ) ); // move it right on in - this negates the need for a default constructor.
         unique_ptr< _TyToken > upToken = make_unique< _TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
@@ -711,7 +700,7 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
       [_kdpEndToken]( auto _transport )
       {
@@ -725,7 +714,7 @@ public:
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
-        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.")
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
       [&_rdt]( auto _transport )
       {

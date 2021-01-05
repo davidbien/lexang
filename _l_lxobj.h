@@ -444,7 +444,7 @@ public:
     {
       _TyStdStr strCurToken;
       GetStream().GetCurTokenString( strCurToken );
-      THROWNOTOKENFOUND("Not at EOF, m_ucCur[%c] current token:[%s]", (char)m_ucCur, strCurToken.c_str() );
+      THROWNOTOKENFOUND(m_ucCur ? "Not at EOF, current token:[%s] m_ucCur[%c]" : "Not at EOF, current token:[%s]", strCurToken.c_str(), (char)m_ucCur );
     }
     return false;
   }
