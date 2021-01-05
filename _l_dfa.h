@@ -80,7 +80,7 @@ public:
 	typedef typename _TyBase::_TyAlphabet _TyAlphabet;
 	typedef typename _TyBase::_TySetStates _TySetStates;
 
-	typedef int	_TyAlphaIndex;	// We use an index into a range lookup table as the link element.
+	typedef int64_t	_TyAlphaIndex;	// We use an index into a range lookup table as the link element.
 															// If the index is negative then it is an index into the CCRIndex.
 
 	typedef __DGRAPH_NAMESPACE dgraph< _TyState, _TyAlphaIndex, false, t_TyAllocator > _TyGraph;
@@ -108,18 +108,18 @@ public:
 	size_type m_nUnsatisfiableTransitions; // # of unsatisfiable.
 	vtyActionIdent m_iMaxActions;
 
+	// We consume the tokenid->rangeel map converting it to a rangeel->tokenid map as we consume.
+	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
+	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
+	typedef typename _Alloc_traits< typename map< _TyRangeEl, vtyTokenIdent >::value_type, t_TyAllocator >::allocator_type _TyMapTriggerTransitionToTokenIdAllocator;
+	typedef map< _TyRangeEl, vtyTokenIdent, less< _TyRangeEl >, _TyMapTriggerTransitionToTokenIdAllocator > _TyMapTriggerTransitionToTokenId;
+	_TyMapTriggerTransitionToTokenId m_mapTriggerTransitionToTokenId;
+
 	// Triggers - we need an extra copy since ambiguity may have occurred:
 	typedef less< vtyActionIdent > _TyCompareAI;
   typedef typename _Alloc_traits< typename map< vtyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
   typedef map< vtyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
-
-	// We consume the tokenid->rangeel map converting it to a rangeel->tokenid map as we consume.
-	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
-	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
-	typedef typename _Alloc_traits< typename map< _TyRangeEl, vtyTokenIdent >::value_type, t_TyAllocator >::allocator_type _TyMapTriggerTransitionToTokenIdAllocator;
-	typedef map< _TyRangeEl, vtyTokenIdent, less< vtyTokenIdent >, _TyMapTriggerTransitionToTokenIdAllocator > _TyMapTriggerTransitionToTokenId;
-	_TyMapTriggerTransitionToTokenId m_mapTriggerTransitionToTokenId;
 
 	_dfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		: _TyBase( _rAlloc ),
@@ -156,7 +156,7 @@ public:
 		return static_cast< _TyGraphNode * >( m_nodeLookup[ _iState ] );
 	}
 
-	_TyRange	LookupRange( _TyAlphaIndex _ai )
+	_TyRange	LookupRange( _TyAlphaIndex _ai ) const
 	{
 		if ( _ai < 0 )
 		{
@@ -165,7 +165,7 @@ public:
 		}
 		else
 		{
-			return m_rgrngLookup[ _ai ];
+			return m_rgrngLookup[ (size_t)_ai ];
 		}
 	}
 
@@ -280,11 +280,12 @@ public:
 				{
 					_TyGraphLink *	pgl = lpi.PGLCur();
 					_TyGraphNode *	pgn = pgl->PGNChild();
-					_TyRange r = m_rgrngLookup[ pgl->RElConst() ];
+					Assert(pgl->RElConst() >= 0);
+					_TyRange r = m_rgrngLookup[ (size_t)pgl->RElConst() ];
 					_TyRange *	prConsecutive;
 					for(	lpi.NextChild(); 
 								!lpi.FIsLast() && 
-									r.isconsecutiveright( *( prConsecutive = &( m_rgrngLookup[ *lpi ] ) ) ); )
+									r.isconsecutiveright( *( prConsecutive = &( m_rgrngLookup[(size_t)*lpi ] ) ) ); )
 					{
 						_TyGraphLink *	pglRemove = lpi.PGLCur();
 						if ( pglRemove->PGNChild() == pgn )
@@ -297,7 +298,8 @@ public:
 							break;
 						}
 					}
-					if ( r != m_rgrngLookup[ pgl->RElConst() ] )
+					Assert(pgl->RElConst() >= 0);
+					if ( r != m_rgrngLookup[(size_t)pgl->RElConst() ] )
 					{
 						// Then a unique range - see if we already have it:
 						pair< typename _TySetCompCharRange::iterator, typename _TySetCompCharRange::iterator >

@@ -43,7 +43,7 @@ public:
 	static const _TyRangeEl	ms_kreUnsatisfiableStart;
 
 #ifdef _MSC_VER
-	typedef int	_TyState;
+	typedef int64_t	_TyState;
 #elif __APPLE__
   typedef int64_t	_TyState;
 #else

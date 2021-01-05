@@ -149,9 +149,6 @@ empty( t_TyChar = _L_REGEXP_DEFAULTCHAR() )
 	return _regexp_empty< t_TyChar >();
 }
 
-#define __CE	empty(char())
-#define __WE	empty(wchar_t())
-
 template < class t_TyChar >
 class _regexp_literal : public _regexp_base< t_TyChar >
 {

@@ -672,7 +672,8 @@ protected:
 			lpi = pgnRep->PPGLChildHead();
 			while( !lpi.FIsLast() )
 			{
-				ssOutOnAlpha.setbit( *lpi );
+				Assert(*lpi >= 0);
+				ssOutOnAlpha.setbit( (size_t)*lpi );
 				_CheckMoveHead( lpi.PGLCur() );
 				lpi.NextChild();
 			}
@@ -692,7 +693,8 @@ protected:
 				{
 					typename _TyDfa::_TyAlphaIndex	ai;
 					_TyGraphLink *	pgl = lpi.PGLCur();
-					if ( ssOutOnAlpha.isbitset( ai = pgl->RElConst() ) )
+					Assert(pgl->RElConst() >= 0);
+					if ( ssOutOnAlpha.isbitset( (size_t)(ai = pgl->RElConst()) ) )
 					{
 						// Then a redundant link - remove:
 						m_rDfa._RemoveLink( pgl );
@@ -703,7 +705,7 @@ protected:
 						pgl->RemoveChild();
 						pgl->InsertChild( pgnRep->PPGLChildHead() );
 						pgl->SetParentNode( pgnRep );
-						ssOutOnAlpha.setbit( ai );
+						ssOutOnAlpha.setbit( (size_t)ai );
 
 						// Check to see if the tail needs to be moved:
 						_CheckMoveHead( pgl );

@@ -145,7 +145,7 @@ public:
 				_jvl.WriteNullValue();
 			else
 			if ( ( first > 254/* _l_char_type_map< _TyChar >::ms_kcMax */ ) || ( first < 32 ) ) // filter out unprintable characters.
-				_jvl.PrintfStringValue( str_array_cast< _TyChar>("0x%lx"), size_t((_TyUnsignedChar)first) );
+				_jvl.PrintfStringValue( "0x%lx", size_t((_TyUnsignedChar)first) );
 			else
 			{
 				_TyChar ch = (_TyChar)first;
@@ -155,7 +155,7 @@ public:
 				_jvl.WriteNullValue();
 			else
 			if ( ( second > 254/* )_l_char_type_map< _TyChar >::ms_kcMax */ ) || ( second < 32 ) ) // filter out unprintable characters.
-				_jvl.PrintfStringValue( str_array_cast< _TyChar>("0x%lx"), size_t((_TyUnsignedChar)second) );
+				_jvl.PrintfStringValue( "0x%lx", size_t((_TyUnsignedChar)second) );
 			else
 			{
 				_TyChar ch = (_TyChar)second;

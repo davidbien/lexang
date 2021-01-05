@@ -433,7 +433,9 @@ struct _l_generator
 	}
 	bool _FIsTrigger( _TyRangeEl const & _rre ) const
 	{
-		return ( _rre >= m_praiTriggers.first ) && ( _rre < m_praiTriggers.second );
+		Assert(m_praiTriggers.first >= 0);
+		Assert(m_praiTriggers.second >= 0);
+		return ( _rre >= (_TyRangeEl)m_praiTriggers.first ) && ( _rre < (_TyRangeEl)m_praiTriggers.second );
 	}
 	void	_GenStateType(	ostream & _ros, _TyGraphNode * _pgn, 
 												int _nOuts, bool _fAccept, bool & _rfIsTriggerAction, bool & _rfIsTriggerGateway, 
