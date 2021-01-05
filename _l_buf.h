@@ -88,22 +88,24 @@ class _l_backing_buf : public pair< t_TyChar *, vtyDataPosition >
   typedef pair< t_TyChar *, vtyDataPosition > _TyBase;
 public:
   typedef t_TyChar _TyChar;
+  using _TyBase::first;
+  using _TyBase::second;
   _l_backing_buf( vtyDataPosition _len )
   {
-    m_buf.first = ::new _TyChar[ _len * sizeof( _TyChar ) ];
-    m_buf.second = _len;
+    first = ::new _TyChar[ _len * sizeof( _TyChar ) ];
+    second = _len;
   }
   ~_l_backing_buf()
   {
-    if ( m_buf.first )
-      ::delete [] m_buf.first;
+    if ( first )
+      ::delete [] first;
   }
   _l_backing_buf() = default;
   _l_backing_buf( _l_backing_buf const & _r )
   {
-    m_buf.second = _r.second;
-    m_buf.first = ::new _TyChar[ m_buf.second ];
-    memcpy( m_buf.first, _r.m_buf.first, m_buf.second * sizeof( _TyChar ) );
+    second = _r.second;
+    first = ::new _TyChar[ second ];
+    memcpy( first, _r.first, second * sizeof( _TyChar ) );
   }
   _l_backing_buf & operator =( _TyThis const & _r )
   {
@@ -121,38 +123,38 @@ public:
   }
   void swap( _TyThis & _r )
   {
-    m_buf.swap( _r.m_buf );
+    _TyBase::swap( _r );
   }
   bool FIsNull()
   {
     AssertValid();
-    return !m_buf.first;
+    return !first;
   }
   void AssertValid() const
   {
 #ifndef NDEBUG
-    Assert( !!m_buf.first == !!m_buf.second );
+    Assert( !!first == !!second );
 #endif     
   }
   _TyChar * begin()
   {
-    return m_buf.first;
+    return first;
   }
   const _TyChar * begin() const
   {
-    return m_buf.first;
+    return first;
   }
   _TyChar * end()
   {
-    return m_buf.first + m_buf.second;
+    return first + second;
   }
   const _TyChar * end() const
   {
-    return m_buf.first + m_buf.second;
+    return first + second;
   }
   vtyDataPosition length() const
   {
-    return m_buf.second;
+    return second;
   }
   template < class t_TyStringView >
   void GetStringView( t_TyStringView & _rsvDest, vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const
@@ -162,8 +164,8 @@ public:
     Assert( _posEnd >= _posBegin );
     if ( _posEnd == _posBegin )
       return; // empty.
-    Assert( _posEnd <= m_buf.second );
-    _rsvDest = t_TyStringView( m_buf.first + _posBegin, _posEnd - _posBegin );
+    Assert( _posEnd <= second );
+    _rsvDest = t_TyStringView( first + _posBegin, _posEnd - _posBegin );
   }
 };
 

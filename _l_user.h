@@ -175,11 +175,11 @@ public:
   {
     Assert( _rsvDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyData kdtr = _rval.GetVal< _TyData >();
+    const _TyData kdtr = _rval.template GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     if ( !kdtr.FContainsSingleDataRange() )
     {
-      typename _TyValue::get_string_type< _TyChar > strBacking;
+      typename _TyValue::template get_string_type< _TyChar > strBacking;
       GetString( strBacking, _rcxt, _rtok, _rval );
       _rsvDest = _rval.emplaceVal( std::move( strBacking ) );
     }
@@ -197,11 +197,11 @@ public:
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyData kdtr = _rval.GetVal< _TyData >();
+    const _TyData kdtr = _rval.template GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     if ( !kdtr.FContainsSingleDataRange() )
     {
-      typename _TyValue::get_string_type< _TyChar > strBacking;
+      typename _TyValue::template get_string_type< _TyChar > strBacking;
       GetString( _rstrDest, _rcxt, _rtok, _rval );
       return false;
     }
@@ -217,7 +217,7 @@ public:
   {
     Assert( _rstrDest.empty() );
     Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
-    const _TyData kdtr = _rval.GetVal< _TyData >();
+    const _TyData kdtr = _rval.template GetVal< _TyData >();
     if ( kdtr.FIsNull() )
       return;
     _rcxt.AssertValidDataRange( kdtr );
