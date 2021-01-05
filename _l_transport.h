@@ -24,7 +24,7 @@ public:
 };
 
 static const size_t vknchTransportFdTokenBufferSize = 256;
-static_assert( sizeof( off_t ) == sizeof( vtyDataPosition ) );
+static_assert( sizeof( vtySeekOffset ) == sizeof( vtyDataPosition ) );
 
 // _l_transport_backed_ctxt:
 // This is the context that is contained in an _l_token allowing the also contained _l_value to exist on its own entirely.
