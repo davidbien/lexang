@@ -46,7 +46,7 @@ public:
   }
 };
 // By default we will always add the __FILE__, __LINE__ even in retail for debugging purposes.
-#define THROWNOTOKENFOUND(MESG...) ExceptionUsage<_l_no_token_found_exception>::ThrowFileLineFunc(__FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG)
+#define THROWNOTOKENFOUND(MESG, ...) ExceptionUsage<_l_no_token_found_exception>::ThrowFileLineFunc(__FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG, ##__VA_ARGS__)
 
 template <class t_TyChar>
 struct _l_compare_input_with_range
@@ -229,7 +229,7 @@ public:
     }
     return true;
   }
-#define LXOBJ_DOTRACE(MESG...) _DoTrace( __FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG)
+#define LXOBJ_DOTRACE(MESG, ...) _DoTrace( __FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG, ##__VA_ARGS__)
   void _DoTrace(const char *_szFile, unsigned int _nLine, const char *_szFunction, const char *_szMesg, ...)
   {
     std::string strCur;
@@ -294,7 +294,7 @@ public:
             if (((aiLA < 0) &&
                   (*(m_pspLookaheadAccept->PBeginValidLookahead() +
                     aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
-                  (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
+                  (1ull << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
                 (aiLA == aiCur))
             {
               // REVIEW: May be no need for {m_pspLookahead}.
@@ -339,7 +339,7 @@ public:
             if (((aiLA < 0) &&
                   (*(m_pspLookaheadAccept->PBeginValidLookahead() +
                     aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
-                  (1 << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
+                  (1ull << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
                 (aiLA == aiCur))
             {
               // REVIEW: May be no need for {m_pspLookahead}.

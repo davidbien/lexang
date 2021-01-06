@@ -19,13 +19,18 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-template< class t_TyChar, size_t s_knValsSegSize >
+template< class t_TyChar, size_t t_knValsSegSize >
 class _l_value
 {
   typedef _l_value _TyThis;
 public:
   typedef _l_data< t_TyChar > _TyData;
-  static constexpr size_t s_knbySegArrayInit = s_knValsSegSize * sizeof(_TyThis);
+#ifdef _MSC_VER
+   // vc has a problem with asking for the size of an incomplete type here.
+  static const size_t s_knbySegArrayInit;
+#else // gcc and clang like it fine.
+  static constexpr size_t s_knbySegArrayInit = t_knValsSegSize * sizeof(_TyThis);
+#endif
   typedef SegArray< _TyThis, std::true_type > _TySegArrayValues;
   typedef typename _TySegArrayValues::_tySizeType _tySizeType;
   typedef _tySizeType size_type;
@@ -672,5 +677,11 @@ protected:
   }
   _TyVariant m_var;
 };
+
+#ifdef WIN32
+template< class t_TyChar, size_t t_knValsSegSize >
+inline const size_t
+_l_value< t_TyChar, t_knValsSegSize >::s_knbySegArrayInit = t_knValsSegSize * sizeof(_l_value);
+#endif //WIN32
 
 __LEXOBJ_END_NAMESPACE
