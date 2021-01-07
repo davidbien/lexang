@@ -21,22 +21,6 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-#if 0 // trying to rid these.
-// _l_data_range_pod: A simple token range in a token stream.
-// We want this to be a POD struct so we can use it in a anonymous union.
-struct _l_data_range_pod
-{
-  vtyDataPosition m_posBegin;
-  vtyDataPosition m_posEnd;
-};
-// _l_data_range_pod: A simple token range in a token stream.
-// We want this to be a POD struct so we can use it in a anonymous union.
-struct _l_data_typed_range_pod : public _l_data_range_pod
-{
-  vtyDataType m_nType;
-};
-#endif //0
-
 // l_token_range: Non-pod version.
 class _l_data_range
 {
@@ -141,7 +125,7 @@ public:
 };
 
 // by default we will keep the segment size small but large enough that most strings will fit in it.
-template < class t_TyChar, size_t s_knbySegSize = 512 >
+template < class t_TyChar, size_t s_knbySegSize >
 class _l_data
 {
   typedef _l_data _TyThis;
@@ -251,6 +235,10 @@ public:
   bool FContainsSingleDataRange() const
   {
     return m_u64Marker == 0xffffffffffffffff;
+  }
+  bool FContainsSingleDataRange(vtyDataType _nType) const
+  {
+    return FContainsSingleDataRange() && ( _nType == m_dtrData.type() );
   }
   size_t NPositions() const
   {

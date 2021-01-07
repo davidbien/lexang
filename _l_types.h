@@ -84,6 +84,12 @@ struct _l_state;
 template <class t_TyChar>
 struct _l_transition;
 
+// _l_data.h:
+class _l_data_range;
+class _l_data_typed_range;
+template < class t_TyChar, size_t s_knbySegSize = 512 >
+class _l_data;
+
 // _l_buf.h:
 template < class t_TyChar > class _l_fixed_buf;
 template < class t_TyChar > class _l_backing_buf;
