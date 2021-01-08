@@ -34,6 +34,7 @@ class _l_transport_backed_ctxt
 {
   typedef _l_transport_backed_ctxt _TyThis;
 public:
+  typedef t_TyChar _TyChar;
   typedef _l_backing_buf< t_TyChar > _TyBuffer;
   typedef _l_data< t_TyChar > _TyData;
 
@@ -57,6 +58,13 @@ public:
   const _TyBuffer & GetTokenBuffer() const
   {
     return m_bufTokenData;
+  }
+  template < class t_TyStrView >
+  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr )
+    requires( is_same_v< typename t_TyStrView::value_type, _TyChar > )
+  {
+    _AssertValidRange( _rdtr.begin(), _rdtr.end() );
+    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - _rdtr.PosTokenStart(), _rdtr.end() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -293,6 +301,13 @@ public:
   _TyBuffer const & GetTokenBuffer() const
   {
     return m_bufTokenData;
+  }
+  template < class t_TyStrView >
+  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr )
+    requires( is_same_v< typename t_TyStrView::value_type, _TyChar > )
+  {
+    _AssertValidRange( _rdtr.begin(), _rdtr.end() );
+    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - _rdtr.PosTokenStart(), _rdtr.end() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {

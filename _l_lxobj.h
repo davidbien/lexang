@@ -382,7 +382,9 @@ public:
   }
 
   // Just return a single token. Return false if one isn't found.
-  bool FGetToken( unique_ptr< _TyToken > & _rpuToken, _TyStateProto *_pspStart = nullptr )
+  // Caller can append a set of token ids to ignore while parsing. This will short-circuit things - not creating a token from the trigger data - just clearing the trigger data.
+  // For instance an XML parser may be in "ignore comments and processing instructions" mode and then we would just skip those after recognizing them and move on to the next token if any.
+  bool FGetToken( unique_ptr< _TyToken > & _rpuToken, vtyTokenIdent * _ptidIgnoreBegin = nullptr, vtyTokenIdent * _ptidIgnoreEnd = nullptr, _TyStateProto *_pspStart = nullptr )
   {
     {//B: We should be clear at the beginning of GetToken.
       vtyTokenIdent tidNonNull;
