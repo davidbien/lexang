@@ -34,36 +34,50 @@ public:
   typedef SegArray< _TyThis, std::true_type > _TySegArrayValues;
   typedef typename _TySegArrayValues::_tySizeType _tySizeType;
   typedef _tySizeType size_type;
-  // Use monostate to allow an "empty" value here.
   // These are the possible values of a action object.
   // We add all three types of STL strings to the variant - at least under linux - char, char16_t and char32_t.
   // Specifying them in this manner should allow for no code changes under Windows even though wchar_t is char16_t under Windows.
-  typedef basic_string< char > _TyStrChar8;
+  typedef basic_string< char > _TyStrChar;
+  typedef basic_string< char8_t > _TyStrChar8;
   typedef basic_string< char16_t > _TyStrChar16;
+  typedef basic_string< wchar_t > _TyStrWChar;
   typedef basic_string< char32_t > _TyStrChar32;
   template < class t__TyChar >
   using get_string_type = basic_string< t__TyChar >;
+  template <>
+  using get_string_type<Char_t> = basic_string<char>;
+#ifdef BIEN_WCHAR_16BIT
+  template <>
+  using get_string_type<wchar_t> = basic_string<char16_t>;
+#else //BIEN_WCHAR_32BIT
+  template <>
+  using get_string_type<wchar_t> = basic_string<char32_t>;
+#endif //BIEN_WCHAR_32BIT
 
   // Also allow basic_string_views of every type since that can be used until character translation is needed.
-  typedef basic_string_view< char > _TyStrViewChar8;
+  typedef basic_string_view< char > _TyStrViewChar;
+  typedef basic_string_view< char8_t > _TyStrViewChar8;
   typedef basic_string_view< char16_t > _TyStrViewChar16;
+  typedef basic_string_view< wchar_t > _TyStrViewWChar;
   typedef basic_string_view< char32_t > _TyStrViewChar32;
   template < class t__TyChar >
   using get_string_view_type = basic_string_view< t__TyChar >;
-
-  // Also need views into segmented arrays which may not be contiguous memory - i.e. a given view may span chunk boundary(s).
-  // Want to avoid translating the string until the reader asks for it to be translated - or even giving it a contiguous chunk of memory.
-  typedef SegArrayView< char > _TySegArrayViewChar8;
-  typedef SegArrayView< char16_t > _TySegArrayViewChar16;
-  typedef SegArrayView< char32_t > _TySegArrayViewChar32;
-  template < class t__TyChar >
-  using get_SegArrayView_type = SegArrayView< t__TyChar >;
+  template <>
+  using get_string_view_type<Char_t> = basic_string_view<char>;
+#ifdef BIEN_WCHAR_16BIT
+  template <>
+  using get_string_view_type<wchar_t> = basic_string_view<char16_t>;
+#else //BIEN_WCHAR_32BIT
+  template <>
+  using get_string_view_type<wchar_t> = basic_string_view<char32_t>;
+#endif //BIEN_WCHAR_32BIT
 
   // Our big old variant.
+  // Use monostate to allow an "empty" value here.
   typedef variant<  monostate, bool, vtyDataPosition, _TyData, 
-                    _TyStrChar8, _TyStrViewChar8, _TySegArrayViewChar8, 
-                    _TyStrChar16, _TyStrViewChar16, _TySegArrayViewChar16,
-                    _TyStrChar32, _TyStrViewChar32, _TySegArrayViewChar32,
+                    _TyStrChar, _TyStrViewChar,
+                    _TyStrChar16, _TyStrViewChar16,
+                    _TyStrChar32, _TyStrViewChar32,
                     _TySegArrayValues > _TyVariant;
 
   _l_value() = default;
@@ -150,7 +164,46 @@ public:
     else
       return m_var.template emplace<_TyRemoveRef>(std::move(_rrv));
   }
-
+  // Provide converting SetVal's for the same-sized character types.
+  _TyStrChar & SetVal( _TyStrChar8 const & _r )
+  {
+    _TyStrChar str( (const char*)&_r[0], _r.length() );
+    return SetVal( std::move( str ) );
+  }
+#ifdef BIEN_WCHAR_16BIT
+  _TyStrChar16 & 
+#else //BIEN_WCHAR_32BIT
+  _TyStrChar32 & 
+#endif //BIEN_WCHAR_32BIT
+  SetVal( _TyStrWChar const & _r )
+  {
+#ifdef BIEN_WCHAR_16BIT
+    _TyStrChar16 str( (const char16_t*)&_r[0], _r.length() );
+#else //BIEN_WCHAR_32BIT
+    _TyStrChar32 str( (const char32_t*)&_r[0], _r.length() );
+#endif
+    return SetVal( std::move( str ) );
+  }
+  _TyStrViewChar & SetVal( _TyStrViewChar8 const & _r )
+  {
+    _TyStrViewChar sv( (const char*)&_r[0], _r.length() );
+    return SetVal( std::move( sv ) );
+  }
+#ifdef BIEN_WCHAR_16BIT
+  _TyStrViewChar16 & 
+#else //BIEN_WCHAR_32BIT
+  _TyStrViewChar32 & 
+#endif //BIEN_WCHAR_32BIT
+  SetVal( _TyViewStrWChar const & _r )
+  {
+#ifdef BIEN_WCHAR_16BIT
+    _TyStrViewChar16 sv( (const char16_t*)&_r[0], _r.length() );
+#else //BIEN_WCHAR_32BIT
+    _TyStrViewChar32 sv( (const char32_t*)&_r[0], _r.length() );
+#endif
+    return SetVal( std::move( sv ) );
+  }
+  
   // This ensures we have an array of _l_values within and then sets the size to the passed size.
   void SetSize( size_type _stNEls )
   {
@@ -206,17 +259,13 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rtok.GetStringView( _rsv, *this );
       },
-      [this,&_rsv](_TyStrChar8 const & _rstr)
+      [this,&_rsv](_TyStrChar const & _rstr)
       {
         _GetStringView( _rsv, _rstr );
       },
-      [this,&_rsv](_TyStrViewChar8 const & _rsv8)
+      [this,&_rsv](_TyStrViewChar const & _rsv8)
       {
         _GetStringView( _rsv, _rsv8 );
-      },
-      [this,&_rsv](_TySegArrayViewChar8 const & _rsav)
-      {
-        _GetStringView( _rsv, _rsav );
       },
       [this,&_rsv](_TyStrChar16 const & _rstr)
       {
@@ -226,10 +275,6 @@ public:
       {
         _GetStringView( _rsv, _rsv16 );
       },
-      [this,&_rsv](_TySegArrayViewChar16 const & _rsav)
-      {
-        _GetStringView( _rsv, _rsav );
-      },
       [this,&_rsv](_TyStrChar32 const & _rstr)
       {
         _GetStringView( _rsv, _rstr );
@@ -237,10 +282,6 @@ public:
       [this,&_rsv](_TyStrViewChar32 const & _rsv32)
       {
         _GetStringView( _rsv, _rsv32 );
-      },
-      [this,&_rsv](_TySegArrayViewChar32 const & _rsav)
-      {
-        _GetStringView( _rsv, _rsav );
       },
       [](_TySegArrayValues &)
       {
@@ -252,36 +293,20 @@ protected:
   // Non-converting version for source strings and stringviews:
   template < class t_TyStrViewDest, class t_TySource >
   static void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
-    requires ( is_same_v< typename t_TyStrViewDest::value_type, typename t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
+    requires ( sizeof( typename t_TyStrViewDest::value_type) == sizeof( typename t_TySource::value_type ) )
   {
-    _rsvDest = t_TyStrViewDest( &_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type)*&_rsrc[0], _rsrc.length() );
   }
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStrViewDest, class t_TySource >
   void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
-    requires ( !is_same_v< typename t_TyStrViewDest::value_type, typename t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
+    requires ( sizeof( typename t_TyStrViewDest::value_type) != sizeof( typename t_TySource::value_type ) )
   {
     get_string_type< typename t_TyStrViewDest::value_type > strConverted;
     ConvertString( strConverted, _rsrc );
     m_var.template emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( strConverted ) );
     get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
     _rsvDest = t_TyStrViewDest( &rstrInVar[0], rstrInVar.length() );
-  }
-  // SegArrayView will do the conversion efficiently using alloca() so we just need one version of this method:
-  template < class t_TyStrViewDest, class t_TySource >
-  void _GetStringView( t_TyStrViewDest & _rsvDest, const t_TySource & _rsrc )
-    // requires are satisfied by being every scenario except for the above.
-  {
-    get_string_type< typename t_TyStrViewDest::value_type > str;
-    bool fGotView = _rsrc.FGetStringViewOrString( _rsvDest, str );
-    if ( !fGotView )
-    {
-      m_var.template emplace< get_string_type< typename t_TyStrViewDest::value_type > >( std::move( str ) );
-      get_string_type< typename t_TyStrViewDest::value_type > & rstrInVar = std::get< get_string_type< typename t_TyStrViewDest::value_type > >( m_var );
-      _rsvDest = t_TyStrViewDest( &rstrInVar[0], rstrInVar.length() );
-    }
   }
 public:
 
@@ -310,17 +335,13 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
         _rtok.GetString( _rstr, *this );
       },
-      [&_rstr](_TyStrChar8 const & _rstr8)
+      [&_rstr](_TyStrChar const & _rstr8)
       {
         _GetString( _rstr, _rstr8 );
       },
-      [&_rstr](_TyStrViewChar8 const & _rsv8)
+      [&_rstr](_TyStrViewChar const & _rsv8)
       {
         _GetString( _rstr, _rsv8 );
-      },
-      [&_rstr](_TySegArrayViewChar8 const & _rsav)
-      {
-        _GetString( _rstr, _rsav );
       },
       [&_rstr](_TyStrChar16 const & _rstr16)
       {
@@ -330,10 +351,6 @@ public:
       {
         _GetString( _rstr, _rsv16 );
       },
-      [&_rstr](_TySegArrayViewChar16 const & _rsav)
-      {
-        _GetString( _rstr, _rsav );
-      },
       [&_rstr](_TyStrChar32 const & _rstr32)
       {
         _GetString( _rstr, _rstr32 );
@@ -341,10 +358,6 @@ public:
       [&_rstr](_TyStrViewChar32 const & _rsv32)
       {
         _GetString( _rstr, _rsv32 );
-      },
-      [&_rstr](_TySegArrayViewChar32 const & _rsav)
-      {
-        _GetString( _rstr, _rsav );
       },
       [](_TySegArrayValues const &)
       {
@@ -357,25 +370,16 @@ protected:
   // Non-converting version for source strings and stringviews:
   template < class t_TyStringDest, class t_TySource >
   static void _GetString( t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
+    requires ( sizeof( typename t_TyStringDest::value_type ) == sizeof( typename t_TySource::value_type ) )
   {
-    _rstrDest.assign( &_rsrc[0], _rsrc.length() );
+    _rstrDest.assign( (typename t_TyStringDest::value_type*)&_rsrc[0], _rsrc.length() );
   }
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStringDest, class t_TySource >
   static void _GetString( t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( !is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
+    requires ( sizeof( typename t_TyStringDest::value_type ) != sizeof( typename t_TySource::value_type ) )
   {
     ConvertString( _rstrDest, _rsrc ); // that was easy.
-  }
-  // SegArrayView will do the conversion efficiently using alloca() so we just need one version of this method:
-  template < class t_TyStringDest, class t_TySource >
-  static void _GetString( t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    // requires are satisfied by being every scenario except for the above.
-  {
-    _rsrc.GetString( _rstrDest );
   }
 public:
 
@@ -406,17 +410,13 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
         return _rtok.FGetStringViewOrString( _rsv, _rstr, *this );
       },
-      [&_rsv,&_rstr](_TyStrChar8 const & _rstr8)
+      [&_rsv,&_rstr](_TyStrChar const & _rstr8)
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rstr8 );
       },
-      [&_rsv,&_rstr](_TyStrViewChar8 const & _rsv8)
+      [&_rsv,&_rstr](_TyStrViewChar const & _rsv8)
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rsv8 );
-      },
-      [&_rsv,&_rstr](_TySegArrayViewChar8 const & _rsav)
-      {
-        return _FGetStringViewOrString( _rsv, _rstr, _rsav );
       },
       [&_rsv,&_rstr](_TyStrChar16 const & _rstr16)
       {
@@ -426,10 +426,6 @@ public:
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rsv16 );
       },
-      [&_rsv,&_rstr](_TySegArrayViewChar16 const & _rsav)
-      {
-        return _FGetStringViewOrString( _rsv, _rstr, _rsav );
-      },
       [&_rsv,&_rstr](_TyStrChar32 const & _rstr32)
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rstr32 );
@@ -437,10 +433,6 @@ public:
       [&_rsv,&_rstr](_TyStrViewChar32 const & _rsv32)
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rsv32 );
-      },
-      [&_rsv,&_rstr](_TySegArrayViewChar32 const & _rsav)
-      {
-        return _FGetStringViewOrString( _rsv, _rstr, _rsav );
       },
       [](_TySegArrayValues const &)
       {
@@ -452,33 +444,24 @@ protected:
   // Non-converting version for source strings and stringviews:
   template < class t_TyStringViewDest, class t_TyStringDest, class t_TySource >
   static bool _FGetStringViewOrString( t_TyStringViewDest & _rsvDest, t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
+    requires ( sizeof( typename t_TyStringDest::value_type ) == sizeof( typename t_TySource::value_type ) )
   {
+    static_assert( sizeof( typename t_TyStringViewDest::value_type ) == sizeof( typename t_TyStringDest::value_type ) );
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
-    _rsvDest = t_TyStrViewDest( &_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStrViewDest( (const t_TyStringViewDest::value_type*)&_rsrc[0], _rsrc.length() );
     return true;
   }
   // Converting version for string or view source - we must convert the existing value into the passed string.
   template < class t_TyStringViewDest, class t_TyStringDest, class t_TySource >
   static bool _FGetStringViewOrString( t_TyStringViewDest & _rsvDest, t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    requires ( !is_same_v< typename t_TyStringDest::value_type, typename t_TySource::value_type > 
-      && ( is_same_v< t_TySource, get_string_view_type< typename t_TySource::value_type > > || is_same_v< t_TySource, get_string_type< typename t_TySource::value_type > > ) )
+    requires ( sizeof( typename t_TyStringDest::value_type ) != sizeof( typename t_TySource::value_type ) )
   {
+    static_assert( sizeof( typename t_TyStringViewDest::value_type ) == sizeof( typename t_TyStringDest::value_type ) );
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
     ConvertString( _rstrDest, _rsrc ); // that was easy.
     return false;
-  }
-  // SegArrayView will do the conversion efficiently using alloca() so we just need one version of this method:
-  template < class t_TyStringViewDest, class t_TyStringDest, class t_TySource >
-  static bool _FGetStringViewOrString( t_TyStringViewDest & _rsvDest, t_TyStringDest & _rstrDest, const t_TySource & _rsrc )
-    // requires are satisfied by being every scenario except for the above.
-  {
-    Assert( _rsvDest.empty() );
-    Assert( _rstrDest.empty() );
-    return _rsrc.FGetStringViewOrString( _rsvDest, _rstrDest );
   }
 public:
 
@@ -505,23 +488,13 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rdt.ToJsoValue( _rjv );
       },
-      [&_rjv](_TyStrChar8 const & _rstr)
+      [&_rjv](_TyStrChar const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
       },
-      [&_rjv](_TyStrViewChar8 const & _rstr)
+      [&_rjv](_TyStrViewChar const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
-      },
-      [&_rjv](_TySegArrayViewChar8 const & _rsav)
-      {
-        _TyStrChar8 str;
-        _TyStrViewChar8 sv;
-        bool fSV = _rsav.FGetStringViewOrString( sv, str );
-        if ( fSV )
-          _rjv.SetStringValue( sv );
-        else
-          _rjv.SetStringValue( str );
       },
       [&_rjv](_TyStrChar16 const & _rstr)
       {
@@ -531,16 +504,6 @@ public:
       {
         _rjv.SetStringValue( _rstr );
       },
-      [&_rjv](_TySegArrayViewChar16 const & _rsav)
-      {
-        _TyStrChar16 str;
-        _TyStrViewChar16 sv;
-        bool fSV = _rsav.FGetStringViewOrString( sv, str );
-        if ( fSV )
-          _rjv.SetStringValue( sv );
-        else
-          _rjv.SetStringValue( str );
-      },
       [&_rjv](_TyStrChar32 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
@@ -548,16 +511,6 @@ public:
       [&_rjv](_TyStrViewChar32 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
-      },
-      [&_rjv](_TySegArrayViewChar32 const & _rsav)
-      {
-        _TyStrChar32 str;
-        _TyStrViewChar32 sv;
-        bool fSV = _rsav.FGetStringViewOrString( sv, str );
-        if ( fSV )
-          _rjv.SetStringValue( sv );
-        else
-          _rjv.SetStringValue( str );
       },
       [&_rjv](_TySegArrayValues const & _rrg)
       {
@@ -584,15 +537,11 @@ public:
         basic_string_view< t_TyCharOut > sv;
         _rtok.GetStringView( sv, *this );
       },
-      [this](_TyStrChar8 const & _rstr)
+      [this](_TyStrChar const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrViewChar8 const & _rstr)
-      {
-        _ConvertStringValue< t_TyCharOut >( _rstr );
-      },
-      [this](_TySegArrayViewChar8 const & _rstr)
+      [this](_TyStrViewChar const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
@@ -604,19 +553,11 @@ public:
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TySegArrayViewChar16 const & _rstr)
-      {
-        _ConvertStringValue< t_TyCharOut >( _rstr );
-      },
       [this](_TyStrChar32 const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
       [this](_TyStrViewChar32 const & _rstr)
-      {
-        _ConvertStringValue< t_TyCharOut >( _rstr );
-      },
-      [this](_TySegArrayViewChar32 const & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
@@ -632,12 +573,12 @@ public:
 protected:
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
   static void _ConvertStringValue( const get_string_type< t_TyCharConvertFrom > & _rstr ) 
-    requires ( is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+    requires ( sizeof( t_TyCharConvertFrom ) == sizeof( t_TyCharConvertTo ) )
   { // no-op.
   }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
   void _ConvertStringValue( const get_string_type< t_TyCharConvertFrom > & _rstr ) 
-    requires ( !is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+    requires ( sizeof( t_TyCharConvertFrom ) != sizeof( t_TyCharConvertTo ) )
   {
     get_string_type< t_TyCharConvertTo > strConverted;
     ConvertString( strConverted, _rstr );
@@ -645,34 +586,15 @@ protected:
   }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
   static void _ConvertStringValue( const get_string_view_type< t_TyCharConvertFrom > & _rstr ) 
-    requires ( is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+    requires ( sizeof( t_TyCharConvertFrom ) == sizeof( t_TyCharConvertTo ) )
   { // no-op.
   }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
   void _ConvertStringValue( const get_string_view_type< t_TyCharConvertFrom > & _rstr ) 
-    requires ( !is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
+    requires ( sizeof( t_TyCharConvertFrom ) != sizeof( t_TyCharConvertTo ) )
   {
     get_string_type< t_TyCharConvertTo > strConverted;
     ConvertString( strConverted, _rstr );
-    m_var.template emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
-  }
-  template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
-  static void _ConvertStringValue( const get_SegArrayView_type< t_TyCharConvertFrom > & _rsav ) 
-    requires ( is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
-  { // no-op.
-  }
-  template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
-  void _ConvertStringValue( const get_SegArrayView_type< t_TyCharConvertFrom > & _rsav ) 
-    requires ( !is_same_v< t_TyCharConvertFrom, t_TyCharConvertTo > )
-  {
-    get_string_view_type< t_TyCharConvertFrom > sv;
-    get_string_type< t_TyCharConvertFrom > str;
-    bool fSV = _rsav.FGetStringViewOrString( sv, str );
-    get_string_type< t_TyCharConvertTo > strConverted;
-    if ( fSV )
-      ConvertString( strConverted, sv );
-    else
-      ConvertString( strConverted, str );
     m_var.template emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
   }
   _TyVariant m_var;

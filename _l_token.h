@@ -81,7 +81,7 @@ public:
   {
     return m_paobCurToken;
   }
-  vtyTokenIdent TokenGet() const
+  vtyTokenIdent GetTokenId() const
   {
     return m_paobCurToken->VGetTokenId();
   }

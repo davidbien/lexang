@@ -416,18 +416,34 @@ public:
         if ( (this->*pmfnAccept)() )
         {
           VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
-          unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
-          // Delegate to the stream to obtain the token as it needs to get the context from the transport.
           _TyAxnObjBase * paobCurToken = PGetToken();
           SetToken(nullptr);
-          GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
-          // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
-          vtyTokenIdent tidNonNull;
-          VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
-            "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
-            "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
-          _rpuToken.swap( upToken );
-          return true;
+          // Check if this is one of the tokens we are to ignore:
+          if ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) )
+          {
+            unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
+            // Delegate to the stream to obtain the token as it needs to get the context from the transport.
+            GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+            // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
+            vtyTokenIdent tidNonNull;
+            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+              "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+              "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+            _rpuToken.swap( upToken );
+            return true;
+          }
+          else
+          {
+            // Ignoring this token:
+            LXOBJ_DOTRACE("Ignoring token:[%u]", paobCurToken->VGetTokenId() );
+            // We only need clear this token - the rest of the action objects in the state machine should be clear (must be clear):
+            paobCurToken->Clear();
+            vtyTokenIdent tidNonNull;
+            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+              "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+              "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found.
+          }
         }
         else
         {

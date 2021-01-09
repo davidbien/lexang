@@ -61,10 +61,10 @@ public:
   }
   template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr )
-    requires( is_same_v< typename t_TyStrView::value_type, _TyChar > )
+    requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
     _AssertValidRange( _rdtr.begin(), _rdtr.end() );
-    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - _rdtr.PosTokenStart(), _rdtr.end() );
+    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - _rdtr.PosTokenStart(), _rdtr.end() - _rdtr.PosTokenStart() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -304,10 +304,10 @@ public:
   }
   template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr )
-    requires( is_same_v< typename t_TyStrView::value_type, _TyChar > )
+    requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
     _AssertValidRange( _rdtr.begin(), _rdtr.end() );
-    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - _rdtr.PosTokenStart(), _rdtr.end() );
+    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - _rdtr.PosTokenStart(), _rdtr.end() - _rdtr.PosTokenStart() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -433,13 +433,13 @@ public:
   }
   template < class t_TyString >
   void GetCurTokenString( t_TyString & _rstr ) const
-    requires( is_same_v< typename t_TyString::value_type, _TyChar > ) // non-converting.
+    requires( sizeof( typename t_TyString::value_type ) == sizeof( _TyChar ) )
   {
-    _rstr.assign( m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
+    _rstr.assign( (typename t_TyString::value_type const *)m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
   }
   template < class t_TyString >
   void GetCurTokenString( t_TyString & _rstr ) const
-    requires( !is_same_v< typename t_TyString::value_type, _TyChar > ) // non-converting.
+    requires( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
   {
     ConvertString( _rstr, m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
   }

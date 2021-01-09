@@ -66,6 +66,7 @@ public:
   }
   template < class t_TyStringView >
   void GetStringView( t_TyStringView & _rsvDest, vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const
+    requires( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) )
   {
     AssertValid();
     Assert( _rsvDest.empty() );
@@ -73,7 +74,7 @@ public:
     if ( _posEnd == _posBegin )
       return; // empty.
     Assert( _posEnd <= second );
-    _rsvDest = t_TyStringView( first + _posBegin, _posEnd - _posBegin );
+    _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type*)first + _posBegin, _posEnd - _posBegin );
   }
 protected:
   using _TyBase::first;
@@ -158,6 +159,7 @@ public:
   }
   template < class t_TyStringView >
   void GetStringView( t_TyStringView & _rsvDest, vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const
+    requires( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) )
   {
     AssertValid();
     Assert( _rsvDest.empty() );
@@ -165,7 +167,7 @@ public:
     if ( _posEnd == _posBegin )
       return; // empty.
     Assert( _posEnd <= second );
-    _rsvDest = t_TyStringView( first + _posBegin, _posEnd - _posBegin );
+    _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type *)first + _posBegin, _posEnd - _posBegin );
   }
 };
 
