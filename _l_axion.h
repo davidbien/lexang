@@ -31,8 +31,6 @@ private:
 public:
 	static const bool s_fInLexGen = t_fInLexGen;
 	typedef t_TyChar	_TyChar;
-	typedef __LEXOBJ_NAMESPACE _l_value< t_TyChar > _TyValue;
-	typedef _l_action_object_base _TyActionObjectBase;
 
 	// We have a static set of trigger action disambiguating objects.
 	typedef pair< _type_info_wrap, _type_info_wrap >		_TyPairTI;
@@ -143,13 +141,51 @@ struct _l_action_object_base< t_TyChar, false >
 {
 	typedef _l_action_object_base _TyThis;
 public:
+	typedef t_TyChar _TyChar;
 	static const bool s_fInLexGen = false;
-	typedef __LEXOBJ_NAMESPACE _l_value< t_TyChar > _TyValue;
-	typedef _l_action_object_base _TyActionObjectBase;
-
 	~_l_action_object_base() = default;
 	_l_action_object_base() = default;
-	_l_action_object_base( _TyActionObjectBase * _paobNext )
+	_l_action_object_base( _l_action_object_base const & ) = default;
+	// Return if the action object is in the null state.
+	virtual bool VFIsNull() const = 0;
+	// Return the ID for this action object.
+	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
+	// This will return the set of dependent triggers for this action object, recursively.
+	virtual void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const = 0;
+	// Clear any data that is residing within this object.
+	virtual void Clear() = 0;
+};
+
+// _l_action_object_value_base:
+// Lexical generator version:
+template < class t_TyTraits, bool t_fInLexGen >
+struct _l_action_object_value_base : public _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen >
+{
+	typedef _l_action_object_value_base _TyThis;
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
+public:
+	typedef _l_action_object_value_base _TyActionObjectBase;
+	typedef __LEXOBJ_NAMESPACE _l_value< _TyTraits > _TyValue;
+	~_l_action_object_value_base() = default;
+	_l_action_object_value_base() = default;
+	_l_action_object_value_base( _l_action_object_value_base const & ) = default;
+};
+// Incorporates the _l_value< t_TyTraits > type so that a virtual methods may be called with it.
+// Lexical analyzer version.
+template < class t_TyTraits >
+struct _l_action_object_value_base< t_TyTraits, false > : public _l_action_object_base< typename t_TyTraits::_TyChar, false >
+{
+	typedef _l_action_object_value_base _TyThis;
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, false > _TyBase;
+public:
+	typedef t_TyTraits _TyTraits;
+	typedef __LEXOBJ_NAMESPACE _l_value< _TyTraits > _TyValue;
+	typedef _TyThis _TyActionObjectBase;
+
+	~_l_action_object_value_base() = default;
+	_l_action_object_value_base() = default;
+	_l_action_object_value_base( _l_action_object_value_base const & ) = default;
+	_l_action_object_value_base( _TyActionObjectBase * _paobNext )
 		: m_paobNext( _paobNext )
 	{
 	}
@@ -157,21 +193,14 @@ public:
 	{
 		return m_paobNext;
 	}
-	// Return if the action object is in the null state.
-	virtual bool VFIsNull() const = 0;
-	// Return the ID for this action object.
-	virtual constexpr vtyTokenIdent VGetTokenId() const = 0;
-
-	// This will return the set of dependent triggers for this action object, recursively.
-	virtual void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const = 0;
-
-	// Clear any data that is residing within this object.
-	virtual void Clear() = 0;
-
+	using _TyBase::VFIsNull;
+	using _TyBase::VGetTokenId;
+	using _TyBase::VGetDependentTriggerSet;
+	using _TyBase::Clear;
 	// Get the set of data (the "value") from the object in a generic form. Leave the object empty of data.
 	virtual void GetAndClearValue( _TyValue & _rv ) = 0;
 protected:
-	_l_action_object_base * m_paobNext{nullptr}; // The previous action object in the list.
+	_TyThis * m_paobNext{nullptr}; // The previous action object in the list.
 };
 
 // Some default action objects - useful for debugging and testing:
@@ -250,13 +279,13 @@ public:
 };
 
 // Print the token seen - useful for debugging.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_action_print
-	: public _l_action_object_base< t_TyChar, t_fInLexGen >
+	: public _l_action_object_value_base< t_TyTraits, t_fInLexGen >
 {
 private:
 	typedef _l_action_print	_TyThis;
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< t_TyTraits, t_fInLexGen > _TyBase;
 public:
 	using _TyBase::s_fInLexGen;	
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
@@ -288,6 +317,9 @@ public:
 	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
 	{
 		_rbv[s_kiTrigger] = true;
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{ // nothing to do.
 	}
   void RenderActionType(ostream & _ros, const char * _pcCharName) const
   {
@@ -323,15 +355,15 @@ public:
 
 // _l_trigger_noop:
 // This trigger is used by tokens that don't store any data.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_trigger_noop
-	: public _l_action_object_base< t_TyChar, t_fInLexGen >
+	: public _l_action_object_value_base< t_TyTraits, t_fInLexGen >
 {
 private:
 	typedef _l_trigger_noop	_TyThis;
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< t_TyTraits, t_fInLexGen > _TyBase;
 public:
-	typedef t_TyChar _TyChar;
+	using typename _TyBase::_TyChar;
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
@@ -410,15 +442,15 @@ protected:
 
 // _l_trigger_bool:
 // Trigger that stores a boolean. If the trigger fires then the boolean is true.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_trigger_bool
-	: public _l_action_object_base< t_TyChar, t_fInLexGen >
+	: public _l_action_object_value_base< t_TyTraits, t_fInLexGen >
 {
 private:
 	typedef _l_trigger_bool	_TyThis;
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< t_TyTraits, t_fInLexGen > _TyBase;
 public:
-	typedef t_TyChar _TyChar;
+	using typename _TyBase::_TyChar;
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
@@ -501,15 +533,15 @@ protected:
 };
 
 // Trigger to record a position in a stream.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen >
 struct _l_trigger_position
-	: public _l_action_object_base< t_TyChar, t_fInLexGen >
+	: public _l_action_object_value_base< t_TyTraits, t_fInLexGen >
 {
 private:
 	typedef _l_trigger_position	_TyThis;
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< t_TyTraits, t_fInLexGen > _TyBase;
 public:
-	typedef t_TyChar _TyChar;
+	using typename _TyBase::_TyChar;
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
 	using _TyBase::s_fInLexGen;	
@@ -600,15 +632,15 @@ protected:
 
 // Trigger to record an ending position in a stream.
 // This is only used as a base class - and really it could be gotten rid of.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
 struct _l_trigger_position_end
-	: public _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLexGen >
+	: public _l_trigger_position< t_TyTraits, t_kiTrigger, t_fInLexGen >
 {
 private:
 	typedef _l_trigger_position_end	_TyThis;
-	typedef _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLexGen > _TyBase;
+	typedef _l_trigger_position< t_TyTraits, t_kiTrigger, t_fInLexGen > _TyBase;
 public:
-	typedef t_TyChar _TyChar;
+	using _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_fInLexGen;	
@@ -675,21 +707,21 @@ public:
 // This is a triggered simple set of strings that stores the strings within it.
 // This is not a resultant token but may be part of a resultant token.
 // Conceptually this is a single string - i.e. it is translated (or may be and is intended to be) as a single string that has multiple segments with potentially different m_nType values.
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
 struct _l_trigger_string
-	: public _l_trigger_position_end< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
+	: public _l_trigger_position_end< t_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
 {
 private:
 	typedef _l_trigger_string	_TyThis;
-	typedef _l_trigger_position_end< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
+	typedef _l_trigger_position_end< t_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
-	typedef t_TyChar _TyChar;
+	using _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
-	typedef __LEXOBJ_NAMESPACE _l_data< t_TyChar > _TyData;
-	typedef _l_trigger_position< t_TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
+	typedef __LEXOBJ_NAMESPACE _l_data< _TyChar > _TyData;
+	typedef _l_trigger_position< _TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	using typename _TyBase::_TyValue;
 	using typename _TyBase::_TyActionObjectBase;
 	
@@ -791,21 +823,22 @@ protected:
 // The ending position of the data is contained in this object.
 template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
 class _l_trigger_string_typed_range
-	: public _l_trigger_position_end< typename t_TyActionStoreData::_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
+	: public _l_trigger_position_end< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
 {
 public:
-	typedef typename t_TyActionStoreData::_TyChar _TyChar;
+	typedef typename t_TyActionStoreData::_TyTraits _TyTraits;
 private:
 	typedef _l_trigger_string_typed_range _TyThis;
-	typedef _l_trigger_position_end< _TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
+	typedef _l_trigger_position_end< _TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
 	static constexpr vtyDataType s_kdtType = t_kdtType;
+	using _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
-	typedef _l_trigger_position< _TyChar, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
+	typedef _l_trigger_position< _TyTraits, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	typedef t_TyActionStoreData _tyActionStoreData;
 	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
 	using typename _TyBase::_TyActionObjectBase;
@@ -899,14 +932,15 @@ protected:
 // It only contains the ability to hold a single vector of constituent trigger data.
 // These trigger objects may be aggregate contained _l_action_save_data_single objects.
 template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
-class _l_action_save_data_single : public _l_action_object_base< typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen >
+class _l_action_save_data_single : public _l_action_object_value_base< typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyTraits, t_fInLexGen >
 {
 public:
-	typedef typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyChar _TyChar;
+	typedef typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyTraits _TyTraits;
 private:
 	typedef _l_action_save_data_single _TyThis;
-	typedef _l_action_object_base< _TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< _TyTraits, t_fInLexGen > _TyBase;
 public:
+	using typename _TyBase::_TyChar;	
 	typedef tuple< t_TysTriggers...> _TyTuple;
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
 	static constexpr vtyTokenIdent s_kiToken = t_kiTrigger;
@@ -1045,14 +1079,15 @@ protected:
 // It only contains the ability to hold a single vector of constituent trigger data.
 // These trigger objects may be aggregate contained _l_action_save_data_multiple objects.
 template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
-class _l_action_save_data_multiple : public _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen >
+class _l_action_save_data_multiple : public _l_action_object_value_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyTraits, t_fInLexGen >
 {
 public:
-	typedef typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar _TyChar;
+	typedef typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyTraits _TyTraits;
 private:
 	typedef _l_action_save_data_multiple _TyThis;
-	typedef _l_action_object_base< _TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< _TyTraits, t_fInLexGen > _TyBase;
 public:
+	using typename _TyBase::_TyChar;
 	typedef tuple< t_TysTriggers...> _TyTuple;
 	static const size_t s_kstInitSegArray = 32 * sizeof(_TyTuple);
 	static constexpr vtyTokenIdent s_kiTrigger = t_kiTrigger;
@@ -1202,31 +1237,31 @@ __REGEXP_USING_NAMESPACE
 template < class t_TyActionObject >
 struct __map_to_base_class< _l_action_token< t_TyActionObject > >
 {
-	typedef _l_action_object_base< typename t_TyActionObject::_TyChar, t_TyActionObject::s_fInLexGen >	_TyBase;
+	typedef _l_action_object_base< typename t_TyActionObject::_TyChar, t_TyActionObject::s_fInLexGen > _TyBase;
 };
 
-template < class t_TyChar, int t_kiToken, bool t_fInLexGen >
-struct __map_to_base_class< _l_action_print< t_TyChar, t_kiToken, t_fInLexGen > >
+template < class t_TyTraits, int t_kiToken, bool t_fInLexGen >
+struct __map_to_base_class< _l_action_print< t_TyTraits, t_kiToken, t_fInLexGen > >
 {
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen >	_TyBase;
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 };
 
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen  >
-struct __map_to_base_class< _l_trigger_bool< t_TyChar, t_kiTrigger, t_fInLexGen > >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen  >
+struct __map_to_base_class< _l_trigger_bool< t_TyTraits, t_kiTrigger, t_fInLexGen > >
 {
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 };
 
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen  >
-struct __map_to_base_class< _l_trigger_position< t_TyChar, t_kiTrigger, t_fInLexGen > >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen  >
+struct __map_to_base_class< _l_trigger_position< t_TyTraits, t_kiTrigger, t_fInLexGen > >
 {
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 };
 
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
-struct __map_to_base_class< _l_trigger_string< t_TyChar, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
+struct __map_to_base_class< _l_trigger_string< t_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
 {
-	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 };
 
 template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen  >

@@ -25,17 +25,18 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-template < class t_TyUserContext >
+template < class t_TyTraits >
 class _l_token
 {
   typedef _l_token _TyThis;
 public:
-  typedef typename t_TyUserContext::_TyChar _TyChar;
-  typedef t_TyUserContext _TyUserContext;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyChar _TyChar;
+  typedef typename _TyTraits::_TyUserContext _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
-  typedef _l_value< _TyChar > _TyValue;
+  typedef _l_value< _TyTraits > _TyValue;
   typedef typename _TyValue::size_type size_type;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
 
   _l_token() = delete;
   // We could make this protected, etc, but I don't worry that it will be accidetally called.
@@ -67,7 +68,6 @@ public:
     m_value.swap( _r.m_value );
     std::swap( m_paobCurToken, _r.m_paobCurToken );
   }
-
   _TyValue & GetValue()
   {
     return m_value;
@@ -76,7 +76,6 @@ public:
   {
     return m_value;
   }
-
   const _TyAxnObjBase * PAxnObjGet() const
   {
     return m_paobCurToken;
@@ -93,7 +92,6 @@ public:
   {
     return m_value[_nEl];
   }
-
   template < class t_tyStringView >
   void GetStringView( t_tyStringView & _rsvDest, _TyValue & _rval )
   {
@@ -109,7 +107,6 @@ public:
   {
     m_scx.GetString( _rstrDest, *this, _rval );
   }
-
 protected:
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.

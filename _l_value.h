@@ -19,17 +19,20 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-template< class t_TyChar, size_t t_knValsSegSize >
+template< class t_TyTraits >
 class _l_value
 {
   typedef _l_value _TyThis;
 public:
-  typedef _l_data< t_TyChar > _TyData;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyChar;
+  typedef _l_data< _TyChar > _TyData;
+  static constexpr size_t s_knValsSegSize = _TyTraits::s_knValsSegSize;
 #ifdef _MSC_VER
    // vc has a problem with asking for the size of an incomplete type here.
   static const size_t s_knbySegArrayInit;
 #else // gcc and clang like it fine.
-  static constexpr size_t s_knbySegArrayInit = t_knValsSegSize * sizeof(_TyThis);
+  static constexpr size_t s_knbySegArrayInit = s_knValsSegSize * sizeof(_TyThis);
 #endif
   typedef SegArray< _TyThis, std::true_type > _TySegArrayValues;
   typedef typename _TySegArrayValues::_tySizeType _tySizeType;
@@ -74,11 +77,14 @@ public:
 
   // Our big old variant.
   // Use monostate to allow an "empty" value here.
+  // First define the "base" variant which doesn't include any user defined types.
   typedef variant<  monostate, bool, vtyDataPosition, _TyData, 
                     _TyStrChar, _TyStrViewChar,
                     _TyStrChar16, _TyStrViewChar16,
                     _TyStrChar32, _TyStrViewChar32,
-                    _TySegArrayValues > _TyVariant;
+                    _TySegArrayValues > _TyVariantBase;
+  // Now define our full variant type by concatenating on any user defined types.
+  typedef concatenator_pack< _TyVariantBase, typename _TyTraits::_TyValueTraits > ::type _TyVariant;
 
   _l_value() = default;
   _l_value(_l_value const & ) = default;
@@ -214,19 +220,25 @@ public:
   // This fails with a throw if we don't contain an array.
   void GetSize() const
   {
-    Assert( FIsArray() );
-    return get< _TySegArrayValues >( m_var ).NElements();
+    return GetValueArray().NElements();
   }
-
-  _TyThis & operator [] ( size_type _nEl )
+  const _TySegArrayValues & GetValueArray() const
   {
     Assert( FIsArray() ); // Assert and then we will throw below.
-    return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we don't contain an array.
+    return get< _TySegArrayValues >( m_var ); // We let this throw a bad type exception as it will if we don't contain an array.
+  }
+  _TySegArrayValues & GetValueArray()
+  {
+    Assert( FIsArray() ); // Assert and then we will throw below.
+    return get< _TySegArrayValues >( m_var ); // We let this throw a bad type exception as it will if we don't contain an array.
+  }
+  _TyThis & operator [] ( size_type _nEl )
+  {
+    return GetValueArray()[_nEl];
   }
   _TyThis const & operator [] ( size_type _nEl ) const
   {
-    Assert( FIsArray() ); // Assert and then we will throw below.
-    return get< _TySegArrayValues >( m_var )[ _nEl ]; // We let this throw a bad type exception as it will if we don't contain an array.
+    return GetValueArray()[_nEl];
   }
 
   // This will return a string view of the given type.
@@ -287,6 +299,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
+      [&_rtok,&_rsv]( auto _userDefinedType )
+      {
+        _userDefinedType.GetStringView( _rsv, _rtok );
+      }
     }, m_var );
   }
 protected:
@@ -363,6 +379,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
+      [&_rtok,&_rsv]( auto _userDefinedType )
+      {
+        _userDefinedType.GetString( _rstr, _rtok );
+      }
     }, m_var );
   }
 
@@ -438,6 +458,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
+      [&_rtok,&_rsv,&_rstr]( auto _userDefinedType )
+      {
+        return _userDefinedType.FGetStringViewOrString( _rsv, _rstr, _rtok );
+      }
     }, m_var );
   }
 protected:
@@ -519,11 +543,15 @@ public:
         for ( size_type nEl = 0; nEl < knEls; ++nEl )
           _rrg[nEl].ToJsoValue( _rjv.CreateOrGetEl( nEl ) );
       },
+      [&_rjv]( auto _userDefinedType )
+      {
+        _userDefinedType.ToJsoValue( _rjv );
+      }
     }, m_var );
   }
 
   // Convert stream position ranges to strings throughout the entire value (i.e. recursively) using the stream _rs.
-  template < class t_TyCharOut = t_TyChar, class t_TyToken >
+  template < class t_TyCharOut = _TyChar, class t_TyToken >
   void ProcessStrings( t_TyToken & _rtok )
   {
     std::visit(_VisitHelpOverloadFCall {
@@ -567,6 +595,10 @@ public:
         for ( size_type nEl = 0; nEl < knEls; ++nEl )
           _rrg[nEl].template ProcessStrings< t_TyCharOut >( _rtok );
       },
+      [&_rtok]( auto _userDefinedType )
+      {
+        _userDefinedType.ProcessStrings( _rtok );
+      }
     }, m_var );
   }
 
@@ -601,9 +633,9 @@ protected:
 };
 
 #ifdef WIN32
-template< class t_TyChar, size_t t_knValsSegSize >
+template< class t_TyTraits >
 inline const size_t
-_l_value< t_TyChar, t_knValsSegSize >::s_knbySegArrayInit = t_knValsSegSize * sizeof(_l_value);
+_l_value< t_TyTraits >::s_knbySegArrayInit = _l_value::s_knValsSegSize * sizeof(_l_value);
 #endif //WIN32
 
 __LEXOBJ_END_NAMESPACE

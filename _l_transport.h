@@ -13,14 +13,19 @@ __LEXOBJ_BEGIN_NAMESPACE
 
 // _l_transport_base: base for all transports.
 // Templatize by the character type contained in the file.
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_transport_base
 {
   typedef _l_transport_base _TyThis;
 public:
-  typedef t_TyChar _TyChar;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyChar _TyChar;
+  typedef typename _TyTraits::_TyUserObj _TyUserObj;
+  typedef typename _TyTraits::_TyTransport _TyTransportMostDerived;
+  typedef _l_user_context< _TyTraits > _TyUserContext;
   typedef _l_data< t_TyChar > _TyData;
-  typedef _l_value< t_TyChar > _TyValue;
+  typedef _l_value< _TyTraits > _TyValue;
+  typedef _l_token< _TyTraits > _TyToken;
 };
 
 static const size_t vknchTransportFdTokenBufferSize = 256;
@@ -106,17 +111,22 @@ protected:
 
 // _l_transport_file:
 // Transport using a file.
-template < class t_TyChar >
-class _l_transport_file : public _l_transport_base< t_TyChar >
+template < class t_TyTraits >
+class _l_transport_file : public _l_transport_base< t_TyTraits >
 {
   typedef _l_transport_file _TyThis;
-  typedef _l_transport_base< t_TyChar > _TyBase;
+  typedef _l_transport_base< t_TyTraits > _TyBase;
 public:
-  using typename  _TyBase::_TyChar;
+  typedef t_TyTraits _TyTraits;
+  using typename _TyBase::_TyUserObj;
+  using typename _TyBase::_TyUserContext;
+  using typename _TyBase::_TyTransportMostDerived;
+  using typename _TyBase::_TyToken;
+  using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyValue;
-  typedef _l_transport_backed_ctxt< t_TyChar > _TyTransportCtxt;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxt;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
 
   ~_l_transport_file() = default;
   _l_transport_file() = delete;
@@ -173,8 +183,8 @@ public:
         Assert( -1 == iSeekResult );
         THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
       }
-      VerifyThrowSz( !( nbySeekCur % sizeof( t_TyChar ) ), "Current offset in file is not a multiple of a character byte length." );
-      posInit = nbySeekCur / sizeof( t_TyChar );
+      VerifyThrowSz( !( nbySeekCur % sizeof( _TyChar ) ), "Current offset in file is not a multiple of a character byte length." );
+      posInit = nbySeekCur / sizeof( _TyChar );
       // Validate any ending position given to us, also find the end regardless:
       vtySeekOffset nbySeekEnd;
       iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekEnd, &nbySeekEnd );
@@ -183,10 +193,10 @@ public:
         Assert( -1 == iSeekResult );
         THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
       }
-      posEnd = nbySeekEnd / sizeof( t_TyChar );
-      VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( t_TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
+      posEnd = nbySeekEnd / sizeof( _TyChar );
+      VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( _TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
       if ( !_posEnd )
-        VerifyThrowSz( !( nbySeekEnd % sizeof( t_TyChar ) ), "End of file position is not a multiple of a character byte length." );
+        VerifyThrowSz( !( nbySeekEnd % sizeof( _TyChar ) ), "End of file position is not a multiple of a character byte length." );
       else
         posEnd = _posEnd;
       stchLenRead = posEnd - posInit;
@@ -210,13 +220,10 @@ public:
 
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
-  template < class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken,
-                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
-                  unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
+                  _TyValue && _rrvalue, _TyUserObj & _ruoUserObj, 
+                  unique_ptr< _TyToken > & _rupToken )
   {
-    typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
-    typedef _l_token< _TyUserContext > _TyToken;
     Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
     _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _kdpEndToken );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
@@ -268,7 +275,7 @@ public:
 protected:
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
   typedef FdReadRotating< _TyChar > _TyFdReadRotating;
-  _TyFdReadRotating m_frrFileDesBuffer{ vknchTransportFdTokenBufferSize * sizeof( t_TyChar ) };
+  _TyFdReadRotating m_frrFileDesBuffer{ vknchTransportFdTokenBufferSize * sizeof( _TyChar ) };
   FileObj m_file;
   bool m_fisatty{false};
 };
@@ -349,19 +356,24 @@ protected:
 
 // _l_transport_fixedmem:
 // Transport that uses a piece of memory.
-template < class t_TyChar >
-class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
+template < class t_TyTraits >
+class _l_transport_fixedmem : public _l_transport_base< t_TyTraits >
 {
   typedef _l_transport_fixedmem _TyThis;
-  typedef _l_transport_base< t_TyChar > _TyBase;
-  friend _l_transport_fixedmem_ctxt< t_TyChar >;
+  typedef _l_transport_base< t_TyTraits > _TyBase;
+  friend _l_transport_fixedmem_ctxt< typename t_TyTraits::_TyChar >;
 public:
+  typedef t_TyTraits _TyTraits;
+  using typename _TyBase::_TyUserObj;
+  using typename _TyBase::_TyUserContext;
+  using typename _TyBase::_TyTransportMostDerived;
+  using typename _TyBase::_TyToken;
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyValue;
-  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxt;
+  typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
 
   _l_transport_fixedmem( _l_transport_fixedmem const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
   _TyThis const & operator = ( _TyThis const & _r ) = delete;
@@ -395,15 +407,12 @@ public:
   }
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_bufCurrentToken from [m_posTokenStart,_kdpEndToken).
-  template < class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
-                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
-                  unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
+                  _TyValue && _rrvalue, _TyUserObj & _ruoUserObj, 
+                  unique_ptr< _TyToken > & _rupToken )
   {
     Assert( _kdpEndToken >= _PosTokenStart() );
     Assert( _kdpEndToken <= _PosTokenEnd() );
-    typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
-    typedef _l_token< _TyUserContext > _TyToken;
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
     Assert( nLenToken <= m_bufCurrentToken.length() );
     _TyUserContext ucxt( _ruoUserObj, _PosTokenStart(), _TyBuffer( m_bufCurrentToken.begin(), nLenToken ) );
@@ -495,16 +504,21 @@ protected:
 
 // _l_transport_mapped
 // Transport that uses mapped memory.
-template < class t_TyChar >
-class _l_transport_mapped : public _l_transport_fixedmem< t_TyChar >
+template < class t_TyTraits >
+class _l_transport_mapped : public _l_transport_fixedmem< t_TyTraits >
 {
   typedef _l_transport_mapped _TyThis;
-  typedef _l_transport_fixedmem< t_TyChar > _TyBase;
+  typedef _l_transport_fixedmem< t_TyTraits > _TyBase;
 public:
+  typedef t_TyTraits _TyTraits;
+  using typename _TyBase::_TyUserObj;
+  using typename _TyBase::_TyUserContext;
+  using typename _TyBase::_TyTransportMostDerived;
+  using typename _TyBase::_TyToken;
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyValue;
-  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxt;
+  typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyPrMemView _TyPrMemView;
 
   ~_l_transport_mapped()
@@ -612,16 +626,21 @@ protected:
 };
 
 template < class ... t_TysTransports >
-class _l_transport_var : public _l_transport_base< typename tuple_element<0,tuple< t_TysTransports...>>::type::_TyChar >
+class _l_transport_var : public _l_transport_base< typename tuple_element<0,tuple< t_TysTransports...>>::type::_TyTraits >
 {
   typedef _l_transport_var _TyThis;
-  typedef _l_transport_base< typename tuple_element<0,tuple< t_TysTransports...>>::type::_TyChar > _TyBase;
+  typedef _l_transport_base< typename tuple_element<0,tuple< t_TysTransports...>>::type::_TyTraits > _TyBase;
 public:
+  using typename _TyBase::_TyTraits;
+  using typename _TyBase::_TyUserObj;
+  using typename _TyBase::_TyUserContext;
+  using typename _TyBase::_TyTransportMostDerived;
+  using typename _TyBase::_TyToken;
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyValue;
   typedef _l_transport_var_ctxt< typename t_TysTransports::_TyTransportCtxt ... > _TyTransportCtxt;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
 
   _l_transport_var( _l_transport_var const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
   _TyThis const & operator = ( _TyThis const & _r ) = delete;
@@ -631,7 +650,6 @@ public:
   {
     m_var.template emplace< t_TyTransport >( std::forward< t_TysArgs >( _args ) ... );
   }
-  
   void AssertValid() const
   {
 #if ASSERTSENABLED
@@ -647,7 +665,6 @@ public:
     }, m_var );
 #endif //ASSERTSENABLED
   }
-
   vtyDataPosition PosCurrent() const
   {
     return std::visit(_VisitHelpOverloadFCall {
@@ -690,13 +707,10 @@ public:
   }
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_bufCurrentToken from [m_posTokenStart,_kdpEndToken).
-  template < class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
-                  _TyValue && _rrvalue, t_TyUserObj & _ruoUserObj, 
-                  unique_ptr< _l_token< _l_user_context< _TyTransportCtxt, t_TyUserObj > > > & _rupToken )
+                  _TyValue && _rrvalue, _TyUserObj & _ruoUserObj, 
+                  unique_ptr< _TyToken > & _rupToken )
   {
-    typedef _l_user_context< _TyTransportCtxt, t_TyUserObj > _TyUserContext;
-    typedef _l_token< _TyUserContext > _TyToken;
     std::visit(_VisitHelpOverloadFCall {
       [](monostate) 
       {
@@ -741,6 +755,5 @@ public:
 protected:
   variant< monostate, t_TysTransports... > m_var;
 };
-
 
 __LEXOBJ_END_NAMESPACE

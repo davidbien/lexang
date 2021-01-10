@@ -23,19 +23,21 @@ vtyDataTriggerId vktidInvalidIdTrigger = (numeric_limits< vtyDataTriggerId >::mi
 
 template < class t_TyChar, bool t_fInLexGen >
 struct _l_action_object_base;
+template < class t_TyTraits, bool t_fInLexGen >
+struct _l_action_object_value_base;
 template < class t_TyActionObj >
 struct _l_action_token;
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
 struct _l_action_print;
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
 struct _l_trigger_noop;
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
 struct _l_trigger_bool;
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
 struct _l_trigger_position;
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
 struct _l_trigger_position_end;
-template < class t_TyChar, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
+template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
 struct _l_trigger_string;
 template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
 class _l_trigger_string_typed_range;
@@ -72,7 +74,7 @@ struct _l_state_proto;
 template <class t_TyChar>
 struct _l_an_mostbase;
 
-template <class t_TyTransport, class t_tyUserObj, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace = false>
+template <class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace = false>
 struct _l_analyzer;
 
 template <class t_TyChar, int t_iTransitions,
@@ -95,35 +97,33 @@ template < class t_TyChar > class _l_fixed_buf;
 template < class t_TyChar > class _l_backing_buf;
 
 // _l_value.h:
-template< class t_TyChar, size_t s_knValsSegSize = 32 >
-class _l_value;
+template< class t_TyTraits > class _l_value;
 
 // _l_token.h:
-template < class t_TyUserContext >
-class _l_token;
+template < class t_TyTraits > class _l_token;
 
 // _l_stream.h:
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_default_user_obj;
-template < class t_TyTransportCtxt, class t_tyUserObj >
+template < class t_TyTraits >
 class _l_user_context;
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_transport_base;
 template < class t_TyChar >
 class _l_transport_backed_ctxt;
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_transport_file;
 template < class t_TyChar >
 class _l_transport_fixedmem_ctxt;
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_transport_fixedmem;
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_transport_mapped;
 template < class ... t_TysTransportContexts >
 class _l_transport_var_ctxt;
 template < class ... t_TysTransports >
 class _l_transport_var;
-template < class t_TyTransport, class t_tyUserObj >
+template < class t_TyTraits >
 class _l_stream;
 
 __LEXOBJ_END_NAMESPACE

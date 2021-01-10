@@ -58,14 +58,15 @@ struct _l_compare_input_with_range
   }
 };
 
-template <class t_TyChar>
+template < class t_TyTraits >
 struct _l_an_mostbase
 {
 private:
-  typedef _l_an_mostbase<t_TyChar> _TyThis;
+  typedef _l_an_mostbase _TyThis;
 public:
-  typedef t_TyChar _TyChar;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyChar _TyChar;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
   typedef bool (_TyThis::*_TyPMFnAccept)();
 
   void SetToken( _TyAxnObjBase * _paobCurToken )
@@ -80,16 +81,21 @@ protected:
   _TyAxnObjBase * m_paobCurToken{nullptr}; // A pointer to the current token found by the lexang.
 };
 
-template <class t_TyChar, bool t_fSupportLookahead>
+template <class t_TyTraits, bool t_fSupportLookahead>
 struct _l_an_lookaheadbase;
 
-template <class t_TyChar>
-struct _l_an_lookaheadbase<t_TyChar, false>
-    : public _l_an_mostbase<t_TyChar>
+template <class t_TyTraits>
+struct _l_an_lookaheadbase<t_TyTraits, false>
+    : public _l_an_mostbase<t_TyTraits>
 {
-  typedef _l_state_proto<t_TyChar> _TyStateProto;
-  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
-
+private:
+  typedef _l_an_lookaheadbase _TyThis;
+  typedef _l_an_mostbase<t_TyTraits> _TyBase;
+public:
+  using typename _TyBase::_TyTraits;
+  using typename _TyBase::_TyChar;
+  typedef _l_state_proto<_TyChar> _TyStateProto;
+  typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 protected:
   // Declare these so the code will compile - they may be optimized out.
   static _TyStateProto *m_pspLookaheadAccept;  // The lookahead accept state.
@@ -97,21 +103,28 @@ protected:
   static _TyStateProto *m_pspLookahead;        // The lookahead state.
 };
 
-template <class t_TyChar>
-typename _l_an_lookaheadbase<t_TyChar, false>::_TyStateProto *
-    _l_an_lookaheadbase<t_TyChar, false>::m_pspLookaheadAccept;
-template <class t_TyChar>
-vtyDataPosition _l_an_lookaheadbase<t_TyChar, false>::m_posLookaheadAccept{vkdpNullDataPosition};
-template <class t_TyChar>
-typename _l_an_lookaheadbase<t_TyChar, false>::_TyStateProto *
-    _l_an_lookaheadbase<t_TyChar, false>::m_pspLookahead;
+template <class t_TyTraits>
+typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
+    _l_an_lookaheadbase<t_TyTraits, false>::m_pspLookaheadAccept;
+template <class t_TyTraits>
+vtyDataPosition _l_an_lookaheadbase<t_TyTraits, false>::m_posLookaheadAccept{vkdpNullDataPosition};
+template <class t_TyTraits>
+typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
+    _l_an_lookaheadbase<t_TyTraits, false>::m_pspLookahead;
 
-template <class t_TyChar>
-struct _l_an_lookaheadbase<t_TyChar, true>
-    : public _l_an_mostbase<t_TyChar>
+// The lookahead base has never been used - or perhaps it has 21 years ago? I don't remember.
+template <class t_TyTraits>
+struct _l_an_lookaheadbase<t_TyTraits, true>
+    : public _l_an_mostbase<t_TyTraits>
 {
-  typedef _l_state_proto<t_TyChar> _TyStateProto;
-  typedef typename _l_char_type_map<t_TyChar>::_TyUnsigned _TyUnsignedChar;
+private:
+  typedef _l_an_lookaheadbase _TyThis;
+  typedef _l_an_mostbase<t_TyTraits> _TyBase;
+public:
+  using typename _TyBase::_TyTraits;
+  using typename _TyBase::_TyChar;
+  typedef _l_state_proto<_TyChar> _TyStateProto;
+  typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 
   _TyStateProto *m_pspLookaheadAccept{nullptr}; // The lookahead accept state.
   vtyDataPosition m_posLookaheadAccept{vkdpNullDataPosition}; // The position in the buffer when lookahead accept encountered.
@@ -121,27 +134,34 @@ struct _l_an_lookaheadbase<t_TyChar, true>
   {
   }
 };
+template <class t_TyTraits>
+typename _l_an_lookaheadbase<t_TyTraits, true>::_TyStateProto *
+    _l_an_lookaheadbase<t_TyTraits, true>::m_pspLookaheadAccept;
+template <class t_TyTraits>
+vtyDataPosition _l_an_lookaheadbase<t_TyTraits, true>::m_posLookaheadAccept{vkdpNullDataPosition};
+template <class t_TyTraits>
+typename _l_an_lookaheadbase<t_TyTraits, true>::_TyStateProto *
+    _l_an_lookaheadbase<t_TyTraits, true>::m_pspLookahead;
 
-template <class t_TyTransport, class t_TyUserObj, bool t_fSupportLookahead,
-          bool t_fSupportTriggers, bool t_fTrace>
-struct _l_analyzer : public _l_an_lookaheadbase< typename t_TyTransport::_TyChar, t_fSupportLookahead>
+template < class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace >
+struct _l_analyzer : public _l_an_lookaheadbase< t_TyTraits, t_fSupportLookahead >
 {
 private:
-  typedef _l_an_lookaheadbase< typename t_TyTransport::_TyChar, t_fSupportLookahead> _TyBase;
   typedef _l_analyzer _TyThis;
+  typedef _l_an_lookaheadbase< t_TyTraits, t_fSupportLookahead > _TyBase;
 protected:
   using _TyBase::m_posLookaheadAccept;
   using _TyBase::m_pspLookahead;
   using _TyBase::m_pspLookaheadAccept;
 public:
+  using typename _TyBase::_TyTraits;
+  using typename _TyBase::_TyTransport;
+  using typename _TyBase::_TyUserObj;
   typedef typename _TyBase::_TyStateProto _TyStateProto;
-  typedef typename t_TyTransport::_TyChar _TyChar;
+  typedef typename _TyTransport::_TyChar _TyChar;
   typedef basic_string< _TyChar > _TyStdStr;
-  typedef t_TyTransport _TyTransport;
-  typedef t_TyUserObj _TyUserObj;
-  typedef _l_stream< _TyTransport, _TyUserObj > _TyStream;
-  typedef typename _TyStream::_TyUserContext _TyUserContext;
-  typedef _l_token< _TyUserContext > _TyToken;
+  typedef _l_stream< _TyTraits > _TyStream;
+  typedef _l_token< _TyTraits > _TyToken;
 
   using typename _TyBase::_TyUnsignedChar;
   using typename _TyBase::_TyPMFnAccept;

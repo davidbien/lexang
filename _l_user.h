@@ -17,16 +17,17 @@ __LEXOBJ_BEGIN_NAMESPACE
 
 // _l_user_context:
 // This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
-template < class t_TyTransportCtxt, class t_TyUserObj >
-class _l_user_context : public t_TyTransportCtxt
+template < class t_TyTraits >
+class _l_user_context : public typename t_TyTraits::_TyTransportCtxt
 {
   typedef _l_user_context _TyThis;
-  typedef t_TyTransportCtxt _TyBase;
+  typedef typename t_TyTraits::_TyTransportCtxt _TyBase;
 public:
-  typedef t_TyUserObj _TyUserObj;
-  typedef typename t_TyTransportCtxt::_TyChar _TyChar;
-  typedef _l_token< _TyThis > _TyToken;
-  typedef _l_value< _TyChar > _TyValue;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyUserObj _TyUserObj;
+  typedef typename _TyTraits::_TyChar _TyChar;
+  typedef _l_token< _TyTraits > _TyToken;
+  typedef _l_value< _TyTraits > _TyValue;
 
   _l_user_context() = delete;
   _l_user_context & operator =( _l_user_context const & ) = delete;
@@ -70,7 +71,7 @@ public:
     m_ruoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
   }
 protected:
-  t_TyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
+  _TyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
 };
 
 template < class t_ty >
@@ -86,16 +87,17 @@ struct TFIsTransportVarCtxt< _l_transport_var_ctxt< t_tys ... > >
 template < class ... t_tys >
 inline constexpr bool TFIsTransportVarCtxt_v = TFIsTransportVarCtxt< t_tys ... >::value;
 
-template < class t_TyChar >
+template < class t_TyTraits >
 class _l_default_user_obj
 {
   typedef _l_default_user_obj _TyThis;
 public:
-  typedef t_TyChar _TyChar;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyChar _TyChar;
   typedef _l_data< _TyChar > _TyData;
-  typedef _l_value< _TyChar > _TyValue;
+  typedef _l_value< _TyTraits > _TyValue;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxtBacked;
-  typedef _l_transport_fixedmem_ctxt< t_TyChar > _TyTransportCtxtFixedMem;
+  typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxtFixedMem;
 
   // These are the default GetString*() impls. They just concatenates segmented strings regardless of the m_nType value.
   // _rval is a constituent value of _rtok.m_value or may be _rtok.m_value itself. We expect _rval's _TyData object to be
@@ -236,7 +238,7 @@ public:
     }
     else
     {
-      t_TyChar * pcCur = (t_TyChar*)&strBacking[0]; // Current output pointer.
+      _TyChar * pcCur = (_TyChar*)&strBacking[0]; // Current output pointer.
       kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
         [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
         {
@@ -291,7 +293,7 @@ public:
     }
     else
     {
-      t_TyChar * pcCur = pcBuf; // Current output pointer.
+      _TyChar * pcCur = pcBuf; // Current output pointer.
       kdtr.GetSegArrayDataRanges().ApplyContiguous( 0, kdtr.GetSegArrayDataRanges().NElements(), 
         [&pcCur,&nCharsRemaining,&_rcxt]( const _l_data_typed_range * _pdtrBegin, const _l_data_typed_range * _pdtrEnd )
         {

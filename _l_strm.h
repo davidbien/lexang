@@ -16,20 +16,21 @@
 __LEXOBJ_BEGIN_NAMESPACE
 
 // _l_stream: An input stream for the lexicographical analyzer.
-template < class t_TyTransport, class t_TyUserObj >
+template < class t_TyTraits >
 class _l_stream
 {
   typedef _l_stream _TyThis;
 public:
-  typedef t_TyTransport _TyTransport;
-  typedef typename t_TyTransport::_TyChar _TyChar;
-  typedef typename t_TyTransport::_TyTransportCtxt _TyTransportCtxt;
-  typedef t_TyUserObj _TyUserObj;
-  typedef _l_user_context< _TyTransportCtxt, _TyUserObj > _TyUserContext;
+  typedef t_TyTraits _TyTraits;
+  typedef typename _TyTraits::_TyTransport _TyTransport;
+  typedef typename _TyTransport::_TyChar _TyChar;
+  typedef typename _TyTransport::_TyTransportCtxt _TyTransportCtxt;
+  typedef typename _TyTraits::_TyUserObj _TyUserObj;
+  typedef _l_user_context< _TyTraits > _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
-  typedef _l_value< _TyChar > _TyValue;
-  typedef _l_token< _TyUserContext > _TyToken;
-  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef _l_value< _TyTraits > _TyValue;
+  typedef _l_token< _TyTraits > _TyToken;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
 
   _l_stream() = default;
   _l_stream( _l_stream const & ) = delete;
@@ -95,7 +96,7 @@ public:
   }
 
 protected:
-  typedef optional< t_TyTransport > _TyOptTransport;
+  typedef optional< _TyTransport > _TyOptTransport;
   _TyOptTransport m_opttpImpl; // The "transport" that implements the stream. Make it optional so that the user can emplace construct the stream after declaration of an _l_stream object.
   _TyUserObj m_uoUserObj; // This is the one copy of the user object that is referenced in each _TyUserContext object. This allows the user object to maintain stateful information is that is desireable.
 };
