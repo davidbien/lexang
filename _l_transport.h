@@ -642,6 +642,7 @@ public:
   typedef _l_transport_var_ctxt< typename t_TysTransports::_TyTransportCtxt ... > _TyTransportCtxt;
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
 
+  _l_transport_var() = default;
   _l_transport_var( _l_transport_var const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
   _TyThis const & operator = ( _TyThis const & _r ) = delete;
 

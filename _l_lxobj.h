@@ -204,6 +204,12 @@ public:
   {
     GetStream().emplaceTransport( std::forward< t_TysArgs >( _args )... );
   }
+  // Emplace a specific type of transport within a transport_var.
+  template < class t_TyTransport, class... t_TysArgs >
+  void emplaceVarTransport( t_TysArgs&&... _args )
+  {
+    GetStream().template emplaceVarTransport< t_TyTransport >( std::forward< t_TysArgs >( _args )... );
+  }
 
   using _TyBase::SetToken;
   using _TyBase::PGetToken;

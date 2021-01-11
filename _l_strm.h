@@ -47,14 +47,20 @@ public:
     : m_uoUserObj( _ruo )
   {
   }
-
   // Construct the transport object appropriately.
   template < class... t_TysArgs >
   void emplaceTransport( t_TysArgs&&... _args )
   {
     (void)m_opttpImpl.emplace( std::forward< t_TysArgs >( _args )... );
   }
-
+  // Construct a specific transport type in a transport_var.
+  template < class t_TyTransport, class ... t_TysArgs >
+  void emplaceVarTransport( t_TysArgs ... _args )
+  {
+    if ( !m_opttpImpl )
+      m_opttpImpl.emplace(); // Just create a default var_transport object with no active variant.
+    m_opttpImpl->template emplaceTransport< t_TyTransport >( std::forward< t_TysArgs >( _args ) ... );
+  }
   vtyDataPosition PosCurrent() const
   {
     Assert( m_opttpImpl.has_value() );
