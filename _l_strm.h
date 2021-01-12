@@ -47,6 +47,14 @@ public:
     : m_uoUserObj( _ruo )
   {
   }
+  _TyUserObj & RGetUserObj()
+  {
+    return m_uoUserObj;
+  }
+  const _TyUserObj & RGetUserObj() const
+  {
+    return m_uoUserObj;
+  }
   // Construct the transport object appropriately.
   template < class... t_TysArgs >
   void emplaceTransport( t_TysArgs&&... _args )
