@@ -113,4 +113,14 @@ protected:
   const _TyAxnObjBase * m_paobCurToken; // Pointer to the action object for this token - from which the token id is obtainable, etc.
 };
 
+namespace std
+{
+  // override std::swap so that it is efficient:
+  template< class t_TyTraits >
+  void swap( _l_token< t_TyTraits > & _rl, _l_token< t_TyTraits > & _rr )
+  {
+    _rl.swap( _rr );
+  }
+}
+
 __LEXOBJ_END_NAMESPACE

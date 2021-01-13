@@ -108,7 +108,18 @@ public:
     Assert( m_opttpImpl.has_value() );
     m_opttpImpl->GetCurTokenString( _rstr );
   }
-
+  bool FSpanChars( const _TyData & _rdt, const _TyChar * _pszCharSet ) const
+  {
+    Assert( m_opttpImpl.has_value() );
+    return m_opttpImpl->FSpanChars( _rdt, _pszCharSet );
+  }
+  bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
+  {
+    Assert( m_opttpImpl.has_value() );
+    if ( StrNLen( _pszCharSet ) != _rdt.DataRangeGetSingle().length() )
+      return false; // short circuit.
+    return m_opttpImpl->FMatchChars( _rdt, _pszMatch );
+  }
 protected:
   typedef optional< _TyTransport > _TyOptTransport;
   _TyOptTransport m_opttpImpl; // The "transport" that implements the stream. Make it optional so that the user can emplace construct the stream after declaration of an _l_stream object.

@@ -34,6 +34,11 @@ public:
   {
   }
   _l_data_range & operator =( _TyThis const & _r ) = default;
+  void swap( _TyThis & _r )
+  {
+    std::swap( m_posBegin, _r.m_posBegin );
+    std::swap( m_posEnd, _r.m_posEnd );
+  }
 
   void AssertValid() const
   {
@@ -71,6 +76,7 @@ class _l_data_typed_range : protected _l_data_range
   typedef _l_data_typed_range _TyThis;
   typedef _l_data_range _TyBase;
 public:
+  ~_l_data_typed_range() = default;
   _l_data_typed_range() = default;
   _l_data_typed_range( _l_data_typed_range const & ) = default;
   _l_data_typed_range & operator = ( _l_data_typed_range const & ) = default;
@@ -80,6 +86,12 @@ public:
       m_nType( _nType ),
       m_nIdTrigger( _nIdTrigger )
   {
+  }
+  void swap( _TyThis & _r )
+  {
+    _TyBase::swap( _r );
+    std::swap( m_nType, _r.m_nType );
+    std::swap( m_nIdTrigger, _r.m_nIdTrigger );
   }
 
   void AssertValid() const
@@ -421,5 +433,23 @@ protected:
     _PSegArray()->~_TySegArray();
   }
 };
+
+namespace std
+{
+  // override std::swap so that it is efficient:
+  void swap( _l_data_range & _rl, _l_data_range & _rr )
+  {
+    _rl.swap( _rr );
+  }
+  void swap( _l_data_typed_range & _rl, _l_data_typed_range & _rr )
+  {
+    _rl.swap( _rr );
+  }
+  template< class t_TyTraits >
+  void swap( _l_value< t_TyTraits > & _rl, _l_value< t_TyTraits > & _rr )
+  {
+    _rl.swap( _rr );
+  }
+}
 
 __LEXOBJ_END_NAMESPACE

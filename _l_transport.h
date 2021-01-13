@@ -247,6 +247,19 @@ public:
   {
     m_frrFileDesBuffer.GetCurrentString( _rstr );
   }
+  bool FSpanChars( const _TyData & _rdt, const _TyChar * _pszCharSet ) const
+  {
+    Assert( _rdt.FContainsSingleDataRange() );
+    AssertValidDataRange( _rdt );
+    return m_frrFileDesBuffer.FSpanChars( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end(), _pszCharSet );
+  }
+  bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
+  {
+    Assert( _rdt.FContainsSingleDataRange() );
+    Assert( StrNLen( _pszMatch ) == _rdt.DataRangeGetSingle().length() ); // by the time we get to here...
+    AssertValidDataRange( _rdt );
+    return m_frrFileDesBuffer.FMatchChars( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end(), _pszMatch );
+  }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
 #if ASSERTSENABLED
@@ -451,6 +464,24 @@ public:
     requires( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
   {
     ConvertString( _rstr, m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
+  }
+  bool FSpanChars( const _TyData & _rdt, const _TyChar * _pszCharSet ) const
+  {
+    Assert( _rdt.FContainsSingleDataRange() );
+    AssertValidDataRange( _rdt );
+    vtyDataPosition posBegin = _rdt.DataRangeGetSingle().begin() - _PosTokenStart();
+    vtyDataPosition posEnd = _rdt.DataRangeGetSingle().end() - _PosTokenStart();
+    return _rdt.length() == StrSpn( m_bufCurrentToken.RCharP() + posBegin, posEnd - posBegin, _pszCharSet );
+  }
+  bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
+  {
+    Assert( _rdt.FContainsSingleDataRange() );
+    AssertValidDataRange( _rdt );
+    vtyDataPosition posBegin = _rdt.DataRangeGetSingle().begin() - _PosTokenStart();
+    vtyDataPosition posEnd = _rdt.DataRangeGetSingle().end() - _PosTokenStart();
+    const _TyChar * pcTokBegin = m_bufCurrentToken.RCharP() + posBegin;
+    const _TyChar * pcTokEnd = m_bufCurrentToken.RCharP() + posEnd;
+    return pcTokEnd == mismatch( pcTokBegin, pcTokEnd, _pszMatch ).first;
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -735,6 +766,46 @@ public:
       [_kdpEndToken]( auto _transport )
       {
         _transport.DiscardData( _kdpEndToken );
+      }
+    }, m_var );
+  }
+  template < class t_TyString >
+  void GetCurTokenString( t_TyString & _rstr ) const
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+      },
+      [&_rstr]( auto _transport )
+      {
+        _transport.GetCurTokenString(_rstr);
+      }
+    }, m_var );
+  }
+  bool FSpanChars( const _TyData & _rdt, const _TyChar * _pszCharSet ) const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+      },
+      [&_rdt,_pszCharSet]( auto _transport )
+      {
+        return _transport.FSpanChars(_rdt,_pszCharSet);
+      }
+    }, m_var );
+  }
+  bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+      },
+      [&_rdt,_pszCharSet]( auto _transport )
+      {
+        return _transport.FMatchChars(_rdt,_pszMatch);
       }
     }, m_var );
   }

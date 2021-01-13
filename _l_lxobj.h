@@ -445,7 +445,8 @@ public:
           _TyAxnObjBase * paobCurToken = PGetToken();
           SetToken(nullptr);
           // Check if this is one of the tokens we are to ignore:
-          if ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) )
+          if ( !GetStream().RGetUserObj().FFilterToken( paobCurToken, GetStream() ) &&
+                ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) )
           {
             unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
             // Delegate to the stream to obtain the token as it needs to get the context from the transport.

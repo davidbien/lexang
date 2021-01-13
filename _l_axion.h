@@ -217,6 +217,7 @@ private:
   typedef _l_action_token _TyThis;
   typedef t_TyActionObj _TyBase;
 public:
+	typedef t_TyActionObj _TyActionObj;
 	typedef true_type _TyFIsToken; // Must wrap each action with something defining this as true_type.
 	using _TyBase::s_kiToken;
 	using _TyBase::s_fInLexGen;	
@@ -731,6 +732,11 @@ public:
 	{
 	}
 	_l_trigger_string( _TyThis const & _r ) = default;
+// Non-virtual accessors:
+	_TyData const & RDataGet() const
+	{
+		return m_dtStrings;
+	}
 	bool VFIsNull() const
 	{
 		return FIsNull();
@@ -821,9 +827,9 @@ protected:
 // This will store a range of input data into t_TyActionStoreData identified by the t_kdtType "type" of data.
 // The beginning position of the data is in t_kiTriggerBegin.
 // The ending position of the data is contained in this object.
-template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen >
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin >
 class _l_trigger_string_typed_range
-	: public _l_trigger_position_end< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen >
+	: public _l_trigger_position_end< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_TyActionStoreData::s_fInLexGen >
 {
 public:
 	typedef typename t_TyActionStoreData::_TyTraits _TyTraits;
@@ -931,14 +937,15 @@ protected:
 // It saves data by copying it from it's constituent trigger objects.
 // It only contains the ability to hold a single vector of constituent trigger data.
 // These trigger objects may be aggregate contained _l_action_save_data_single objects.
-template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
-class _l_action_save_data_single : public _l_action_object_value_base< typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyTraits, t_fInLexGen >
+template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
+class _l_action_save_data_single 
+	: public _l_action_object_value_base< typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyTraits, tuple_element<0, tuple< t_TysTriggers...>>::type::s_fInLexGen >
 {
 public:
 	typedef typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyTraits _TyTraits;
 private:
 	typedef _l_action_save_data_single _TyThis;
-	typedef _l_action_object_value_base< _TyTraits, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< _TyTraits, tuple_element<0, tuple< t_TysTriggers...>>::type::s_fInLexGen > _TyBase;
 public:
 	using typename _TyBase::_TyChar;	
 	typedef tuple< t_TysTriggers...> _TyTuple;
@@ -1078,14 +1085,15 @@ protected:
 // It saves data by copying it from it's constituent trigger objects.
 // It only contains the ability to hold a single vector of constituent trigger data.
 // These trigger objects may be aggregate contained _l_action_save_data_multiple objects.
-template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
-class _l_action_save_data_multiple : public _l_action_object_value_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyTraits, t_fInLexGen >
+template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
+class _l_action_save_data_multiple 
+	: public _l_action_object_value_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyTraits, tuple_element<0,tuple< t_TysTriggers...>>::type::s_fInLexGen >
 {
 public:
 	typedef typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyTraits _TyTraits;
 private:
 	typedef _l_action_save_data_multiple _TyThis;
-	typedef _l_action_object_value_base< _TyTraits, t_fInLexGen > _TyBase;
+	typedef _l_action_object_value_base< _TyTraits, tuple_element<0,tuple< t_TysTriggers...>>::type::s_fInLexGen > _TyBase;
 public:
 	using typename _TyBase::_TyChar;
 	typedef tuple< t_TysTriggers...> _TyTuple;

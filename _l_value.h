@@ -48,7 +48,7 @@ public:
   template < class t__TyChar >
   using get_string_type = basic_string< t__TyChar >;
   template <>
-  using get_string_type<Char_t> = basic_string<char>;
+  using get_string_type<char8_t> = basic_string<char>;
 #ifdef BIEN_WCHAR_16BIT
   template <>
   using get_string_type<wchar_t> = basic_string<char16_t>;
@@ -56,6 +56,7 @@ public:
   template <>
   using get_string_type<wchar_t> = basic_string<char32_t>;
 #endif //BIEN_WCHAR_32BIT
+  typedef basic_string< _TyChar > _TyStdString; // The impl's string.
 
   // Also allow basic_string_views of every type since that can be used until character translation is needed.
   typedef basic_string_view< char > _TyStrViewChar;
@@ -66,7 +67,7 @@ public:
   template < class t__TyChar >
   using get_string_view_type = basic_string_view< t__TyChar >;
   template <>
-  using get_string_view_type<Char_t> = basic_string_view<char>;
+  using get_string_view_type<char8_t> = basic_string_view<char>;
 #ifdef BIEN_WCHAR_16BIT
   template <>
   using get_string_view_type<wchar_t> = basic_string_view<char16_t>;
@@ -74,6 +75,7 @@ public:
   template <>
   using get_string_view_type<wchar_t> = basic_string_view<char32_t>;
 #endif //BIEN_WCHAR_32BIT
+  typedef basic_string_view< _TyChar > _TyStdStringView;
 
   // Our big old variant.
   // Use monostate to allow an "empty" value here.
@@ -239,6 +241,72 @@ public:
   _TyThis const & operator [] ( size_type _nEl ) const
   {
     return GetValueArray()[_nEl];
+  }
+
+  // KGetStringView
+  // This returns a string_view without modifying the object.
+  // It expects that either a string, string_view, or _TyData object is present.
+  // It will throw if this expectation is not met.
+  template < class t_TyToken, class t_TyStringView >
+  void KGetStringView( t_TyToken const & _rtok, t_TyStringView & _rsv ) const
+    requires( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) )
+  {
+    static_assert( TIsStringView_v< t_TyStringView > );
+    Assert( _rsv.empty() );
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.");
+      },
+      [](bool)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
+      },
+      [](vtyDataPosition)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
+      },
+      [this,&_rtok,&_rsv](_TyData const &)
+      {
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
+        _rtok.KGetStringView( _rsv, *this );
+      },
+      [this,&_rsv](_TyStdString const & _rstr)
+      {
+        _rsv = t_TyStringView( &_rstr[0], _rstr.length() );
+      },
+      [this,&_rsv](_TyStdStringView const & _rsvThis)
+      {
+        _rsv = t_TyStringView( &_rsvThis[0], _rsvThis.length() );
+      },
+      template < class t_TyT >
+      [this,&_rsv]( t_TyT const & _rstr )
+        requires( TIsCharType_v< t_TyT::value_type > )
+      {
+        #error here.
+        _GetStringView( _rsv, _rstr );
+      },
+      [this,&_rsv](_TyStrViewChar16 const & _rsv16)
+      {
+        _GetStringView( _rsv, _rsv16 );
+      },
+      [this,&_rsv](_TyStrChar32 const & _rstr)
+      {
+        _GetStringView( _rsv, _rstr );
+      },
+      [this,&_rsv](_TyStrViewChar32 const & _rsv32)
+      {
+        _GetStringView( _rsv, _rsv32 );
+      },
+      [](_TySegArrayValues &)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
+      },
+      [&_rtok,&_rsv]( auto _userDefinedType )
+      {
+        _userDefinedType.KGetStringView( _rsv, _rtok );
+      }
+    }, m_var );
   }
 
   // This will return a string view of the given type.
@@ -637,5 +705,15 @@ template< class t_TyTraits >
 inline const size_t
 _l_value< t_TyTraits >::s_knbySegArrayInit = _l_value::s_knValsSegSize * sizeof(_l_value);
 #endif //WIN32
+
+namespace std
+{
+  // override std::swap so that it is efficient:
+  template < class t_TyChar, size_t s_knbySegSize >
+  void swap( _l_data< t_TyChar, s_knbySegSize > & _rl, _l_data< t_TyChar, s_knbySegSize > & _rr )
+  {
+    _rl.swap( _rr );
+  }
+}
 
 __LEXOBJ_END_NAMESPACE

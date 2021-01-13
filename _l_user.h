@@ -98,6 +98,13 @@ public:
   typedef _l_value< _TyTraits > _TyValue;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxtBacked;
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxtFixedMem;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
+  typedef _l_stream< _TyTraits > _TyStream;
+
+  bool FFilterToken( const _TyAxnObjBase * _paobCurToken, _TyStream const & _rstrm ) const
+  {
+    return false;
+  }
 
   // These are the default GetString*() impls. They just concatenates segmented strings regardless of the m_nType value.
   // _rval is a constituent value of _rtok.m_value or may be _rtok.m_value itself. We expect _rval's _TyData object to be
