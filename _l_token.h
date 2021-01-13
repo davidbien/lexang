@@ -97,6 +97,11 @@ public:
   {
     m_scx.GetStringView( _rsvDest, *this, _rval );
   }
+  template < class t_tyStringView >
+  void KGetStringView( t_tyStringView & _rsvDest, _TyValue const & _rval )
+  {
+    m_scx.KGetStringView( _rsvDest, *this, _rval );
+  }
   template < class t_tyStringView, class t_tyString >
   bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval )
   {

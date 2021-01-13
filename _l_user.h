@@ -58,6 +58,12 @@ public:
     // yet another delegation...and add another parameter.
     m_ruoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
   }
+  template < class t_TyStringView >
+  void KGetStringView( t_TyStringView & _rsvDest, _TyToken & _rtok, _TyValue const & _rval )
+  {
+    // yet another delegation...and add another parameter.
+    m_ruoUserObj.KGetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
+  }
   template < class t_TyStringView, class t_TyString >
   bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
   {
@@ -153,7 +159,18 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rsvDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        GetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
+        _rcxtTransport.GetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
+      }
+    }, _rcxt.GetVariant() );
+  }
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+    requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    return visit(_VisitHelpOverloadFCall {
+      [&_rsvDest,&_rtok,&_rval]( auto & _rcxtTransport )
+      {
+        _rcxtTransport.KGetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -164,7 +181,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rsvDest,&_rstrDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        FGetStringViewOrString( _rsvDest, _rstrDest, _rcxtTransport, _rtok, _rval );
+        _rcxtTransport.FGetStringViewOrString( _rsvDest, _rstrDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -175,7 +192,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rstrDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        GetString( _rstrDest, _rcxtTransport, _rtok, _rval );
+        _rcxtTransport.GetString( _rstrDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -202,6 +219,17 @@ public:
       _rcxt.GetStringView( _rsvDest, kdtr );
       _rval.SetVal( _rsvDest );
     }
+  }
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+    requires ( ( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    Assert( _rsvDest.empty() );
+    Assert( _rval.FHasTypedData() ); // We are converting the _TyData object that is in _rval.
+    const _TyData kdtr = _rval.template GetVal< _TyData >();
+    _rcxt.AssertValidDataRange( kdtr );
+    VerifyThrowSz( kdtr.FContainsSingleDataRange(), "KGetStringView() is only valid for single data ranges." );
+    _rcxt.GetStringView( _rsvDest, kdtr );
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
