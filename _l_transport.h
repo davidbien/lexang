@@ -678,7 +678,7 @@ public:
   _TyThis const & operator = ( _TyThis const & _r ) = delete;
 
   template < class t_TyTransport, class ... t_TysArgs >
-  void emplaceTransport( t_TysArgs ... _args )
+  void emplaceTransport( t_TysArgs&& ... _args )
   {
     m_var.template emplace< t_TyTransport >( std::forward< t_TysArgs >( _args ) ... );
   }

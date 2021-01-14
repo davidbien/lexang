@@ -63,7 +63,7 @@ public:
   }
   // Construct a specific transport type in a transport_var.
   template < class t_TyTransport, class ... t_TysArgs >
-  void emplaceVarTransport( t_TysArgs ... _args )
+  void emplaceVarTransport( t_TysArgs&& ... _args )
   {
     if ( !m_opttpImpl )
       m_opttpImpl.emplace(); // Just create a default var_transport object with no active variant.
