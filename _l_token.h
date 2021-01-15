@@ -112,6 +112,11 @@ public:
   {
     m_scx.GetString( _rstrDest, *this, _rval );
   }
+  // Return the beginning and ending positions of the token in the stream.
+  void GetTokenDataRange( _l_data_range & _rdr ) const
+  {
+    m_scx.GetTokenDataRange( _rdr );
+  }
 protected:
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.

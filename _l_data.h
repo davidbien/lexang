@@ -187,7 +187,7 @@ public:
     _SetContainsSingleDataRange();
     AssertValid(); // We don't expect someone to set in invalid members but it is possible.
   }
-  _l_data( _l_data_range const & _rdr, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
+  _l_data( _l_data_range const & _rdr, vtyDataType _nType = 0, vtyDataTriggerId _nIdTrigger = vktidInvalidIdTrigger )
     : m_dtrData(_rdr.begin(),_rdr.end(), _nType, _nIdTrigger )
   {
     _SetContainsSingleDataRange();

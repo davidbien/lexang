@@ -60,6 +60,11 @@ public:
   {
     return m_posTokenStart;
   }
+  void GetTokenDataRange( _l_data_range & _rdr ) const
+  {
+    _rdr.m_posBegin = m_posTokenStart;
+    _rdr.m_posEnd = m_posTokenStart + m_bufTokenData.length();
+  }
   const _TyBuffer & GetTokenBuffer() const
   {
     return m_bufTokenData;
@@ -317,6 +322,11 @@ public:
   vtyDataPosition PosTokenStart() const
   {
     return m_posTokenStart;
+  }
+  void GetTokenDataRange( _l_data_range & _rdr ) const
+  {
+    _rdr.m_posBegin = m_posTokenStart;
+    _rdr.m_posEnd = m_posTokenStart + m_bufTokenData.length();
   }
   _TyBuffer const & GetTokenBuffer() const
   {
