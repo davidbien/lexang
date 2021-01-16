@@ -742,9 +742,39 @@ public:
 								// Then found one - this node to be deleted.
 								Assert( !!stRemoved || ( gfit.PGNCur() == pgn ) ); // First time through we should remove the root.
 								RDfa().m_nodeLookup[ gfit.PGNCur()->RElConst() ] = 0;
+								_TyGraphNode * pgnRemoved = gfit.PGNCur();
 								++gfit;	// Move to next node or link.
 								++stRemoved;
-							}
+								if ( 1 != stRemoved )// We don't check on the first node because we know there is only one child.
+								{
+									// Now remove links for any children of pgnRemoved who enter into nodes which do not contain any of the unsatifiable transactions we are interested in.
+									// The first easy check is to see if it enters into a node which has already been zeroed - in which it should not be removed.
+									// Note that we needn't remove the link entirely - just remove it from connecting back to the non-pruned graph - deletion will correctly delete unconnected links.
+									// First move past any unsatisfiable transitions:
+									_TyGraphLink * pglNext = *pglFirst->PPGLGetNextChild();
+									for (; !!pglNext; pglNext = *pglNext->PPGLGetNextChild())
+									{
+										_TyGraphNode * pgnCheck = pglNext->PGNChild();
+										if ( !RDfa().m_nodeLookup[ pgnCheck->RElConst() ] )
+										{
+											// points at already removed node - leave the link because we need the to-be-removed subgraph to be connected for deletion purposes.
+											continue;
+										}
+										_TyGraphLink *	pglFirstCheck = *pgnCheck->PPGLChildHead();
+										for ( ; !!pglFirstCheck && ( pglFirstCheck->RElConst() >= praiTriggers.first ) && ( pglFirstCheck->RElConst() < praiTriggers.second ); 
+													pglFirstCheck = *pglFirstCheck->PPGLGetNextChild() )
+												;
+										Assert( !!pglFirstCheck ); // REVIEW<dbien>:Want to see if this ever fires and check out that scenario - could just remove this.
+										if ( !!pglFirstCheck || ( ( pglFirstCheck->RElConst() != pglUnsat->RElConst()-1 ) && ( pglFirstCheck->RElConst() != pglUnsat->RElConst() ) ) )
+										{
+											// Then pglNext connects back to the main graph and should be removed from it's child's parent list:
+											pglNext->RemoveParent();
+											pglNext->SetChildNode( nullptr );
+											// We leave it unconnected since it will be pruned and deletion correctly deletes links with only one connection.
+										} // if
+									} // for
+								} // if
+							} // if
 							else
 							{
 								Assert( pglEntered );
