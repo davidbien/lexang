@@ -36,7 +36,7 @@ public:
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyTraits > _TyValue;
   typedef typename _TyValue::size_type size_type;
-  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   _l_token() = delete;
   // We could make this protected, etc, but I don't worry that it will be accidetally called.
@@ -123,14 +123,15 @@ protected:
   const _TyAxnObjBase * m_paobCurToken; // Pointer to the action object for this token - from which the token id is obtainable, etc.
 };
 
+__LEXOBJ_END_NAMESPACE
+
 namespace std
 {
+__LEXOBJ_USING_NAMESPACE
   // override std::swap so that it is efficient:
   template< class t_TyTraits >
-  void swap( _l_token< t_TyTraits > & _rl, _l_token< t_TyTraits > & _rr )
+  void swap(_l_token< t_TyTraits >& _rl, _l_token< t_TyTraits >& _rr)
   {
-    _rl.swap( _rr );
+    _rl.swap(_rr);
   }
 }
-
-__LEXOBJ_END_NAMESPACE

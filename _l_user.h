@@ -18,7 +18,7 @@ __LEXOBJ_BEGIN_NAMESPACE
 // _l_user_context:
 // This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
 template < class t_TyTraits >
-class _l_user_context : public typename t_TyTraits::_TyTransportCtxt
+class _l_user_context : public t_TyTraits::_TyTransportCtxt
 {
   typedef _l_user_context _TyThis;
   typedef typename t_TyTraits::_TyTransportCtxt _TyBase;
@@ -93,21 +93,19 @@ struct TFIsTransportVarCtxt< _l_transport_var_ctxt< t_tys ... > >
 template < class ... t_tys >
 inline constexpr bool TFIsTransportVarCtxt_v = TFIsTransportVarCtxt< t_tys ... >::value;
 
-template < class t_TyTraits >
+template < class t_TyChar >
 class _l_default_user_obj
 {
   typedef _l_default_user_obj _TyThis;
 public:
-  typedef t_TyTraits _TyTraits;
-  typedef typename _TyTraits::_TyChar _TyChar;
+  typedef t_TyChar _TyChar;
   typedef _l_data< _TyChar > _TyData;
-  typedef _l_value< _TyTraits > _TyValue;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxtBacked;
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxtFixedMem;
-  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
-  typedef _l_stream< _TyTraits > _TyStream;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
-  bool FFilterToken( const _TyAxnObjBase * _paobCurToken, _TyStream const & _rstrm ) const
+  template < class t_TyStream >
+  bool FFilterToken( const _TyAxnObjBase * _paobCurToken, t_TyStream const & _rstrm ) const
   {
     return false;
   }
@@ -129,18 +127,18 @@ public:
 // Generic transport methods:
 // For all transport types these converting methods are exactly the same.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue & _rval )
     requires ( sizeof( typename t_TyStringView::value_type ) != sizeof( _TyChar ) )
   {
     typedef typename t_TyStringView::value_type _TyCharConvertTo;
-    typedef typename _TyValue::template get_string_type< _TyCharConvertTo > _TyStrConvertTo;
+    typedef typename t_TyToken::_TyValue::template get_string_type< _TyCharConvertTo > _TyStrConvertTo;
     _TyStrConvertTo strConverted;
     GetString( strConverted, _rcxt, _rtok, _rval );
     _TyStrConvertTo & rstr = _rval.emplaceVal( std::move( strConverted ) );
     _rsvDest = t_TyStringView( (const _TyCharConvertTo*)&rstr[0], rstr.length() );
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue const & _rval )
     requires ( sizeof( typename t_TyStringView::value_type ) != sizeof( _TyChar ) )
   {
     static_assert( sizeof( typename t_TyStringView::value_type ) == sizeof( typename t_TyString::value_type ) );
@@ -153,7 +151,7 @@ public:
   }
 // var transport:
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue & _rval )
     requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     return visit(_VisitHelpOverloadFCall {
@@ -164,7 +162,7 @@ public:
     }, _rcxt.GetVariant() );
   }
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue const & _rval )
     requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     return visit(_VisitHelpOverloadFCall {
@@ -175,7 +173,7 @@ public:
     }, _rcxt.GetVariant() );
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const typename t_TyToken::_TyValue& _rval )
     requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     return visit(_VisitHelpOverloadFCall {
@@ -186,7 +184,7 @@ public:
     }, _rcxt.GetVariant() );
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const typename t_TyToken::_TyValue& _rval )
     requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     return visit(_VisitHelpOverloadFCall {
@@ -198,7 +196,7 @@ public:
   }
 // Non-converting GetString*.
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue & _rval )
+  static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue & _rval )
     requires ( ( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     Assert( _rsvDest.empty() );
@@ -207,7 +205,7 @@ public:
     _rcxt.AssertValidDataRange( kdtr );
     if ( !kdtr.FContainsSingleDataRange() )
     {
-      typedef typename _TyValue::template get_string_type< _TyChar > _TyStringImpl;
+      typedef typename t_TyToken::_TyValue::template get_string_type< _TyChar > _TyStringImpl;
       _TyStringImpl strBacking;
       GetString( strBacking, _rcxt, _rtok, _rval );
       _TyStringImpl & rstr = _rval.emplaceVal( std::move( strBacking ) );;
@@ -221,7 +219,7 @@ public:
     }
   }
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
-  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue const & _rval )
     requires ( ( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     Assert( _rsvDest.empty() );
@@ -232,7 +230,7 @@ public:
     _rcxt.GetStringView( _rsvDest, kdtr );
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+  static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const typename t_TyToken::_TyValue & _rval )
     requires ( ( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     static_assert( sizeof( typename t_TyStringView::value_type ) == sizeof( typename t_TyString::value_type ) );
@@ -253,7 +251,7 @@ public:
     }
   }
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const _TyValue & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const typename t_TyToken::_TyValue & _rval )
     requires ( ( sizeof( typename t_TyString::value_type ) == sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     Assert( _rstrDest.empty() );
@@ -297,7 +295,7 @@ public:
 
 // Converting GetString*.
   template < class t_TyString, class t_TyToken, class t_TyTransportCtxt >
-  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _TyValue const & _rval )
+  static void GetString( t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue const & _rval )
     requires ( ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
   {
     Assert( _rstrDest.empty() );
@@ -309,7 +307,7 @@ public:
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a converted string, attempt to use an alloca() buffer:
     static size_t knchMaxAllocaSize = vknbyMaxAllocaSize / sizeof( _TyChar );
-    typename _TyValue::template get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
+    typename t_TyToken::_TyValue::template get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
     vtyDataPosition nCharsCount = kdtr.CountChars();
     vtyDataPosition nCharsRemaining = nCharsCount;
     _TyChar * pcBuf;

@@ -395,10 +395,10 @@ struct _l_generator
 													int _nOuts, bool _fAccept )
 	{
 		_ros	<< "template < class t_TyTransport, class t_TyUserObj >\nextern ";
-		bool fIsTriggerAction, fIsTriggerGateway;
+		bool fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState;
 		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
 		_TyRangeEl rgelTrigger; 
-		_GenStateType( _ros, _pgn, _nOuts, _fAccept, fIsTriggerAction, fIsTriggerGateway, tidTokenTrigger, rgelTrigger );
+		_GenStateType( _ros, _pgn, _nOuts, _fAccept, fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState, tidTokenTrigger, rgelTrigger );
 		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
 		{
 			// Use the special start state name:
@@ -438,7 +438,7 @@ struct _l_generator
 		return ( _rre >= (_TyRangeEl)m_praiTriggers.first ) && ( _rre < (_TyRangeEl)m_praiTriggers.second );
 	}
 	void	_GenStateType(	ostream & _ros, _TyGraphNode * _pgn, 
-												int _nOuts, bool _fAccept, bool & _rfIsTriggerAction, bool & _rfIsTriggerGateway, 
+												int _nOuts, bool _fAccept, bool & _rfIsTriggerAction, bool & _rfIsTriggerGateway, bool & _rIsAntiAcceptingState,
 												vtyTokenIdent & _rtidTokenTrigger, _TyRangeEl & _rrgelTrigger )
 	{
 		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
@@ -449,6 +449,9 @@ struct _l_generator
 				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
 		_rfIsTriggerAction = ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) );		
+		// If this is an anti-accepting state then that status overrides all trigger out transitions 
+		//	- since a trigger would fire on the same condition that the anti-accepting state is accepted.
+		_rIsAntiAcceptingState = ( pvtAction && ( ( pvtAction->second.m_eaatType & ~e_aatTrigger ) == e_aatAntiAccepting ) );
 		_rfIsTriggerGateway = false;
 		_rtidTokenTrigger = (numeric_limits< vtyTokenIdent >::max)();
 		_rrgelTrigger = 0;
@@ -475,7 +478,8 @@ struct _l_generator
 					Assert( r.second == r.first );
 					_rfIsTriggerGateway = !( r.first % 2 ); // We are entering into a triggered state.
 					VerifyThrowSz( _rfIsTriggerAction == !_rfIsTriggerGateway, "We expect odd triggers out of trigger states and even triggers into trigger states." );
-					VerifyThrowSz( _rfIsTriggerAction || !_fAccept, "A trigger is leaving an accept state - this is an ambiguous situation.");
+					VerifyThrowSz( _rfIsTriggerAction || !_fAccept || _rIsAntiAcceptingState, "A trigger is leaving an accept state - this is an ambiguous situation.");
+					VerifyThrowSz( !_rIsAntiAcceptingState || _rfIsTriggerGateway, "An action trigger ambiguous with an anti-accepting state.");
 					if ( lpi.NextChild(), !lpi.FIsLast() )
 						VerifyThrowSz( !_FIsTrigger( *lpi ), "More than one trigger leaving a state." );
 				}
@@ -552,9 +556,8 @@ struct _l_generator
 				}
 				else
 				{
-					_ros << "1";
+					_ros << ( _rfIsTriggerAction ? "1" : "0" ); // No trigger actions are associated with a gateway.
 				}
-
 				_ros << " >";
 			}
 			else
@@ -572,10 +575,10 @@ struct _l_generator
 											int _nOutsOrig, bool _fAccept )
 	{
 		_ros << "typedef ";
-		bool fIsTriggerAction, fIsTriggerGateway;
+		bool fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState;
 		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
 		_TyRangeEl rgelTrigger; 
-		_GenStateType( _ros, _pgn, _nOutsOrig, _fAccept, fIsTriggerAction, fIsTriggerGateway, tidTokenTrigger, rgelTrigger );
+		_GenStateType( _ros, _pgn, _nOutsOrig, _fAccept, fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState, tidTokenTrigger, rgelTrigger );
 		_ros << " _Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << ";\n";
 		_ros << "template < class t_TyTransport, class t_TyUserObj > inline\n";
 		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << " ";
@@ -651,6 +654,11 @@ struct _l_generator
 					_ros << "kucLookaheadAcceptAndLookahead, ";
 				}
 				break;
+				case e_aatAntiAccepting:
+				{
+					_ros << "kucAntiAccepting, ";
+				}
+				break;
 				default:
 				{
 					_ros << "0, ";
@@ -662,7 +670,7 @@ struct _l_generator
 		{
 			_ros << "0, ";
 		}
-		if ( fIsTriggerAction || fIsTriggerGateway )
+		if ( fIsTriggerAction || ( fIsTriggerGateway && !fIsAntiAcceptingState ) )
 		{
 			// Then the first transition is the trigger:
 			_ros << "(_TyStateProto*)( & ";

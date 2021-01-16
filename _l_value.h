@@ -19,13 +19,52 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
+template < class t_TyChar >
+struct _l_value_get_string_type
+{
+  typedef basic_string< t_TyChar > type;
+};
+template < >
+struct _l_value_get_string_type< char8_t >
+{
+  typedef basic_string< char > type;
+};
+template < >
+struct _l_value_get_string_type< wchar_t >
+{
+#ifdef BIEN_WCHAR_16BIT
+  typedef basic_string< char16_t > type;
+#else //!BIEN_WCHAR_16BIT
+  typedef basic_string< char32_t > type;
+#endif //!BIEN_WCHAR_16BIT
+};
+template < class t_TyChar >
+struct _l_value_get_string_view_type
+{
+  typedef basic_string_view< t_TyChar > type;
+};
+template < >
+struct _l_value_get_string_view_type< char8_t >
+{
+  typedef basic_string_view< char > type;
+};
+template < >
+struct _l_value_get_string_view_type< wchar_t >
+{
+#ifdef BIEN_WCHAR_16BIT
+  typedef basic_string_view< char16_t > type;
+#else //!BIEN_WCHAR_16BIT
+  typedef basic_string_view< char32_t > type;
+#endif //!BIEN_WCHAR_16BIT
+};
+
 template< class t_TyTraits >
 class _l_value
 {
   typedef _l_value _TyThis;
 public:
   typedef t_TyTraits _TyTraits;
-  typedef typename _TyTraits::_TyChar;
+  using typename _TyTraits::_TyChar;
   typedef _l_data< _TyChar > _TyData;
   static constexpr size_t s_knValsSegSize = _TyTraits::s_knValsSegSize;
 #ifdef _MSC_VER
@@ -46,16 +85,7 @@ public:
   typedef basic_string< wchar_t > _TyStrWChar;
   typedef basic_string< char32_t > _TyStrChar32;
   template < class t__TyChar >
-  using get_string_type = basic_string< t__TyChar >;
-  template <>
-  using get_string_type<char8_t> = basic_string<char>;
-#ifdef BIEN_WCHAR_16BIT
-  template <>
-  using get_string_type<wchar_t> = basic_string<char16_t>;
-#else //BIEN_WCHAR_32BIT
-  template <>
-  using get_string_type<wchar_t> = basic_string<char32_t>;
-#endif //BIEN_WCHAR_32BIT
+  using get_string_type = typename _l_value_get_string_type< t__TyChar >::type;
   typedef basic_string< _TyChar > _TyStdString; // The impl's string.
 
   // Also allow basic_string_views of every type since that can be used until character translation is needed.
@@ -65,16 +95,7 @@ public:
   typedef basic_string_view< wchar_t > _TyStrViewWChar;
   typedef basic_string_view< char32_t > _TyStrViewChar32;
   template < class t__TyChar >
-  using get_string_view_type = basic_string_view< t__TyChar >;
-  template <>
-  using get_string_view_type<char8_t> = basic_string_view<char>;
-#ifdef BIEN_WCHAR_16BIT
-  template <>
-  using get_string_view_type<wchar_t> = basic_string_view<char16_t>;
-#else //BIEN_WCHAR_32BIT
-  template <>
-  using get_string_view_type<wchar_t> = basic_string_view<char32_t>;
-#endif //BIEN_WCHAR_32BIT
+  using get_string_view_type = typename _l_value_get_string_view_type< t__TyChar >::type;
   typedef basic_string_view< _TyChar > _TyStdStringView;
 
   // Our big old variant.
@@ -86,7 +107,7 @@ public:
                     _TyStrChar32, _TyStrViewChar32,
                     _TySegArrayValues > _TyVariantBase;
   // Now define our full variant type by concatenating on any user defined types.
-  typedef concatenator_pack< _TyVariantBase, typename _TyTraits::_TyValueTraits > ::type _TyVariant;
+  typedef typename concatenator_pack< _TyVariantBase, typename _TyTraits::_TyValueTraits > ::type _TyVariant;
 
   _l_value() = default;
   _l_value(_l_value const & ) = default;
@@ -206,14 +227,14 @@ public:
 #else //BIEN_WCHAR_32BIT
   _TyStrViewChar32 & 
 #endif //BIEN_WCHAR_32BIT
-  SetVal( _TyViewStrWChar const & _r )
+  SetVal(_TyStrViewWChar const & _r )
   {
 #ifdef BIEN_WCHAR_16BIT
     _TyStrViewChar16 sv( (const char16_t*)&_r[0], _r.length() );
 #else //BIEN_WCHAR_32BIT
     _TyStrViewChar32 sv( (const char32_t*)&_r[0], _r.length() );
 #endif
-    return SetVal( std::move( sv ) );
+    return SetVal( sv );
   }
   
   // This ensures we have an array of _l_values within and then sets the size to the passed size.
@@ -460,7 +481,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
-      [&_rtok,&_rsv]( auto _userDefinedType )
+      [&_rtok,&_rstr]( auto _userDefinedType )
       {
         _userDefinedType.GetString( _rstr, _rtok );
       }
@@ -719,14 +740,15 @@ inline const size_t
 _l_value< t_TyTraits >::s_knbySegArrayInit = _l_value::s_knValsSegSize * sizeof(_l_value);
 #endif //WIN32
 
+__LEXOBJ_END_NAMESPACE
+
 namespace std
 {
-  // override std::swap so that it is efficient:
-  template < class t_TyChar, size_t s_knbySegSize >
-  void swap( _l_data< t_TyChar, s_knbySegSize > & _rl, _l_data< t_TyChar, s_knbySegSize > & _rr )
+  __LEXOBJ_USING_NAMESPACE
+    // override std::swap so that it is efficient:
+    template < class t_TyChar, size_t s_knbySegSize >
+  void swap(_l_data< t_TyChar, s_knbySegSize >& _rl, _l_data< t_TyChar, s_knbySegSize >& _rr)
   {
-    _rl.swap( _rr );
+    _rl.swap(_rr);
   }
 }
-
-__LEXOBJ_END_NAMESPACE

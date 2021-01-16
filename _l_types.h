@@ -39,11 +39,11 @@ template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTrigge
 struct _l_trigger_position_end;
 template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
 struct _l_trigger_string;
-template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen = true >
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin >
 class _l_trigger_string_typed_range;
-template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
+template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
 class _l_action_save_data_single;
-template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
+template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
 class _l_action_save_data_multiple;
 
 __REGEXP_END_NAMESPACE
@@ -66,6 +66,9 @@ const unsigned char kucLookaheadAccept = 3; // Lookahead accept state.
 const unsigned char kucLookaheadAcceptAndAccept = 4;
 // Similar to above.
 const unsigned char kucLookaheadAcceptAndLookahead = 5;
+// Anti-accepting state: If this state is reached there will be no out transition (this is enforced during generation).
+// The pattern received is specifically anti-accepting and lexical analysis should stop.
+const unsigned char kucAntiAccepting = 6;
 
 // _l_state.h:
 template <class t_TyChar>
@@ -103,21 +106,21 @@ template< class t_TyTraits > class _l_value;
 template < class t_TyTraits > class _l_token;
 
 // _l_stream.h:
-template < class t_TyTraits >
+template < class t_TyChar >
 class _l_default_user_obj;
 template < class t_TyTraits >
 class _l_user_context;
-template < class t_TyTraits >
+template < class t_TyChar >
 class _l_transport_base;
 template < class t_TyChar >
 class _l_transport_backed_ctxt;
-template < class t_TyTraits >
+template < class t_TyChar >
 class _l_transport_file;
 template < class t_TyChar >
 class _l_transport_fixedmem_ctxt;
-template < class t_TyTraits >
+template < class t_TyChar >
 class _l_transport_fixedmem;
-template < class t_TyTraits >
+template < class t_TyChar >
 class _l_transport_mapped;
 template < class ... t_TysTransportContexts >
 class _l_transport_var_ctxt;

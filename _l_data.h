@@ -434,22 +434,24 @@ protected:
   }
 };
 
+__LEXOBJ_END_NAMESPACE
+
 namespace std
 {
+__LEXOBJ_USING_NAMESPACE
   // override std::swap so that it is efficient:
-  void swap( _l_data_range & _rl, _l_data_range & _rr )
+  void swap(_l_data_range& _rl, _l_data_range& _rr)
   {
-    _rl.swap( _rr );
+    _rl.swap(_rr);
   }
-  void swap( _l_data_typed_range & _rl, _l_data_typed_range & _rr )
+  void swap(_l_data_typed_range& _rl, _l_data_typed_range& _rr)
   {
-    _rl.swap( _rr );
+    _rl.swap(_rr);
   }
   template< class t_TyTraits >
-  void swap( _l_value< t_TyTraits > & _rl, _l_value< t_TyTraits > & _rr )
+  void swap(_l_value< t_TyTraits >& _rl, _l_value< t_TyTraits >& _rr)
   {
-    _rl.swap( _rr );
+    _rl.swap(_rr);
   }
 }
 
-__LEXOBJ_END_NAMESPACE

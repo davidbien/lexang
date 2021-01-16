@@ -572,7 +572,7 @@ public:
 						if ( fFoundTrigger )
 						{
               Assert(!!srFoundTriggers.countsetbits());
-                m_fAmbiguousTriggers = true;	// We have ambiguous triggers.
+              m_fAmbiguousTriggers = true;	// We have ambiguous triggers.
 							(int&)aaNew.m_eaatType |= e_aatTrigger;
 						}
 						// The original action to which this corresponds:

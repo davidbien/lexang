@@ -164,6 +164,7 @@ struct _l_action_object_value_base : public _l_action_object_base< typename t_Ty
 	typedef _l_action_object_value_base _TyThis;
 	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 public:
+	typedef t_TyTraits _TyTraits;
 	typedef _l_action_object_value_base _TyActionObjectBase;
 	typedef __LEXOBJ_NAMESPACE _l_value< _TyTraits > _TyValue;
 	~_l_action_object_value_base() = default;
@@ -641,7 +642,7 @@ private:
 	typedef _l_trigger_position_end	_TyThis;
 	typedef _l_trigger_position< t_TyTraits, t_kiTrigger, t_fInLexGen > _TyBase;
 public:
-	using _TyBase::_TyChar;
+	using typename _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_fInLexGen;	
@@ -716,7 +717,7 @@ private:
 	typedef _l_trigger_string	_TyThis;
 	typedef _l_trigger_position_end< t_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
-	using _TyBase::_TyChar;
+	using typename _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
@@ -835,7 +836,7 @@ public:
 	typedef typename t_TyActionStoreData::_TyTraits _TyTraits;
 private:
 	typedef _l_trigger_string_typed_range _TyThis;
-	typedef _l_trigger_position_end< _TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
+	typedef _l_trigger_position_end< _TyTraits, t_kiTrigger, t_kiTriggerBegin, t_TyActionStoreData::s_fInLexGen > _TyBase;
 public:
 	static constexpr vtyDataType s_kdtType = t_kdtType;
 	using _TyBase::_TyChar;
@@ -844,7 +845,7 @@ public:
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
-	typedef _l_trigger_position< _TyTraits, s_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
+	typedef _l_trigger_position< _TyTraits, s_kiTriggerBegin, s_fInLexGen > _TyTriggerBegin;
 	typedef t_TyActionStoreData _tyActionStoreData;
 	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
 	using typename _TyBase::_TyActionObjectBase;
@@ -1272,22 +1273,22 @@ struct __map_to_base_class< _l_trigger_string< t_TyTraits, t_kiTrigger, t_kiTrig
 	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 };
 
-template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin, bool t_fInLexGen  >
-struct __map_to_base_class< _l_trigger_string_typed_range< t_kdtType, t_TyActionStoreData, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > >
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin  >
+struct __map_to_base_class< _l_trigger_string_typed_range< t_kdtType, t_TyActionStoreData, t_kiTrigger, t_kiTriggerBegin > >
 {
-	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_TyActionStoreData::s_fInLexGen > _TyBase;
 };
 
-template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
-struct __map_to_base_class< _l_action_save_data_single< t_kiTrigger, t_fInLexGen, t_TysTriggers... > >
+template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
+struct __map_to_base_class< _l_action_save_data_single< t_kiTrigger, t_TysTriggers... > >
 {
-	typedef _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, tuple_element<0, tuple< t_TysTriggers...>>::type::s_fInLexGen > _TyBase;
 };
 
-template < vtyTokenIdent t_kiTrigger, bool t_fInLexGen, class... t_TysTriggers >
-struct __map_to_base_class< _l_action_save_data_multiple< t_kiTrigger, t_fInLexGen, t_TysTriggers... > >
+template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
+struct __map_to_base_class< _l_action_save_data_multiple< t_kiTrigger, t_TysTriggers... > >
 {
-	typedef _l_action_object_base< typename tuple_element<0,tuple< t_TysTriggers...>>::type::_TyChar, t_fInLexGen > _TyBase;
+	typedef _l_action_object_base< typename tuple_element<0, tuple< t_TysTriggers...>>::type::_TyChar, tuple_element<0, tuple< t_TysTriggers...>>::type::s_fInLexGen > _TyBase;
 };
 
 __BIENUTIL_END_NAMESPACE
