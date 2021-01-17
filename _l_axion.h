@@ -43,7 +43,7 @@ public:
 	virtual ~_l_action_object_base() = default;
 	_l_action_object_base() = default;
 
-	virtual string VStrTypeName( const char * _pcCharName ) const = 0;
+	virtual string VStrTypeName( const char * _pcTraitsName ) const = 0;
 
 	// Return the unique token ID associated with this object.
 	// This is the virtual call. The non-virtual call is defined at most-derived class level.
@@ -113,8 +113,8 @@ public:
 	}
 #endif //0
 
-	virtual void RenderActionType(ostream & _ros, const char * _pcCharName) const = 0;
-  virtual void RenderActionType(stringstream & _ros, const char * _pcCharName) const = 0;
+	virtual void RenderActionType(ostream & _ros, const char * _pcTraitsName) const = 0;
+  virtual void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const = 0;
 };
 
 template < class t_TyChar, bool t_fInLexGen >
@@ -242,27 +242,27 @@ public:
 	using _TyBase::VGetTokenId;
 	using _TyBase::Clear;
 	using _TyBase::VGetDependentTriggerSet;
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		string str = StaticStrTypeName( _pcCharName );
+		string str = StaticStrTypeName( _pcTraitsName );
 		_ros << str;
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
-		string strBase = _TyBase::StaticStrTypeName( _pcCharName );
+		string strBase = _TyBase::StaticStrTypeName( _pcTraitsName );
 		string str;
 		PrintfStdStr( str, "_l_action_token< %s >", strBase.c_str() );
 		return str;
@@ -323,27 +323,27 @@ public:
 	void GetAndClearValue( _TyValue & _rv )
 	{ // nothing to do.
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "_l_action_print< " << _pcCharName << ", " << s_kiTrigger << ", false >";
+		_ros << "_l_action_print< " << _pcTraitsName << ", " << s_kiTrigger << ", false >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_action_print< %s, %u, false >", _pcCharName, s_kiTrigger );
+		PrintfStdStr( str, "_l_action_print< %s, %u, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -402,27 +402,27 @@ public:
 	{
 		_rbv[s_kiTrigger] = true;
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "_l_trigger_noop< " << _pcCharName << ", " << s_kiTrigger << ", false >";
+		_ros << "_l_trigger_noop< " << _pcTraitsName << ", " << s_kiTrigger << ", false >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_noop< %s, %u, false >", _pcCharName, s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_noop< %s, %u, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -490,27 +490,27 @@ public:
 	{
 		_rbv[s_kiTrigger] = true;
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "_l_trigger_bool< " << _pcCharName << ", " << s_kiTrigger << ", false >";
+		_ros << "_l_trigger_bool< " << _pcTraitsName << ", " << s_kiTrigger << ", false >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_bool< %s, %u, false >", _pcCharName, s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_bool< %s, %u, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -580,27 +580,27 @@ public:
 	{
 		_rbv[s_kiTrigger] = true;
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "_l_trigger_position< " << _pcCharName << ", " << s_kiTrigger << ", false >";
+		_ros << "_l_trigger_position< " << _pcTraitsName << ", " << s_kiTrigger << ", false >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_position< %s, %u, false >", _pcCharName, s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_position< %s, %u, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -667,27 +667,27 @@ public:
 		_TyBase::VGetDependentTriggerSet( _rbv );
 		_rbv[s_kiTriggerBegin] = true;
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "_l_trigger_position_end< " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
+		_ros << "_l_trigger_position_end< " << _pcTraitsName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_position< %s, %u, %u, false >", _pcCharName, s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_position< %s, %u, %u, false >", _pcTraitsName, s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -755,27 +755,27 @@ public:
 	// Return the unique token ID associated with this object.
 	using _TyBase::GetTokenId;
 	using _TyBase::VGetTokenId;
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "_l_trigger_string< " << _pcCharName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
+		_ros << "_l_trigger_string< " << _pcTraitsName << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_string< %s, %u, %u, false >", _pcCharName, s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_string< %s, %u, %u, false >", _pcTraitsName, s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -839,15 +839,15 @@ private:
 	typedef _l_trigger_position_end< _TyTraits, t_kiTrigger, t_kiTriggerBegin, t_TyActionStoreData::s_fInLexGen > _TyBase;
 public:
 	static constexpr vtyDataType s_kdtType = t_kdtType;
-	using _TyBase::_TyChar;
+	using typename _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
 	using typename _TyBase::_TyValue;
 	typedef _l_trigger_position< _TyTraits, s_kiTriggerBegin, s_fInLexGen > _TyTriggerBegin;
-	typedef t_TyActionStoreData _tyActionStoreData;
-	static constexpr vtyTokenIdent s_kiActionStoreData = _tyActionStoreData::GetTokenId();
+	typedef t_TyActionStoreData _TyActionStoreData;
+	static constexpr vtyTokenIdent s_kiActionStoreData = _TyActionStoreData::GetTokenId();
 	using typename _TyBase::_TyActionObjectBase;
 
 	_l_trigger_string_typed_range() = default;
@@ -868,30 +868,30 @@ public:
 		t_TyActionStoreData asdTemp;
 		asdTemp.VGetDependentTriggerSet( _rbv );
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
 		_ros << "_l_trigger_string_typed_range< " << s_kdtType << ", ";
-		_tyActionStoreData::StaticRenderActionType( _ros, _pcCharName );
-		_ros << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << ", false >";
+		_TyActionStoreData::StaticRenderActionType( _ros, _pcTraitsName );
+		_ros << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << " >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
-		string strActionStoreData( _tyActionStoreData::StaticStrTypeName( _pcCharName ) );
+		string strActionStoreData( _TyActionStoreData::StaticStrTypeName( _pcTraitsName ) );
 		string str;
-		PrintfStdStr( str, "_l_trigger_string< %u, %s, %u, %u, false >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_string< %u, %s, %u, %u >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -912,8 +912,112 @@ public:
 						( vkdpNullDataPosition != posEnd ) &&
 						( posEnd > posBegin ) )
 			{
-				_tyActionStoreData & raxnStoreData = static_cast< _tyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
+				_TyActionStoreData & raxnStoreData = static_cast< _TyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
 				raxnStoreData.Append( _rA, posBegin, posEnd, s_kdtType, s_kiTrigger );
+			}
+		}
+		return true;
+	}
+	// There is no data in this object - only a position.
+	void swap( _TyThis & _r )
+	{
+		_TyBase::swap( _r );
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		// We shouldn't get here but if so call the base:
+		AssertSz( false, "No reason to use this class within a token since it stores its value in another trigger/token.");
+		_TyBase::GetAndClearValue( _rv );
+	}
+protected:
+	using _TyBase::GetClearPosition;
+};
+
+// _l_trigger_string_typed_endpoint:
+// This will store a range of input data into t_TyActionStoreData identified by the t_kdtType "type" of data.
+// The beginning position of the data is contained in this object.
+// The ending position will always be vkdpNullDataPosition.
+// This is for use when the beginning trigger would be in a position that is untenable - i.e. at the beginning of a token, etc.
+// The interpretation of this position is application dependent - the application must post-process and place the correct (begin,end)
+//	positions - if it so desires as well - perhaps a single position is all that is required.
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger >
+class _l_trigger_string_typed_endpoint
+	: public _l_trigger_position< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_TyActionStoreData::s_fInLexGen >
+{
+public:
+	typedef typename t_TyActionStoreData::_TyTraits _TyTraits;
+private:
+	typedef class _l_trigger_string_typed_endpoint _TyThis;
+	typedef _l_trigger_position< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_TyActionStoreData::s_fInLexGen > _TyBase;
+public:
+	static constexpr vtyDataType s_kdtType = t_kdtType;
+	using typename _TyBase::_TyChar;
+	using _TyBase::s_kiTrigger;
+	using _TyBase::s_kiToken;
+	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
+	typedef t_TyActionStoreData _TyActionStoreData;
+	static constexpr vtyTokenIdent s_kiActionStoreData = _TyActionStoreData::GetTokenId();
+	using typename _TyBase::_TyActionObjectBase;
+
+	class _l_trigger_string_typed_endpoint() = default;
+	class _l_trigger_string_typed_endpoint( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
+	class _l_trigger_string_typed_endpoint( _TyThis const & _r ) = default;
+	using _TyBase::VFIsNull;
+	using _TyBase::FIsNull;
+	using _TyBase::GetTokenId;
+	using _TyBase::VGetTokenId;
+	using _TyBase::Clear;
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_TyBase::VGetDependentTriggerSet( _rbv );
+		// We must also call t_TyActionStoreData's trigger(s) dependent:
+		t_TyActionStoreData asdTemp;
+		asdTemp.VGetDependentTriggerSet( _rbv );
+	}
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
+  {
+    return StaticRenderActionType(_ros, _pcTraitsName);
+  }
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
+  {
+    return StaticRenderActionType(_ros, _pcTraitsName);
+  }
+  template < class t_TyOStream >
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
+	{
+		_ros << "class _l_trigger_string_typed_endpoint< " << s_kdtType << ", ";
+		_TyActionStoreData::StaticRenderActionType( _ros, _pcTraitsName );
+		_ros << ", " << s_kiTrigger << " >";
+	}
+	string VStrTypeName( const char * _pcTraitsName ) const
+	{
+		return StaticStrTypeName( _pcTraitsName );
+	}
+	static string StaticStrTypeName( const char * _pcTraitsName )
+	{
+		string strActionStoreData( _TyActionStoreData::StaticStrTypeName( _pcTraitsName ) );
+		string str;
+		PrintfStdStr( str, "_l_trigger_string< %u, %s, %u >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger );
+		return str;
+	}
+	// We pass the action object the most derived analyzer.
+	template < class t_TyAnalyzer >
+	bool action( t_TyAnalyzer & _rA )
+	{
+		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		bool fRet = _TyBase::action( _rA );
+		if ( fRet )
+		{
+			vtyDataPosition posBegin = GetClearPosition();
+			Assert( vkdpNullDataPosition != posBegin );
+			if ( vkdpNullDataPosition != posBegin )
+			{
+				_TyActionStoreData & raxnStoreData = static_cast< _TyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
+				raxnStoreData.Append( _rA, posBegin, vkdpNullDataPosition, s_kdtType, s_kiTrigger );
 			}
 		}
 		return true;
@@ -1005,38 +1109,38 @@ public:
         }, m_tuple
     );
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
 		// Just used for rendering the types. We'd call a static method on each type in the tuple but I haven't figured out how to do that yet.
 		_TyTuple tupleLocal; 
-		_ros << "_l_action_save_data_single< " << s_kiTrigger << ", false, ";
+		_ros << "_l_action_save_data_single< " << s_kiTrigger << ", ";
 		std::apply
     (
-        [ _pcCharName, &_ros ]( t_TysTriggers const &... _tuple )
+        [ _pcTraitsName, &_ros ]( t_TysTriggers const &... _tuple )
         {
             std::size_t n = sizeof...(t_TysTriggers);
-            ( ( _tuple.RenderActionType(_ros,_pcCharName), ( _ros << (!--n ? "" : ", ") ) ), ...);
+            ( ( _tuple.RenderActionType(_ros,_pcTraitsName), ( _ros << (!--n ? "" : ", ") ) ), ...);
         }, tupleLocal
     );
 		_ros << " >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		stringstream ss;
-		StaticRenderActionType( ss, _pcCharName );
+		StaticRenderActionType( ss, _pcTraitsName );
 		return ss.str();
 	}
 	template < class t_TyAnalyzer >
@@ -1148,37 +1252,37 @@ public:
         }, tupleLocal
     );
 	}
-  void RenderActionType(ostream & _ros, const char * _pcCharName) const
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
-  void RenderActionType(stringstream & _ros, const char * _pcCharName) const
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
   {
-    return StaticRenderActionType(_ros, _pcCharName);
+    return StaticRenderActionType(_ros, _pcTraitsName);
   }
   template < class t_TyOStream >
-	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcCharName)
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
 		_TyTuple tupleLocal; 
-		_ros << "_l_action_save_data_multiple< " << s_kiTrigger << ", false, ";
+		_ros << "_l_action_save_data_multiple< " << s_kiTrigger << ", ";
 		std::apply
     (
-        [ _pcCharName, &_ros ]( t_TysTriggers const &... _tuple )
+        [ _pcTraitsName, &_ros ]( t_TysTriggers const &... _tuple )
         {
             std::size_t n = sizeof...(t_TysTriggers);
-            ( ( _tuple.RenderActionType(_ros,_pcCharName), ( _ros << (!--n ? "" : ", ") ) ), ...);
+            ( ( _tuple.RenderActionType(_ros,_pcTraitsName), ( _ros << (!--n ? "" : ", ") ) ), ...);
         }, tupleLocal
     );
 		_ros << " >";
 	}
-	string VStrTypeName( const char * _pcCharName ) const
+	string VStrTypeName( const char * _pcTraitsName ) const
 	{
-		return StaticStrTypeName( _pcCharName );
+		return StaticStrTypeName( _pcTraitsName );
 	}
-	static string StaticStrTypeName( const char * _pcCharName )
+	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		stringstream ss;
-		StaticRenderActionType( ss, _pcCharName );
+		StaticRenderActionType( ss, _pcTraitsName );
 		return ss.str();
 	}
 	template < class t_TyAnalyzer >
@@ -1275,6 +1379,12 @@ struct __map_to_base_class< _l_trigger_string< t_TyTraits, t_kiTrigger, t_kiTrig
 
 template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin  >
 struct __map_to_base_class< _l_trigger_string_typed_range< t_kdtType, t_TyActionStoreData, t_kiTrigger, t_kiTriggerBegin > >
+{
+	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_TyActionStoreData::s_fInLexGen > _TyBase;
+};
+
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger  >
+struct __map_to_base_class< _l_trigger_string_typed_endpoint< t_kdtType, t_TyActionStoreData, t_kiTrigger > >
 {
 	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_TyActionStoreData::s_fInLexGen > _TyBase;
 };

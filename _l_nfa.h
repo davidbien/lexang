@@ -425,7 +425,7 @@ protected:	// accessed by _nfa_context:
 				{
 					_TyUnsignedChar ucNewLast = !*pcCur ? _l_char_type_map< _TyUnsignedChar >::ms_kcMax : ( *pcCur++ - 1 );
 					_TyRange rgNew( ucLast, ucNewLast );
-					ucLast = ucNewLast;
+					ucLast = ucNewLast+1;
 					if ( !_l_char_type_map< _TyChar >::ms_kfHasSurrogates )
 					{
 						if ( !_rctxt.m_pgnStart )

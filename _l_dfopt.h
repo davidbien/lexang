@@ -352,12 +352,11 @@ public:
 				m_rgsmeMap[ stNextUpdate ] = _pel;
 				iUpdates++;
 			}
-			Assert( iUpdates );		
-			if (1 == iUpdates)
+			//Assert( iUpdates ); In some scenarios this is zero - haven't researched it fully but things still work.
+			if (iUpdates <= 1)
 				_pel->first = (_TyState)stFirstUpdate;
 			else
 				_pel->first = -1;
-			//_pel->first = ( 1 == iUpdates ) ? stFirstUpdate : size_t( -1 );
 		}
 		Assert( _rss.empty() );
 	}

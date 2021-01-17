@@ -761,11 +761,14 @@ public:
 											continue;
 										}
 										_TyGraphLink *	pglFirstCheck = *pgnCheck->PPGLChildHead();
-										for ( ; !!pglFirstCheck && ( pglFirstCheck->RElConst() >= praiTriggers.first ) && ( pglFirstCheck->RElConst() < praiTriggers.second ); 
-													pglFirstCheck = *pglFirstCheck->PPGLGetNextChild() )
-												;
+										for (; !!pglFirstCheck && (pglFirstCheck->RElConst() >= praiTriggers.first) && (pglFirstCheck->RElConst() < praiTriggers.second);
+											pglFirstCheck = *pglFirstCheck->PPGLGetNextChild())
+										{
+											// REVIEW<dbien>: Want to see this scenario if it happens. It's likely that the connection to the trigger will keep this "to be excised" potion of the graph connected to the main graph and cause crashing issues.
+											Assert( false ); 
+										}
 										Assert( !!pglFirstCheck ); // REVIEW<dbien>:Want to see if this ever fires and check out that scenario - could just remove this.
-										if ( !!pglFirstCheck || ( ( pglFirstCheck->RElConst() != pglUnsat->RElConst()-1 ) && ( pglFirstCheck->RElConst() != pglUnsat->RElConst() ) ) )
+										if ( !!pglFirstCheck && ( ( pglFirstCheck->RElConst() != pglUnsat->RElConst()-1 ) && ( pglFirstCheck->RElConst() != pglUnsat->RElConst() ) ) )
 										{
 											// Then pglNext connects back to the main graph and should be removed from it's child's parent list:
 											pglNext->RemoveParent();
