@@ -12,6 +12,7 @@
 
 #include "_l_ns.h"
 #include "_l_types.h"
+#include "_l_data.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
 
@@ -105,7 +106,7 @@ public:
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   template < class t_TyStream >
-  bool FFilterToken( const _TyAxnObjBase * _paobCurToken, t_TyStream const & _rstrm ) const
+  bool FProcessAndFilterToken( const _TyAxnObjBase * _paobCurToken, t_TyStream const & _rstrm, vtyDataPosition _posEndToken ) const
   {
     return false;
   }

@@ -58,15 +58,15 @@ struct _l_compare_input_with_range
   }
 };
 
-template < class t_TyTraits >
+// _l_an_mostbase: Must be templatized by t_TyChar to keep other stuff simple as well.
+template < class t_TyChar >
 struct _l_an_mostbase
 {
 private:
   typedef _l_an_mostbase _TyThis;
 public:
-  typedef t_TyTraits _TyTraits;
-  typedef typename _TyTraits::_TyChar _TyChar;
-  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
+  typedef t_TyChar _TyChar;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef bool (_TyThis::*_TyPMFnAccept)();
 
   void SetToken( _TyAxnObjBase * _paobCurToken )
@@ -86,14 +86,14 @@ struct _l_an_lookaheadbase;
 
 template <class t_TyTraits>
 struct _l_an_lookaheadbase<t_TyTraits, false>
-    : public _l_an_mostbase<t_TyTraits>
+    : public _l_an_mostbase<typename t_TyTraits::_TyChar>
 {
 private:
   typedef _l_an_lookaheadbase _TyThis;
-  typedef _l_an_mostbase<t_TyTraits> _TyBase;
+  typedef _l_an_mostbase<typename t_TyTraits::_TyChar> _TyBase;
 public:
-  using typename _TyBase::_TyTraits;
-  using typename _TyBase::_TyChar;
+  typedef t_TyTraits _TyTraits;
+  using _TyChar = typename _TyTraits::_TyChar;
   typedef _l_state_proto<_TyChar> _TyStateProto;
   typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 protected:
@@ -115,14 +115,14 @@ typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
 // The lookahead base has never been used - or perhaps it has 21 years ago? I don't remember.
 template <class t_TyTraits>
 struct _l_an_lookaheadbase<t_TyTraits, true>
-    : public _l_an_mostbase<t_TyTraits>
+    : public _l_an_mostbase<typename t_TyTraits::_TyChar>
 {
 private:
   typedef _l_an_lookaheadbase _TyThis;
-  typedef _l_an_mostbase<t_TyTraits> _TyBase;
+  typedef _l_an_mostbase<typename t_TyTraits::_TyChar> _TyBase;
 public:
-  using typename _TyBase::_TyTraits;
-  using typename _TyBase::_TyChar;
+  typedef t_TyTraits _TyTraits;
+  using _TyChar = typename _TyTraits::_TyChar;
   typedef _l_state_proto<_TyChar> _TyStateProto;
   typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 
@@ -134,14 +134,6 @@ public:
   {
   }
 };
-template <class t_TyTraits>
-typename _l_an_lookaheadbase<t_TyTraits, true>::_TyStateProto *
-    _l_an_lookaheadbase<t_TyTraits, true>::m_pspLookaheadAccept;
-template <class t_TyTraits>
-vtyDataPosition _l_an_lookaheadbase<t_TyTraits, true>::m_posLookaheadAccept{vkdpNullDataPosition};
-template <class t_TyTraits>
-typename _l_an_lookaheadbase<t_TyTraits, true>::_TyStateProto *
-    _l_an_lookaheadbase<t_TyTraits, true>::m_pspLookahead;
 
 template < class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace >
 struct _l_analyzer : public _l_an_lookaheadbase< t_TyTraits, t_fSupportLookahead >
@@ -155,17 +147,18 @@ protected:
   using _TyBase::m_pspLookaheadAccept;
 public:
   using typename _TyBase::_TyTraits;
-  using typename _TyBase::_TyTransport;
-  using typename _TyBase::_TyUserObj;
-  typedef typename _TyBase::_TyStateProto _TyStateProto;
-  typedef typename _TyTransport::_TyChar _TyChar;
+  using typename _TyBase::_TyChar;
+  using typename _TyBase::_TyStateProto;
+  using typename _TyBase::_TyUnsignedChar;
+  using typename _TyBase::_TyPMFnAccept;
+  using typename _TyBase::_TyAxnObjBase;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
+  using _TyTransport = typename _TyTraits::_TyTransport;
+  using _TyUserObj = typename _TyTraits::_TyUserObj;
   typedef basic_string< _TyChar > _TyStdStr;
   typedef _l_stream< _TyTraits > _TyStream;
   typedef _l_token< _TyTraits > _TyToken;
 
-  using typename _TyBase::_TyUnsignedChar;
-  using typename _TyBase::_TyPMFnAccept;
-  using typename _TyBase::_TyAxnObjBase;
 
   typedef _l_transition<_TyChar> _TyTransition;
   typedef _l_compare_input_with_range<_TyChar> _TyCompSearch;
@@ -176,7 +169,7 @@ public:
 
   _TyStream m_stream; // the stream within which is the transport object and user context, etc.
 
-  _TyAxnObjBase * m_paobActionListHead{nullptr};
+  _TyAxnObjValueBase * m_paobActionListHead{nullptr};
 private: // Not sure why I made this private but it must have been very important!!! (j/k) so I am going to leave it.
   _TyStateProto *m_pspLastAccept{nullptr}; // The last encountered accept state;
 public:
@@ -192,7 +185,7 @@ public:
   _l_analyzer &operator=(_l_analyzer const &) = delete;
 
   // There may be no action objects at all (actually that's not true, given the design - but I allow for it).
-  _l_analyzer(_TyStateProto *_pspStart, _TyAxnObjBase * _paobActionListHead )
+  _l_analyzer(_TyStateProto *_pspStart, _TyAxnObjValueBase * _paobActionListHead )
       : m_pspStart(_pspStart),
         m_paobActionListHead( _paobActionListHead )
   {
@@ -237,12 +230,12 @@ public:
   //  to regognize as a token. In that case the various triggers tha may have fired along the way will still contain data.
   void ClearTokenData()
   {
-    for ( _TyAxnObjBase * paxnCur = m_paobActionListHead; !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
+    for ( _TyAxnObjValueBase * paxnCur = static_cast< _TyAxnObjValueBase * >( m_paobActionListHead ); !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
       paxnCur->Clear();
   }
   bool FIsClearOfTokenData( vtyTokenIdent * _ptidNonNull = 0 ) const
   {
-    for ( _TyAxnObjBase * paxnCur = m_paobActionListHead; !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
+    for ( _TyAxnObjValueBase * paxnCur = m_paobActionListHead; !!paxnCur; paxnCur = paxnCur->PGetAobNext() )
     {
       if ( !paxnCur->VFIsNull() )
       {
@@ -442,11 +435,11 @@ public:
         if ( (this->*pmfnAccept)() )
         {
           VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
-          _TyAxnObjBase * paobCurToken = PGetToken();
+          _TyAxnObjValueBase * paobCurToken = static_cast< _TyAxnObjValueBase * >( PGetToken() );
           SetToken(nullptr);
-          // Check if this is one of the tokens we are to ignore:
-          if ( !GetStream().RGetUserObj().FFilterToken( paobCurToken, GetStream() ) &&
-                ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) )
+          // Check if this is one of the tokens we are to ignore, the process and potentially filter the token using the user object.
+          if ( ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) &&
+               !GetStream().RGetUserObj().FProcessAndFilterToken( paobCurToken, GetStream(), m_posLastAccept ) )
           {
             unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
             // Delegate to the stream to obtain the token as it needs to get the context from the transport.

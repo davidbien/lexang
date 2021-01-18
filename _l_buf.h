@@ -56,6 +56,10 @@ public:
   {
     return second;
   }
+  const _TyChar * const & RCharP() const
+  {
+    return first;
+  }
   const _TyChar * & RCharP()
   {
     return first;

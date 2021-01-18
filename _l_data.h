@@ -331,6 +331,26 @@ public:
     Assert( FContainsSingleDataRange() );
     return m_dtrData;
   }
+  _l_data_typed_range & DataRangeGetSingle()
+  {
+    Assert( FContainsSingleDataRange() );
+    return m_dtrData;
+  }
+  _l_data_typed_range const & RTail() const
+  {
+    if ( FContainsSingleDataRange() )
+      return m_dtrData;
+    else
+      return _PSegArray()->RTail();
+  }
+  _l_data_typed_range & RTail()
+  {
+    if ( FContainsSingleDataRange() )
+      return m_dtrData;
+    else
+      return _PSegArray()->RTail();
+  }
+
   void Set( _l_data_range const & _rdr, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
   {
     Set( _l_data_typed_range( _rdr.begin(), _rdr.end(), _nType, _nIdTrigger ) );

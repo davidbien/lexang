@@ -18,6 +18,7 @@
 #include "_l_types.h"
 #include "_l_data.h"
 #include "_l_value.h"
+#include "_l_traits.h"
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -159,7 +160,8 @@ public:
 // _l_action_object_value_base:
 // Lexical generator version:
 template < class t_TyTraits, bool t_fInLexGen >
-struct _l_action_object_value_base : public _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen >
+struct _l_action_object_value_base 
+	: public _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen >
 {
 	typedef _l_action_object_value_base _TyThis;
 	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
@@ -173,8 +175,9 @@ public:
 };
 // Incorporates the _l_value< t_TyTraits > type so that a virtual methods may be called with it.
 // Lexical analyzer version.
-template < class t_TyTraits >
-struct _l_action_object_value_base< t_TyTraits, false > : public _l_action_object_base< typename t_TyTraits::_TyChar, false >
+template < typename t_TyTraits >
+struct _l_action_object_value_base< t_TyTraits, false > 
+		: public _l_action_object_base< typename t_TyTraits::_TyChar, false >
 {
 	typedef _l_action_object_value_base _TyThis;
 	typedef _l_action_object_base< typename t_TyTraits::_TyChar, false > _TyBase;
@@ -343,7 +346,7 @@ public:
 	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_action_print< %s, %u, false >", _pcTraitsName, s_kiTrigger );
+		PrintfStdStr( str, "_l_action_print< %s, %d, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -422,7 +425,7 @@ public:
 	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_noop< %s, %u, false >", _pcTraitsName, s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_noop< %s, %d, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -510,7 +513,7 @@ public:
 	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_bool< %s, %u, false >", _pcTraitsName, s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_bool< %s, %d, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -600,7 +603,7 @@ public:
 	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_position< %s, %u, false >", _pcTraitsName, s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_position< %s, %d, false >", _pcTraitsName, s_kiTrigger );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -687,7 +690,7 @@ public:
 	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_position< %s, %u, %u, false >", _pcTraitsName, s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_position_end< %s, %d, %d, false >", _pcTraitsName, s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -717,13 +720,14 @@ private:
 	typedef _l_trigger_string	_TyThis;
 	typedef _l_trigger_position_end< t_TyTraits, t_kiTrigger, t_kiTriggerBegin, t_fInLexGen > _TyBase;
 public:
+	typedef t_TyTraits _TyTraits;
 	using typename _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
 	typedef __LEXOBJ_NAMESPACE _l_data< _TyChar > _TyData;
-	typedef _l_trigger_position< _TyChar, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
+	typedef _l_trigger_position< _TyTraits, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	using typename _TyBase::_TyValue;
 	using typename _TyBase::_TyActionObjectBase;
 	
@@ -735,6 +739,10 @@ public:
 	_l_trigger_string( _TyThis const & _r ) = default;
 // Non-virtual accessors:
 	_TyData const & RDataGet() const
+	{
+		return m_dtStrings;
+	}
+	_TyData & RDataGet()
 	{
 		return m_dtStrings;
 	}
@@ -775,7 +783,7 @@ public:
 	static string StaticStrTypeName( const char * _pcTraitsName )
 	{
 		string str;
-		PrintfStdStr( str, "_l_trigger_string< %s, %u, %u, false >", _pcTraitsName, s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_string< %s, %d, %d, false >", _pcTraitsName, s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -806,6 +814,18 @@ public:
 	void Append( t_TyAnalyzer & _rA, vtyDataPosition _posBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
 	{
 		m_dtStrings.Append( _posBegin, _posEnd, _nType, _nIdTrigger );
+	}
+	template < class t_TyAnalyzer >
+	void CheckSetTailEnd( t_TyAnalyzer & _rA, vtyDataTriggerId _nIdTriggerBegin, vtyDataPosition _posEnd, vtyDataType _nType, vtyDataTriggerId _nIdTrigger )
+	{
+		// Check to ensure that we match the current tail:
+		_l_data_typed_range & rdtr = m_dtStrings.RTail();
+		VerifyThrowSz( rdtr.id() == _nIdTriggerBegin, "Trigger id on tail of string array[%d], doesn't match the expected tail id[%d].", m_dtStrings.RTail().id(), _nIdTriggerBegin );
+		Assert( vkdpNullDataPosition == rdtr.m_posEnd );
+		Assert( _nType == rdtr.type() );
+		rdtr.m_posEnd = _posEnd;
+		// We reset the trigger to the current one:
+		rdtr.m_nIdTrigger = _nIdTrigger;
 	}
 	void swap( _TyThis & _r )
 	{
@@ -891,7 +911,7 @@ public:
 	{
 		string strActionStoreData( _TyActionStoreData::StaticStrTypeName( _pcTraitsName ) );
 		string str;
-		PrintfStdStr( str, "_l_trigger_string< %u, %s, %u, %u >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
+		PrintfStdStr( str, "_l_trigger_string_typed_range< %u, %s, %d, %d >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -933,6 +953,113 @@ protected:
 	using _TyBase::GetClearPosition;
 };
 
+// _l_trigger_string_typed_beginpoint:
+// This object to be paired with _l_trigger_string_typed_endpoint for scenarios where partial triggers may be possible.
+// This will store a range of input data into t_TyActionStoreData identified by the t_kdtType "type" of data.
+// The beginning position of the data is contained in this object.
+// The ending position will always be vkdpNullDataPosition until the corresponding _l_trigger_string_typed_endpoint populates it (or not).
+// This is for use when it is possible the beginning trigger to fire and then not receive the ending trigger. This may signify a future error (and probably does)
+//	but it leaves the lexical engine in an invalid state.
+// This object solves that problem by storing the begin point directly in the eventual container (t_TyActionStoreData),
+// Then when the corresponding _l_trigger_string_typed_endpoint comes along it checks to make sure that the begin point is at the end of the container and
+//	it matches the trigger id from this trigger.
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger >
+class _l_trigger_string_typed_beginpoint
+	: public _l_trigger_position< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_TyActionStoreData::s_fInLexGen >
+{
+public:
+	typedef typename t_TyActionStoreData::_TyTraits _TyTraits;
+private:
+	typedef class _l_trigger_string_typed_beginpoint _TyThis;
+	typedef _l_trigger_position< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_TyActionStoreData::s_fInLexGen > _TyBase;
+public:
+	static constexpr vtyDataType s_kdtType = t_kdtType;
+	using typename _TyBase::_TyChar;
+	using _TyBase::s_kiTrigger;
+	using _TyBase::s_kiToken;
+	using _TyBase::s_fInLexGen;	
+	using typename _TyBase::_TyValue;
+	typedef t_TyActionStoreData _TyActionStoreData;
+	static constexpr vtyTokenIdent s_kiActionStoreData = _TyActionStoreData::GetTokenId();
+	using typename _TyBase::_TyActionObjectBase;
+
+	class _l_trigger_string_typed_beginpoint() = default;
+	class _l_trigger_string_typed_beginpoint( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
+	class _l_trigger_string_typed_beginpoint( _TyThis const & _r ) = default;
+	using _TyBase::VFIsNull;
+	using _TyBase::FIsNull;
+	using _TyBase::GetTokenId;
+	using _TyBase::VGetTokenId;
+	using _TyBase::Clear;
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+		_TyBase::VGetDependentTriggerSet( _rbv );
+		// We must also call t_TyActionStoreData's trigger(s) dependent:
+		t_TyActionStoreData asdTemp;
+		asdTemp.VGetDependentTriggerSet( _rbv );
+	}
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
+  {
+    return StaticRenderActionType(_ros, _pcTraitsName);
+  }
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
+  {
+    return StaticRenderActionType(_ros, _pcTraitsName);
+  }
+  template < class t_TyOStream >
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
+	{
+		_ros << "_l_trigger_string_typed_beginpoint< " << s_kdtType << ", ";
+		_TyActionStoreData::StaticRenderActionType( _ros, _pcTraitsName );
+		_ros << ", " << s_kiTrigger << " >";
+	}
+	string VStrTypeName( const char * _pcTraitsName ) const
+	{
+		return StaticStrTypeName( _pcTraitsName );
+	}
+	static string StaticStrTypeName( const char * _pcTraitsName )
+	{
+		string strActionStoreData( _TyActionStoreData::StaticStrTypeName( _pcTraitsName ) );
+		string str;
+		PrintfStdStr( str, "_l_trigger_string_typed_beginpoint< %u, %s, %d >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger );
+		return str;
+	}
+	// We pass the action object the most derived analyzer.
+	template < class t_TyAnalyzer >
+	bool action( t_TyAnalyzer & _rA )
+	{
+		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		bool fRet = _TyBase::action( _rA );
+		if ( fRet )
+		{
+			vtyDataPosition posBegin = GetClearPosition();
+			Assert( vkdpNullDataPosition != posBegin );
+			if ( vkdpNullDataPosition != posBegin )
+			{
+				_TyActionStoreData & raxnStoreData = static_cast< _TyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
+				raxnStoreData.Append( _rA, posBegin, vkdpNullDataPosition, s_kdtType, s_kiTrigger );
+			}
+		}
+		return true;
+	}
+	// There is no data in this object - only a position.
+	void swap( _TyThis & _r )
+	{
+		_TyBase::swap( _r );
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{
+		// We shouldn't get here but if so call the base:
+		AssertSz( false, "No reason to use this class within a token since it stores its value in another trigger/token.");
+		_TyBase::GetAndClearValue( _rv );
+	}
+protected:
+	using _TyBase::GetClearPosition;
+};
+
 // _l_trigger_string_typed_endpoint:
 // This will store a range of input data into t_TyActionStoreData identified by the t_kdtType "type" of data.
 // The beginning position of the data is contained in this object.
@@ -940,7 +1067,9 @@ protected:
 // This is for use when the beginning trigger would be in a position that is untenable - i.e. at the beginning of a token, etc.
 // The interpretation of this position is application dependent - the application must post-process and place the correct (begin,end)
 //	positions - if it so desires as well - perhaps a single position is all that is required.
-template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger >
+// Note that if t_kiTriggerBegin is not vktidInvalidIdTrigger then this object works in tandem with the corresponding
+//	_l_trigger_string_typed_beginpoint< t_kiTriggerBegin >. See _l_trigger_string_typed_beginpoint for details (and below of course).
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin >
 class _l_trigger_string_typed_endpoint
 	: public _l_trigger_position< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_TyActionStoreData::s_fInLexGen >
 {
@@ -951,6 +1080,7 @@ private:
 	typedef _l_trigger_position< typename t_TyActionStoreData::_TyTraits, t_kiTrigger, t_TyActionStoreData::s_fInLexGen > _TyBase;
 public:
 	static constexpr vtyDataType s_kdtType = t_kdtType;
+	static constexpr vtyTokenIdent s_kiTriggerBegin = t_kiTriggerBegin;
 	using typename _TyBase::_TyChar;
 	using _TyBase::s_kiTrigger;
 	using _TyBase::s_kiToken;
@@ -989,9 +1119,9 @@ public:
   template < class t_TyOStream >
 	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
 	{
-		_ros << "class _l_trigger_string_typed_endpoint< " << s_kdtType << ", ";
+		_ros << "_l_trigger_string_typed_endpoint< " << s_kdtType << ", ";
 		_TyActionStoreData::StaticRenderActionType( _ros, _pcTraitsName );
-		_ros << ", " << s_kiTrigger << " >";
+		_ros << ", " << s_kiTrigger << ", " << s_kiTriggerBegin << " >";
 	}
 	string VStrTypeName( const char * _pcTraitsName ) const
 	{
@@ -1001,7 +1131,7 @@ public:
 	{
 		string strActionStoreData( _TyActionStoreData::StaticStrTypeName( _pcTraitsName ) );
 		string str;
-		PrintfStdStr( str, "_l_trigger_string< %u, %s, %u >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger );
+		PrintfStdStr( str, "_l_trigger_string_typed_endpoint< %u, %s, %d, %d >", s_kdtType, strActionStoreData.c_str(), s_kiTrigger, s_kiTriggerBegin );
 		return str;
 	}
 	// We pass the action object the most derived analyzer.
@@ -1012,12 +1142,18 @@ public:
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
-			vtyDataPosition posBegin = GetClearPosition();
-			Assert( vkdpNullDataPosition != posBegin );
-			if ( vkdpNullDataPosition != posBegin )
+			vtyDataPosition pos = GetClearPosition();
+			Assert( vkdpNullDataPosition != pos );
+			if ( vkdpNullDataPosition != pos )
 			{
 				_TyActionStoreData & raxnStoreData = static_cast< _TyActionStoreData & >( _rA.template GetActionObj< s_kiActionStoreData >() );
-				raxnStoreData.Append( _rA, posBegin, vkdpNullDataPosition, s_kdtType, s_kiTrigger );
+				if ( vktidInvalidIdTrigger == s_kiTriggerBegin )
+					raxnStoreData.Append( _rA, pos, vkdpNullDataPosition, s_kdtType, s_kiTrigger );
+				else
+				{
+					// Check to make sure that the data at the end of raxnStoreData's array matches our beginning trigger:
+					raxnStoreData.CheckSetTailEnd( _rA, s_kiTriggerBegin, pos, s_kdtType, s_kiTrigger );
+				}
 			}
 		}
 		return true;
@@ -1180,6 +1316,16 @@ public:
 					( ..., _tuple.GetAndClearValue( _rv[nCurEl++] ) );
         }, m_tuple
     );
+	}
+	template < class t_TyTrigger >
+	const t_TyTrigger& GetConstituentTriggerObj() const
+	{
+		return get< t_TyTrigger >( m_tuple );
+	}
+	template < class t_TyTrigger >
+	t_TyTrigger& GetConstituentTriggerObj()
+	{
+		return get< t_TyTrigger >( m_tuple );
 	}
 protected:
 	_TyTuple m_tuple; // ya got yer tuple.
@@ -1384,7 +1530,13 @@ struct __map_to_base_class< _l_trigger_string_typed_range< t_kdtType, t_TyAction
 };
 
 template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger  >
-struct __map_to_base_class< _l_trigger_string_typed_endpoint< t_kdtType, t_TyActionStoreData, t_kiTrigger > >
+struct __map_to_base_class< _l_trigger_string_typed_beginpoint< t_kdtType, t_TyActionStoreData, t_kiTrigger > >
+{
+	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_TyActionStoreData::s_fInLexGen > _TyBase;
+};
+
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin  >
+struct __map_to_base_class< _l_trigger_string_typed_endpoint< t_kdtType, t_TyActionStoreData, t_kiTrigger, t_kiTriggerBegin > >
 {
 	typedef _l_action_object_base< typename t_TyActionStoreData::_TyChar, t_TyActionStoreData::s_fInLexGen > _TyBase;
 };

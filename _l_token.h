@@ -32,7 +32,7 @@ class _l_token
 public:
   typedef t_TyTraits _TyTraits;
   typedef typename _TyTraits::_TyChar _TyChar;
-  typedef typename _TyTraits::_TyUserContext _TyUserContext;
+  typedef _l_user_context< _TyTraits > _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyTraits > _TyValue;
   typedef typename _TyValue::size_type size_type;

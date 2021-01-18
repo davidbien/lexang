@@ -26,6 +26,7 @@ struct _l_traits
   typedef t_TyTransport _TyTransport;
   typedef t_TyUserObj _TyUserObj;
   typedef typename t_TyUserObj::_TyChar _TyChar;
+  typedef typename _TyTransport::_TyTransportCtxt _TyTransportCtxt;
   typedef t_TyValueTraits _TyValueTraits;
   // The number of values per segment in the _l_value segmented array.
   static constexpr size_t s_knValsSegSize = 16;

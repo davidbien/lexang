@@ -64,7 +64,7 @@ class _l_value
   typedef _l_value _TyThis;
 public:
   typedef t_TyTraits _TyTraits;
-  using typename _TyTraits::_TyChar;
+  using _TyChar = typename _TyTraits::_TyChar;
   typedef _l_data< _TyChar > _TyData;
   static constexpr size_t s_knValsSegSize = _TyTraits::s_knValsSegSize;
 #ifdef _MSC_VER
@@ -706,12 +706,12 @@ public:
 
 protected:
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
-  static void _ConvertStringValue( const get_string_type< t_TyCharConvertFrom > & _rstr ) 
+  static void _ConvertStringValue( const basic_string< t_TyCharConvertFrom > & _rstr ) 
     requires ( sizeof( t_TyCharConvertFrom ) == sizeof( t_TyCharConvertTo ) )
   { // no-op.
   }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
-  void _ConvertStringValue( const get_string_type< t_TyCharConvertFrom > & _rstr ) 
+  void _ConvertStringValue( const basic_string< t_TyCharConvertFrom > & _rstr ) 
     requires ( sizeof( t_TyCharConvertFrom ) != sizeof( t_TyCharConvertTo ) )
   {
     get_string_type< t_TyCharConvertTo > strConverted;
@@ -719,16 +719,16 @@ protected:
     m_var.template emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
   }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
-  static void _ConvertStringValue( const get_string_view_type< t_TyCharConvertFrom > & _rstr ) 
+  static void _ConvertStringValue( const basic_string_view< t_TyCharConvertFrom > & _rsv ) 
     requires ( sizeof( t_TyCharConvertFrom ) == sizeof( t_TyCharConvertTo ) )
   { // no-op.
   }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
-  void _ConvertStringValue( const get_string_view_type< t_TyCharConvertFrom > & _rstr ) 
+  void _ConvertStringValue( const basic_string_view< t_TyCharConvertFrom > & _rsv ) 
     requires ( sizeof( t_TyCharConvertFrom ) != sizeof( t_TyCharConvertTo ) )
   {
     get_string_type< t_TyCharConvertTo > strConverted;
-    ConvertString( strConverted, _rstr );
+    ConvertString( strConverted, _rsv );
     m_var.template emplace< get_string_type< t_TyCharConvertTo > >( std::move( strConverted ) );
   }
   _TyVariant m_var;

@@ -65,7 +65,7 @@ public:
     return m_bufTokenData;
   }
   template < class t_TyStrView >
-  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr )
+  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
     _AssertValidRange( _rdtr.begin(), _rdtr.end() );
@@ -198,6 +198,10 @@ public:
     m_frrFileDesBuffer.Init( m_file.HFileGet(), posInit, fReadAhead, stchLenRead );
   }
 
+  vtyDataPosition PosTokenStart() const
+  {
+    return m_frrFileDesBuffer.PosBase();
+  }
   vtyDataPosition PosCurrent() const
   {
     return m_frrFileDesBuffer.PosCurrent();
@@ -214,13 +218,17 @@ public:
 
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
-  template < class t_TyToken >
+  template < class t_TyToken, class t_TyValue, class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken,
-                  typename t_TyToken::_TyValue && _rrvalue, typename t_TyToken::_TyUserObj & _ruoUserObj,
+                  t_TyValue && _rrvalue, t_TyUserObj & _ruoUserObj,
                   unique_ptr< t_TyToken > & _rupToken )
   {
     typedef typename t_TyToken::_TyTraits _TyTraits;
+    typedef _l_value< _TyTraits > _TyValue;
+    static_assert( is_same_v< t_TyValue, _TyValue > );
     typedef _l_user_context< _TyTraits > _TyUserContext;
+    typedef typename _TyUserContext::_TyUserObj _TyUserObj;
+    static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
     _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _kdpEndToken );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
@@ -325,7 +333,7 @@ public:
     return m_bufTokenData;
   }
   template < class t_TyStrView >
-  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr )
+  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
     _AssertValidRange( _rdtr.begin(), _rdtr.end() );
@@ -398,6 +406,10 @@ public:
     Assert( ( m_bufCurrentToken.first + m_bufCurrentToken.second ) <= ( m_bufFull.first + m_bufFull.second ) );
 #endif //ASSERTSENABLED
   }
+  vtyDataPosition PosTokenStart() const
+  {
+    return ( m_bufCurrentToken.begin() - m_bufFull.begin() );
+  }
   vtyDataPosition PosCurrent() const
   {
     return ( m_bufCurrentToken.begin() - m_bufFull.begin() ) + m_bufCurrentToken.length();
@@ -417,13 +429,16 @@ public:
 
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_bufCurrentToken from [m_posTokenStart,_kdpEndToken).
-  template < class t_TyToken >
+  template < class t_TyToken, class t_TyValue, class t_TyUserObj >
   void GetPToken(const _TyAxnObjBase* _paobCurToken, const vtyDataPosition _kdpEndToken,
-    typename t_TyToken::_TyValue&& _rrvalue, typename t_TyToken::_TyUserObj& _ruoUserObj,
-    unique_ptr< t_TyToken >& _rupToken)
+    typename t_TyValue && _rrvalue, t_TyUserObj& _ruoUserObj, unique_ptr< t_TyToken >& _rupToken)
   {
     typedef typename t_TyToken::_TyTraits _TyTraits;
+    typedef _l_value< _TyTraits > _TyValue;
+    static_assert( is_same_v< t_TyValue, _TyValue > );
     typedef _l_user_context< _TyTraits > _TyUserContext;
+    typedef typename _TyUserContext::_TyUserObj _TyUserObj;
+    static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= _PosTokenStart() );
     Assert( _kdpEndToken <= _PosTokenEnd() );
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
@@ -470,8 +485,7 @@ public:
     Assert( _rdt.FContainsSingleDataRange() );
     AssertValidDataRange( _rdt );
     vtyDataPosition posBegin = _rdt.DataRangeGetSingle().begin() - _PosTokenStart();
-    vtyDataPosition posEnd = _rdt.DataRangeGetSingle().end() - _PosTokenStart();
-    return _rdt.length() == StrSpn( m_bufCurrentToken.RCharP() + posBegin, posEnd - posBegin, _pszCharSet );
+    return _rdt.DataRangeGetSingle().length() == StrSpn( m_bufCurrentToken.RCharP() + posBegin, _rdt.DataRangeGetSingle().length(), _pszCharSet );
   }
   bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
   {
@@ -490,7 +504,7 @@ public:
     {
       if ( _rdt.FContainsSingleDataRange() )
       {
-        _AssertValidRange( _rdt.begin(), _rdt.end() );
+        _AssertValidRange( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end() );
       }
       else
       {
@@ -691,6 +705,19 @@ public:
     }, m_var );
 #endif //ASSERTSENABLED
   }
+  vtyDataPosition PosTokenStart() const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+      },
+      []( auto _transport )
+      {
+        return _transport.PosTokenStart();
+      }
+    }, m_var );
+  }
   vtyDataPosition PosCurrent() const
   {
     return std::visit(_VisitHelpOverloadFCall {
@@ -733,9 +760,9 @@ public:
   }
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_bufCurrentToken from [m_posTokenStart,_kdpEndToken).
-  template < class t_TyToken >
+  template < class t_TyToken, class t_TyValue, class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, 
-                  typename t_TyToken::_TyValue && _rrvalue, typename t_TyToken::_TyUserObj & _ruoUserObj,
+                  t_TyValue && _rrvalue, t_TyUserObj & _ruoUserObj,
                   unique_ptr< t_TyToken > & _rupToken )
   {
     std::visit(_VisitHelpOverloadFCall {
@@ -746,7 +773,11 @@ public:
       [_paobCurToken,_kdpEndToken,_rrvalue{move(_rrvalue)},&_ruoUserObj,&_rupToken]( auto _transport )
       {
         typedef typename t_TyToken::_TyTraits _TyTraits;
+        typedef _l_value< _TyTraits > _TyValue;
+        static_assert( is_same_v< t_TyValue, _TyValue > );
         typedef _l_user_context< _TyTraits > _TyUserContext;
+        typedef typename _TyUserContext::_TyUserObj _TyUserObj;
+        static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
         _TyUserContext ucxt( _ruoUserObj, _transport.CtxtEatCurrentToken( _kdpEndToken ) ); // move it right on in - this negates the need for a default constructor.
         unique_ptr< t_TyToken > upToken = make_unique< t_TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
         upToken.swap( _rupToken );

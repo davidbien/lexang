@@ -19,8 +19,9 @@ typedef size_t vtyDataPosition;
 static constexpr vtyDataPosition vkdpNullDataPosition = (numeric_limits< vtyDataPosition >::max)();
 typedef uint32_t vtyDataType;
 typedef vtyTokenIdent vtyDataTriggerId;
-vtyDataTriggerId vktidInvalidIdTrigger = (numeric_limits< vtyDataTriggerId >::min)();
+static constexpr vtyDataTriggerId vktidInvalidIdTrigger = (numeric_limits< vtyDataTriggerId >::min)();
 
+// _l_axion.h:
 template < class t_TyChar, bool t_fInLexGen >
 struct _l_action_object_base;
 template < class t_TyTraits, bool t_fInLexGen >
@@ -41,6 +42,10 @@ template < class t_TyTraits, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTrigge
 struct _l_trigger_string;
 template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin >
 class _l_trigger_string_typed_range;
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger >
+class _l_trigger_string_typed_beginpoint;
+template < vtyDataType t_kdtType, class t_TyActionStoreData, vtyTokenIdent t_kiTrigger, vtyTokenIdent t_kiTriggerBegin = vktidInvalidIdTrigger >
+class _l_trigger_string_typed_endpoint;
 template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >
 class _l_action_save_data_single;
 template < vtyTokenIdent t_kiTrigger, class... t_TysTriggers >

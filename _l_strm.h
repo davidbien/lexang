@@ -30,7 +30,8 @@ public:
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyTraits > _TyValue;
   typedef _l_token< _TyTraits > _TyToken;
-  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjBase;
+  typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
 
   _l_stream() = default;
   _l_stream( _l_stream const & ) = delete;
@@ -74,6 +75,11 @@ public:
     Assert( m_opttpImpl.has_value() );
     return m_opttpImpl->PosCurrent();
   }
+  vtyDataPosition PosTokenStart() const
+  {
+    Assert( m_opttpImpl.has_value() );
+    return m_opttpImpl->PosTokenStart();
+  }
   bool FAtTokenStart() const
   {
     Assert( m_opttpImpl.has_value() );
@@ -87,7 +93,7 @@ public:
     return m_opttpImpl->FGetChar( _rc );
   }
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
-  void GetPToken( _TyAxnObjBase * _paobCurToken, const vtyDataPosition _kdpEndToken, unique_ptr< _TyToken > & _rupToken )
+  void GetPToken( _TyAxnObjValueBase * _paobCurToken, const vtyDataPosition _kdpEndToken, unique_ptr< _TyToken > & _rupToken )
   {
     Assert( m_opttpImpl.has_value() );
     _TyValue value;
@@ -116,7 +122,7 @@ public:
   bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
   {
     Assert( m_opttpImpl.has_value() );
-    if ( StrNLen( _pszCharSet ) != _rdt.DataRangeGetSingle().length() )
+    if ( StrNLen( _pszMatch ) != _rdt.DataRangeGetSingle().length() )
       return false; // short circuit.
     return m_opttpImpl->FMatchChars( _rdt, _pszMatch );
   }
