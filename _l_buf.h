@@ -97,7 +97,7 @@ public:
   using _TyBase::second;
   _l_backing_buf( vtyDataPosition _len )
   {
-    first = ::new _TyChar[ _len * sizeof( _TyChar ) ];
+    first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
     second = _len;
   }
   ~_l_backing_buf()
@@ -109,7 +109,7 @@ public:
   _l_backing_buf( _l_backing_buf const & _r )
   {
     second = _r.second;
-    first = ::new _TyChar[ second ];
+    first = DBG_NEW _TyChar[ second ];
     memcpy( first, _r.first, second * sizeof( _TyChar ) );
   }
   _l_backing_buf & operator =( _TyThis const & _r )

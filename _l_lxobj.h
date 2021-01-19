@@ -171,10 +171,10 @@ public:
 
   _TyAxnObjValueBase * m_paobActionListHead{nullptr};
 private: // Not sure why I made this private but it must have been very important!!! (j/k) so I am going to leave it.
-  _TyStateProto *m_pspLastAccept{nullptr}; // The last encountered accept state;
+  const _TyStateProto *m_pspLastAccept{nullptr}; // The last encountered accept state;
 public:
-  _TyStateProto *m_pspStart{nullptr}; // The last encountered accept state;
-  _TyStateProto *m_pspCur{nullptr}; // Current state.
+  const _TyStateProto *m_pspStart{nullptr}; // The last encountered accept state;
+  const _TyStateProto *m_pspCur{nullptr}; // Current state.
   vtyDataPosition m_posLastAccept{vkdpNullDataPosition};
   // The start of the current token is stored in the transport.
   _TyUnsignedChar m_ucCur; // The current character obtained from the transport.
@@ -185,7 +185,7 @@ public:
   _l_analyzer &operator=(_l_analyzer const &) = delete;
 
   // There may be no action objects at all (actually that's not true, given the design - but I allow for it).
-  _l_analyzer(_TyStateProto *_pspStart, _TyAxnObjValueBase * _paobActionListHead )
+  _l_analyzer(const _TyStateProto *_pspStart, _TyAxnObjValueBase * _paobActionListHead )
       : m_pspStart(_pspStart),
         m_paobActionListHead( _paobActionListHead )
   {
@@ -391,7 +391,7 @@ public:
     }
   }
 
-  void _InitGetToken( _TyStateProto *_pspStart )
+  void _InitGetToken( const _TyStateProto *_pspStart )
   {
     m_pspCur = !_pspStart ? m_pspStart : _pspStart; // Start at the beginning again...
     m_pspLastAccept = 0; // Regardless.
@@ -403,7 +403,7 @@ public:
   // Just return a single token. Return false if one isn't found.
   // Caller can append a set of token ids to ignore while parsing. This will short-circuit things - not creating a token from the trigger data - just clearing the trigger data.
   // For instance an XML parser may be in "ignore comments and processing instructions" mode and then we would just skip those after recognizing them and move on to the next token if any.
-  bool FGetToken( unique_ptr< _TyToken > & _rpuToken, vtyTokenIdent * _ptidIgnoreBegin = nullptr, vtyTokenIdent * _ptidIgnoreEnd = nullptr, _TyStateProto *_pspStart = nullptr )
+  bool FGetToken( unique_ptr< _TyToken > & _rpuToken, vtyTokenIdent * _ptidIgnoreBegin = nullptr, vtyTokenIdent * _ptidIgnoreEnd = nullptr, const _TyStateProto *_pspStart = nullptr, bool _fThrowOnNoToken = false )
   {
     {//B: We should be clear at the beginning of GetToken.
       vtyTokenIdent tidNonNull;
@@ -478,7 +478,7 @@ public:
       }
     }
     // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
-    if ( !!m_ucCur || !GetStream().FAtTokenStart() )
+    if ( !!m_ucCur || !GetStream().FAtTokenStart() && _fThrowOnNoToken )
     {
       _TyStdStr strCurToken;
       GetStream().GetCurTokenString( strCurToken );
@@ -491,7 +491,7 @@ public:
   // If we process things as much as possible - i.e. get tokens until we are supposed to, then we return true and _pspStateFailing is set to nullptr.
   // If we encounter a state where we cannot move forward on input then we return false. The current state is then still set to the state from which we were unable to continue.
   template < class t_tyCallback >
-  bool FGetTokens( t_tyCallback _callback, _TyStateProto *_pspStart = nullptr )
+  bool FGetTokens( t_tyCallback _callback, const _TyStateProto *_pspStart = nullptr )
   {
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     do
