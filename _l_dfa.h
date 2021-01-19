@@ -662,7 +662,12 @@ public:
 		Assert( !RDfa().m_fHasDeadState );	// This should be removed first.
 
 		if ( !RDfa().m_nUnsatisfiableTransitions )
+		{
+			size_t stRemoved;
+			 // We should have no orphaned portions of the graphs.
+			VerifyThrowSz( !( stRemoved = _STCheckPruneAlternateRoots( false ) ), "Found orphaned portion(s) or alternate roots and removed them ([%lu] nodes removed), but didn't expect to find orphaned portions.", stRemoved );
 			return;
+		}
 
 		Assert( !( RDfa().m_nUnsatisfiableTransitions % 2 ) );	// Should have an even number of unsats.
 
@@ -807,6 +812,133 @@ public:
 		{
 			CompressNodeLookup( stRemoved );
 		}
+
+		// Now, for complex "completed by" expressions - i.e. ones that are completed by a variable length series of characters
+		//	as opposed to a fix length set of characters, we may have orphaned sections of the DFA which need removal.
+		(void)_STCheckPruneAlternateRoots( true );
+	}
+
+	// Pull this method out because MSVC is endlessly looping during the link.
+	void _GetConnectedSet( _TyGraphNode *	_pgnRoot, _TySetStates & _bvConnected, bool _fClosedDirected, bool _fDirectionDown )
+	{
+		Assert( _bvConnected.empty() );
+		typename _TyGraph::iterator	gfit( _pgnRoot, 0, _fClosedDirected, _fDirectionDown, RDfa().get_allocator() );
+		for ( ; !gfit.FAtEnd(); ++gfit )
+		{
+			if ( !gfit.PGLCur() ) // We want scearios where we are at a node and not at any link of that node.
+				_bvConnected.setbit( gfit.PGNCur()->RElConst() );
+		}
+	}
+
+	// This will check for nodes that are orphaned from the main DFA and then remove appropriately.
+	// Return the number of nodes removed thusly.
+	size_t _STCheckRemoveOrphanedSubgraphs( bool _fCallCompressNodeLookup )
+	{
+		// If a node is not connected to the root node (node 0) then it needs removal, as well once we have found such a set of nodes we must
+		//	then test for connectedness betwen that set to determine which set of nodes needs deletion.
+		// We will check for such orphaned portions for interconnectivity amongst themselves so that we may appropriately detroy the set of
+		//	orphaned subgraphs.
+		// Algorithm:
+		// 1) First pass: Start at the root node and accumulate a bit vector of every node we encounter along the way - this is the set of connected nodes.
+		// 2) Then start with the first disconnected node and do essentially the same thing - move through and accumulate a bitvector of nodes connected to it.
+		//	a) Zero this set of nodes and then delete destroy the subgraph at the first disconnected node.
+		//	b) If there are more disconnected nodes left then go to (2) and repeat until there are no disconnected nodes left.
+		_TySetStates bvDisconnected( RDfa().NStates(), RDfa().get_allocator() );
+		bvDisconnected.clear();
+		// We will iterate both parents and children to find connected nodes, however we should
+		//	be able to just iterate down. Iterating both directions correctly detects multiple roots - even though
+		//	multiple roots are not currently supported we will account for it for completeness purposes (and because it is easy to do so).
+		// This method is removing orphaned subgraphs - not inaccessible roots.
+		{ //B
+			_TyGraphNode *	pgnRoot = RDfa().PGNGetNode( 0 );
+			VerifyThrowSz( !!pgnRoot, "No root node?!" );
+			_GetConnectedSet( pgnRoot, bvDisconnected, false, true );
+			bvDisconnected.invert(); // now disconnected set.
+		} //EB
+
+		size_t stRemoved = 0;
+		while ( !bvDisconnected.empty() )
+		{
+			_TyGraphNode *	pgnRootSG;
+			{//B
+				typename _TySetStates::size_type stRootSG;
+				_TySetStates bvCopyDisconnected( bvDisconnected );
+				// Move through and find the first non-null node in bvCopyDisconnected:
+				for ( stRootSG = bvCopyDisconnected.getclearfirstset();
+							( bvCopyDisconnected.size() != stRootSG ) && !( pgnRootSG = RDfa().PGNGetNode( stRootSG ) );
+							( stRootSG = bvCopyDisconnected.getclearfirstset( stRootSG ) ) )
+					;
+				Assert( pgnRootSG );
+			}//EB
+			VerifyThrow( !!pgnRootSG );
+			_TySetStates bvConnectedSG( RDfa().NStates(), RDfa().get_allocator() );
+			bvConnectedSG.clear();
+			_GetConnectedSet( pgnRootSG, bvConnectedSG, false, true );
+			bvDisconnected.and_not_equals( bvConnectedSG );
+			// Now zero all the nodes we found:
+			for (typename _TySetStates::size_type stRemove = bvConnectedSG.getclearfirstset();
+						bvConnectedSG.size() != stRemove;
+						( stRemove = bvConnectedSG.getclearfirstset( stRemove ) ), ++stRemoved )
+				RDfa().m_nodeLookup[ stRemove ] = 0;
+			// Remove the root:
+			RDfa().m_gDfa.destroy_node( pgnRootSG );
+		}
+		if ( _fCallCompressNodeLookup && stRemoved )
+		{
+			CompressNodeLookup( stRemoved );
+		}
+		return stRemoved;
+	}
+
+	// This will check for nodes that are inaccessible from the root node of the DFA in a childwise traversal.
+	// These are extraneous nodes as they cannot participate in the lexical analysis. These can be created by the
+	//	 "completed by" algorithm of inserting "unsatisifiable" pairs into the NFA.
+	// This is similar to _STCheckRemoveOrphanedSubgraphs() but we must clip any connections between roots and the main graph.
+	// Return the number of nodes removed thusly.
+	size_t _STCheckPruneAlternateRoots( bool _fCallCompressNodeLookup )
+	{
+		// Algorithm:
+		// 1) Mark all nodes accessible in a downward (childwise) closed iteration from the root node.
+		//	a) All nodes not such marked are not required in the resultant DFA. They won't hurt anything but they are detritus.
+		// 3) Then move through all detritus nodes and remove any children connecting to nodes which are not detritus.
+		// 4) Then perform "removal procedure" which we used in _STCheckRemoveOrphanedSubgraphs() to detroy connected subgraphs among the nodes to be removed.
+		_TySetStates bvDetritus( RDfa().NStates(), RDfa().get_allocator() );
+		bvDetritus.clear();
+		{ //B
+			_TyGraphNode *	pgnRoot = RDfa().PGNGetNode( 0 );
+			VerifyThrowSz( !!pgnRoot, "No root node?!" );
+			_GetConnectedSet( pgnRoot, bvDetritus, true, true );
+			bvDetritus.invert(); // now disconnected set.
+		} //EB
+
+		{ //B
+			_TySetStates bvDetritusCopy( bvDetritus );
+			// Move through and find the first non-null node in bvDetritusCopy:
+			for ( typename _TySetStates::size_type stDetritus = bvDetritusCopy.getclearfirstset();
+						( bvDetritusCopy.size() != stDetritus );
+						( stDetritus = bvDetritusCopy.getclearfirstset( stDetritus ) ) )
+			{
+				_TyGraphNode *	pgnDetritus = RDfa().PGNGetNode( stDetritus );
+				Assert( !!pgnDetritus ); // We can deal with it not being populated but we expect it populated.
+				if ( !!pgnDetritus )
+				{
+					_TyGraphLink *	pglCur = *(pgnDetritus->PPGLChildHead());
+					for ( ; !!pglCur; pglCur = *pglCur->PPGLGetNextChild() )
+					{
+						_TyGraphNode * pgnCheck = pglCur->PGNChild();
+						if ( !bvDetritus.isbitset( pgnCheck->RElConst() ) ) // yes bvDetritus.
+						{
+							// pruning shears...
+							pglCur->RemoveParent();
+							pglCur->SetChildNode( nullptr );
+						}
+					}
+				}
+			}
+		} //EB
+
+		// Now we should just be able to call _STCheckRemoveOrphanedSubgraphs since we would have just created at least one orphaned subgraph:
+		return _STCheckRemoveOrphanedSubgraphs( _fCallCompressNodeLookup );
 	}
 
 	void	RemoveDeadState( )
