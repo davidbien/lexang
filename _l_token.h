@@ -46,6 +46,12 @@ public:
       m_paobCurToken( _paobCurToken )
   {
   }
+  // Create a null token with an empty value object and no backing.
+  // This is for placeholder tokens, etc.
+  _l_token( const _TyAxnObjBase * _paobCurToken )
+    : m_paobCurToken( _paobCurToken )
+  {
+  }
   // We are copyable:
   _l_token( _l_token const & ) = default;
   _l_token & operator =( _l_token const & _r )
@@ -58,8 +64,8 @@ public:
   _l_token( _l_token && ) = default;
   _l_token & operator =( _l_token && _rr )
   {
-    _l_token moved( std::move( _rr ) );
-    swap( moved );
+    _l_token acquire( std::move( _rr ) );
+    swap( acquire );
     return *this;
   }
   void swap( _TyThis & _r )
@@ -98,29 +104,55 @@ public:
     m_scx.GetStringView( _rsvDest, *this, _rval );
   }
   template < class t_tyStringView >
+  void GetStringView( t_tyStringView & _rsvDest )
+  {
+    m_scx.GetStringView( _rsvDest, *this, GetValue() );
+  }
+  template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest, _TyValue const & _rval )
   {
     m_scx.KGetStringView( _rsvDest, *this, _rval );
+  }
+  template < class t_tyStringView >
+  void KGetStringView( t_tyStringView & _rsvDest )
+  {
+    m_scx.KGetStringView( _rsvDest, *this, GetValue() );
   }
   template < class t_tyStringView, class t_tyString >
   bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval )
   {
     return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, _rval );
   }
+  template < class t_tyStringView, class t_tyString >
+  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest )
+  {
+    return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, GetValue() );
+  }
   template < class t_tyString >
   void GetString( t_tyString & _rstrDest, _TyValue const & _rval )
   {
     m_scx.GetString( _rstrDest, *this, _rval );
+  }
+  template < class t_tyString >
+  void GetString( t_tyString & _rstrDest )
+  {
+    m_scx.GetString( _rstrDest, *this, GetValue() );
   }
   // Return the beginning and ending positions of the token in the stream.
   void GetTokenDataRange( _l_data_range & _rdr ) const
   {
     m_scx.GetTokenDataRange( _rdr );
   }
+  // Provide emplacement construction into the value as a shorthand here.
+  template < class t_TyValue, class ... t_TysArgs >
+  t_TyValue & emplaceValue( t_TysArgs && ... _args )
+  {
+    return m_value.template emplaceArgs< t_TyValue >( std::forward< t_TysArgs >( _args ) ... );
+  }
 protected:
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.
-  const _TyAxnObjBase * m_paobCurToken; // Pointer to the action object for this token - from which the token id is obtainable, etc.
+  const _TyAxnObjBase * m_paobCurToken{nullptr}; // Pointer to the action object for this token - from which the token id is obtainable, etc.
 };
 
 __LEXOBJ_END_NAMESPACE

@@ -98,18 +98,18 @@ public:
   typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 protected:
   // Declare these so the code will compile - they may be optimized out.
-  static _TyStateProto *m_pspLookaheadAccept;  // The lookahead accept state.
+  static const _TyStateProto *m_pspLookaheadAccept;  // The lookahead accept state.
   static vtyDataPosition m_posLookaheadAccept; // The position in the buffer when lookahead accept encountered.
-  static _TyStateProto *m_pspLookahead;        // The lookahead state.
+  static const _TyStateProto *m_pspLookahead;        // The lookahead state.
 };
 
 template <class t_TyTraits>
-typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
+const typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
     _l_an_lookaheadbase<t_TyTraits, false>::m_pspLookaheadAccept;
 template <class t_TyTraits>
 vtyDataPosition _l_an_lookaheadbase<t_TyTraits, false>::m_posLookaheadAccept{vkdpNullDataPosition};
 template <class t_TyTraits>
-typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
+const typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
     _l_an_lookaheadbase<t_TyTraits, false>::m_pspLookahead;
 
 // The lookahead base has never been used - or perhaps it has 21 years ago? I don't remember.
@@ -126,9 +126,9 @@ public:
   typedef _l_state_proto<_TyChar> _TyStateProto;
   typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 
-  _TyStateProto *m_pspLookaheadAccept{nullptr}; // The lookahead accept state.
+  const _TyStateProto *m_pspLookaheadAccept{nullptr}; // The lookahead accept state.
   vtyDataPosition m_posLookaheadAccept{vkdpNullDataPosition}; // The position in the buffer when lookahead accept encountered.
-  _TyStateProto *m_pspLookahead{nullptr}; // The lookahead state.
+  const _TyStateProto *m_pspLookahead{nullptr}; // The lookahead state.
 
   _l_an_lookaheadbase()
   {
@@ -733,7 +733,7 @@ protected:
       default:
       {
         // Enough elements to warrant a binary search:
-        _TyTransition *ptLwr =
+        const _TyTransition *ptLwr =
             lower_bound(m_pspCur->m_rgt,
                         m_pspCur->m_rgt + m_pspCur->m_nt,
                         m_ucCur, m_compSearch);

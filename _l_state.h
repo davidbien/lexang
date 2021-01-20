@@ -65,18 +65,18 @@ private:                            // Variable length structure - use accessors
   vtyLookaheadVector m_rgValidLookahead[2]; // bit vector for valid associated lookahead actions.
   _TyPMFnAccept m_rgpmfnTriggers[7];        // Array of pointers to trigger functions.
 public:
-  _TyPMFnAccept PMFnGetAction()
+  _TyPMFnAccept PMFnGetAction() const
   {
     Assert(m_flAccept);
     return *(_TyPMFnAccept *)((char *)this + m_usOffsetAccept);
   }
-  vtyActionIdent AIGetLookahead()
+  vtyActionIdent AIGetLookahead() const
   {
     typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
     return *(vtyActionIdent *)((char *)this + m_usOffsetAccept +
                                (offsetof(_TyStateAccept1Trans, m_aiLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
   }
-  vtyLookaheadVector *PBeginValidLookahead()
+  vtyLookaheadVector *PBeginValidLookahead() const
   {
     Assert(m_flAccept == kucLookaheadAccept ||
            m_flAccept == kucLookaheadAcceptAndAccept ||
@@ -85,7 +85,7 @@ public:
     return (vtyLookaheadVector *)((char *)this + m_usOffsetAccept +
                                   (offsetof(_TyStateAccept1Trans, m_rgValidLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
   }
-  _TyPMFnAccept *PPMFnGetTriggerBegin()
+  _TyPMFnAccept *PPMFnGetTriggerBegin() const
   {
     return (_TyPMFnAccept *)((char *)this + m_usOffsetTriggers);
   }

@@ -613,13 +613,24 @@ protected:	// accessed by _nfa_context:
 		_Renumber( pcNfaTemp->m_pgnStart, 
 			_rctxt1_Result.m_pgnAccept->RElConst(), &pcNfaTemp->m_pgnAccept );
 
+		size_type nUnsatisfiablesAtStart = m_nUnsatisfiableTransitions;
+
 		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
-		CreateUnsatisfiableNFA( _rctxt2, 0 );
+#if 0 // REVIEW:<dbien>: This idea is partially formed and I kinda see how to do it, but it requires some more experimentation.
+//		Assert( !( nUnsatisfiablesAtStart % 4 ) ); // We hand them out in sets of four.
+		// Adding a tail allows complete flexibilty in the nature of the completed by sub-regular-expression.
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+2 );
+		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+3 );
+		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
+#endif //0
+
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart );
 		CreateOrNFA( *pcNfaTemp, _rctxt2 );
 		CreateZeroOrMoreNFA( *pcNfaTemp );
-		CreateUnsatisfiableNFA( _rctxt2, 1 );
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+1 );
 		CreateFollowsNFA( *pcNfaTemp, _rctxt2 );
-		CreateUnsatisfiableNFA( _rctxt2, 1 );
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+1 );
 		CreateFollowsNFA( *pcNfaTemp, _rctxt2 );
 
 		CreateFollowsNFA( _rctxt1_Result, *pcNfaTemp );
