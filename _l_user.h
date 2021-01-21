@@ -31,7 +31,21 @@ public:
   typedef _l_value< _TyTraits > _TyValue;
 
   _l_user_context() = delete;
+  // We are copyable.
+  _l_user_context( _TyThis const & ) = default; 
+  // But not assignable.
   _l_user_context & operator =( _l_user_context const & ) = delete;
+  _l_user_context( _l_user_context && _rr )
+    : m_ruoUserObj( _rr.m_ruoUserObj )
+  {
+    swap( _rr );
+  }
+  _l_user_context & operator =( _l_user_context && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
   _l_user_context( _TyUserObj & _ruo )
     : m_ruoUserObj( _ruo )
   {
@@ -42,9 +56,11 @@ public:
       _TyBase( std::forward< t_TysArgs >(_args) ... )
   {
   }
-
-  // We are copyable.
-  _l_user_context( _TyThis const & ) = default; 
+  void swap( _TyThis & _r )
+  {
+    Assert( &m_ruoUserObj == &_r.m_ruoUserObj );
+    _TyBase::swap( _r );
+  }
 
   // Generic initialization of transport context.
   template < class ... t_TysArgs >

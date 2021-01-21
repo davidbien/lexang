@@ -40,9 +40,9 @@ public:
   }
   void AssertValid() const
   {
-#ifndef NDEBUG
+#if ASSERTSENABLED
     Assert( !!first == !!second );
-#endif     
+#endif //ASSERTSENABLED
   }
   const _TyChar * begin() const
   {
@@ -93,8 +93,6 @@ class _l_backing_buf : public pair< t_TyChar *, vtyDataPosition >
   typedef pair< t_TyChar *, vtyDataPosition > _TyBase;
 public:
   typedef t_TyChar _TyChar;
-  using _TyBase::first;
-  using _TyBase::second;
   _l_backing_buf( vtyDataPosition _len )
   {
     first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
@@ -108,14 +106,18 @@ public:
   _l_backing_buf() = default;
   _l_backing_buf( _l_backing_buf const & _r )
   {
-    second = _r.second;
-    first = DBG_NEW _TyChar[ second ];
-    memcpy( first, _r.first, second * sizeof( _TyChar ) );
+    if ( _r.second )
+    {
+      first = DBG_NEW _TyChar[ _r.second ];
+      second = _r.second;
+      memcpy( first, _r.first, second * sizeof( _TyChar ) );
+    }
   }
   _l_backing_buf & operator =( _TyThis const & _r )
   {
     _l_backing_buf copy( _r );
     swap( copy );
+    return *this;
   }
   _l_backing_buf( _l_backing_buf && _rr )
   {
@@ -125,6 +127,7 @@ public:
   {
     _l_backing_buf acquire( std::move( _rr ) );
     swap( acquire );
+    return *this;
   }
   void swap( _TyThis & _r )
   {
@@ -173,6 +176,9 @@ public:
     Assert( _posEnd <= second );
     _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type *)first + _posBegin, _posEnd - _posBegin );
   }
+protected:
+  using _TyBase::first;
+  using _TyBase::second;
 };
 
 __LEXOBJ_END_NAMESPACE

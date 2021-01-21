@@ -112,6 +112,13 @@ public:
   _l_value() = default;
   _l_value(_l_value const & ) = default;
   _l_value & operator =( _l_value const & ) = default;
+  _l_value( _l_value && ) = default;
+  _l_value & operator =( _l_value && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
   void swap( _TyThis & _r )
   {
     m_var.swap( _r.m_var );
