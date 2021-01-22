@@ -20,6 +20,7 @@ static constexpr vtyDataPosition vkdpNullDataPosition = (numeric_limits< vtyData
 typedef uint32_t vtyDataType;
 typedef vtyTokenIdent vtyDataTriggerId;
 static constexpr vtyDataTriggerId vktidInvalidIdTrigger = (numeric_limits< vtyDataTriggerId >::min)();
+static constexpr vtyTokenIdent vktidInvalidIdToken = vktidInvalidIdTrigger;
 
 // _l_axion.h:
 template < class t_TyChar, bool t_fInLexGen >
