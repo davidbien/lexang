@@ -50,6 +50,11 @@ public:
   _l_transport_backed_ctxt( _l_transport_backed_ctxt && ) = default;
   _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt const & ) = default;
   _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt && ) = default;
+  void swap( _TyThis & _r )
+  {
+     std::swap( m_posTokenStart, _r.m_posTokenStart );
+     m_bufTokenData.swap( _r.m_bufTokenData );
+  }
 
   vtyDataPosition PosTokenStart() const
   {
@@ -318,6 +323,11 @@ public:
   _l_transport_fixedmem_ctxt( _l_transport_fixedmem_ctxt && ) = default;
   _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt const & ) = default;
   _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt && ) = default;
+  void swap( _TyThis & _r )
+  {
+     std::swap( m_posTokenStart, _r.m_posTokenStart );
+     m_bufTokenData.swap( _r.m_bufTokenData );
+  }
 
   vtyDataPosition PosTokenStart() const
   {
