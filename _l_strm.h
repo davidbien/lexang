@@ -41,20 +41,20 @@ public:
 
   // Use this constructor for non-copyable objects or stateful objects that we don't want to copy, etc.
   _l_stream( _TyUserObj && _rruo )
-    : m_uoUserObj( std::move( _rruo ) )
+    : m_upUserObj( make_unique< _TyUserObj >( std::move( _rruo ) ) )
   {
   }
   _l_stream( _TyUserObj const & _ruo )
-    : m_uoUserObj( _ruo )
+    : m_upUserObj( make_unique< _TyUserObj >( ruo ) )
   {
   }
   _TyUserObj & RGetUserObj()
   {
-    return m_uoUserObj;
+    return *m_upUserObj;
   }
   const _TyUserObj & RGetUserObj() const
   {
-    return m_uoUserObj;
+    return *m_upUserObj;
   }
   // Construct the transport object appropriately.
   template < class... t_TysArgs >
@@ -98,7 +98,7 @@ public:
     Assert( m_opttpImpl.has_value() );
     _TyValue value;
     _paobCurToken->GetAndClearValue( value );
-    m_opttpImpl->GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), m_uoUserObj, _rupToken );
+    m_opttpImpl->GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), *m_upUserObj, _rupToken );
   }
   // This method is called when an action object returns false from its action() method.
   // This will cause the entire token found to be discarded without further processing - the fastest way if ignoring a token.
@@ -129,7 +129,7 @@ public:
 protected:
   typedef optional< _TyTransport > _TyOptTransport;
   _TyOptTransport m_opttpImpl; // The "transport" that implements the stream. Make it optional so that the user can emplace construct the stream after declaration of an _l_stream object.
-  _TyUserObj m_uoUserObj; // This is the one copy of the user object that is referenced in each _TyUserContext object. This allows the user object to maintain stateful information is that is desireable.
+  unique_ptr< _TyUserObj > m_upUserObj; // This is the one copy of the user object that is referenced in each _TyUserContext object. Needs to be pointer so we can transfer to xml_document.
 };
 
 __LEXOBJ_END_NAMESPACE

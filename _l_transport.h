@@ -131,9 +131,19 @@ public:
   _l_transport_file() = delete;
   _l_transport_file( const _l_transport_file & ) = delete;
   _l_transport_file & operator =( _l_transport_file const & ) = delete;
-  // We could allow move construction but it isn't needed because we can emplace construct.
-  _l_transport_file( _l_transport_file && ) = delete;
-  _l_transport_file & operator =( _l_transport_file && ) = delete;
+  _l_transport_file( _l_transport_file && ) = default;
+  _l_transport_file & operator =( _l_transport_file && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
+  void swap( _TyThis & _r )
+  {
+    m_frrFileDesBuffer.swap( _r.m_frrFileDesBuffer );
+    m_file.swap( _r.m_file );
+    std::swap( m_fisatty, _r.m_fisatty );
+  }
 
   _l_transport_file( const char * _pszFileName )
   {
@@ -402,12 +412,21 @@ public:
   typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
-  _l_transport_fixedmem( _l_transport_fixedmem const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
-  _TyThis const & operator = ( _TyThis const & _r ) = delete;
+  ~_l_transport_fixedmem() = default;
+  _l_transport_fixedmem() = default;
+  _l_transport_fixedmem( _l_transport_fixedmem const & _r ) = default;
+  _TyThis const & operator = ( _TyThis const & _r ) = default;
+  _l_transport_fixedmem( _l_transport_fixedmem && _rr ) = default;
+  _TyThis const & operator = ( _TyThis && _r ) = default;
   _l_transport_fixedmem( const _TyChar * _pcBase, vtyDataPosition _nLen )
     : m_bufFull( _pcBase, _nLen ),
       m_bufCurrentToken( _pcBase, 0 )
   {
+  }
+  void swap( _TyThis & _r )
+  {
+    m_bufFull.swap( _r.m_bufFull );
+    m_bufCurrentToken.swap( _r.m_bufCurrentToken );
   }
   void AssertValid() const
   {
@@ -570,6 +589,21 @@ public:
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyPrMemView _TyPrMemView;
 
+  _l_transport_mapped() = default;
+  _l_transport_mapped( _l_transport_mapped const & _r ) = delete;
+  _l_transport_mapped& operator =( _l_transport_mapped const & _r ) = delete;
+  _l_transport_mapped( _l_transport_mapped && _rr ) = default;
+  _l_transport_mapped& operator =( _l_transport_mapped && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
+  void swap( _TyThis & _r )
+  {
+    _TyBase::swap( _r );
+    m_fmoMappedFile.swap( _r.m_fmoMappedFile );
+  }
   ~_l_transport_mapped()
   {
     if ( m_bufFull.first != (const _TyChar*)vkpvNullMapping )
@@ -594,6 +628,7 @@ public:
     m_bufFull.first = (const _TyChar*)fmoFile.PvTransferHandle();
     m_bufCurrentToken.first = m_bufFull.first;
     Assert( !m_bufCurrentToken.second );
+    m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
   }
   _l_transport_mapped() = delete;
   _l_transport_mapped( _l_transport_mapped const & ) = delete; // Don't let any transports be copyable since they can't all be copyable.
@@ -618,6 +653,7 @@ public:
 protected:
   using _TyBase::m_bufFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
   using _TyBase::m_bufCurrentToken; // The view for the current token's exploration.
+  FileMappingObj m_fmoMappedFile;
 };
 
 // Produce a variant that is the set of all potential transports that the user of the object may care to use.

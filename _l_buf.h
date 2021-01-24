@@ -27,8 +27,16 @@ public:
   _l_fixed_buf() = default;
   _l_fixed_buf( _l_fixed_buf const & _r ) = default;
   _l_fixed_buf & operator =( _TyThis const & _r ) = default;
-  _l_fixed_buf( _l_fixed_buf && _rr ) = default;
-  _l_fixed_buf & operator =( _TyThis && _rr ) = default;
+  _l_fixed_buf( _l_fixed_buf && _rr )
+  {
+    swap( _rr );
+  }
+  _l_fixed_buf & operator =( _TyThis && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
   void swap( _TyThis & _r )
   {
     _TyBase::swap( _r );
