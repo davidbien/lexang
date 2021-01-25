@@ -155,6 +155,7 @@ public:
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
   using _TyTransport = typename _TyTraits::_TyTransport;
   using _TyUserObj = typename _TyTraits::_TyUserObj;
+  typedef unique_ptr< _TyUserObj > _TyPtrUserObj;
   typedef basic_string< _TyChar > _TyStdStr;
   typedef _l_stream< _TyTraits > _TyStream;
   typedef _l_token< _TyTraits > _TyToken;
@@ -221,6 +222,18 @@ public:
   const _TyTransport & GetTransport() const
   {
     return m_stream.GetTransport();
+  }
+  _TyUserObj & GetUserObj()
+  {
+    return m_stream.GetUserObj();
+  }
+  const _TyUserObj & GetUserObj() const
+  {
+    return m_stream.GetUserObj();
+  }
+  _TyPtrUserObj & GetUserObjPtr()
+  {
+    return m_stream.GetUserObjPtr();
   }
   size_t GetCurrentPosition() const
   {
@@ -439,7 +452,7 @@ public:
           SetToken(nullptr);
           // Check if this is one of the tokens we are to ignore, the process and potentially filter the token using the user object.
           if ( ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) &&
-               !GetStream().RGetUserObj().FProcessAndFilterToken( paobCurToken, GetStream(), m_posLastAccept ) )
+               !GetStream().GetUserObj().FProcessAndFilterToken( paobCurToken, GetStream(), m_posLastAccept ) )
           {
             unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
             // Delegate to the stream to obtain the token as it needs to get the context from the transport.

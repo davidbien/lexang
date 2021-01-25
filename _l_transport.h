@@ -415,9 +415,9 @@ public:
   ~_l_transport_fixedmem() = default;
   _l_transport_fixedmem() = default;
   _l_transport_fixedmem( _l_transport_fixedmem const & _r ) = default;
-  _TyThis const & operator = ( _TyThis const & _r ) = default;
+  _TyThis & operator = ( _TyThis const & _r ) = default;
   _l_transport_fixedmem( _l_transport_fixedmem && _rr ) = default;
-  _TyThis const & operator = ( _TyThis && _r ) = default;
+  _TyThis & operator = ( _TyThis && _r ) = default;
   _l_transport_fixedmem( const _TyChar * _pcBase, vtyDataPosition _nLen )
     : m_bufFull( _pcBase, _nLen ),
       m_bufCurrentToken( _pcBase, 0 )
@@ -630,11 +630,6 @@ public:
     Assert( !m_bufCurrentToken.second );
     m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
   }
-  _l_transport_mapped() = delete;
-  _l_transport_mapped( _l_transport_mapped const & ) = delete; // Don't let any transports be copyable since they can't all be copyable.
-  _TyThis const & operator = ( _TyThis const & ) = delete;
-  _l_transport_mapped( _l_transport_mapped && ) = delete; // Don't let any transports be copyable since they can't all be copyable.
-  _TyThis const & operator = ( _TyThis && ) = delete;
   
   void AssertValid() const
   {

@@ -32,6 +32,7 @@ public:
   typedef _l_token< _TyTraits > _TyToken;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
+  typedef unique_ptr< _TyUserObj > _TyPtrUserObj;
 
   _l_stream() = default;
   _l_stream( _l_stream const & ) = delete;
@@ -45,16 +46,21 @@ public:
   {
   }
   _l_stream( _TyUserObj const & _ruo )
-    : m_upUserObj( make_unique< _TyUserObj >( ruo ) )
+    : m_upUserObj( make_unique< _TyUserObj >( _ruo ) )
   {
   }
-  _TyUserObj & RGetUserObj()
+  _TyUserObj & GetUserObj()
   {
     return *m_upUserObj;
   }
-  const _TyUserObj & RGetUserObj() const
+  const _TyUserObj & GetUserObj() const
   {
     return *m_upUserObj;
+  }
+  // Allow access to the pointer object for transfer out.
+  _TyPtrUserObj & GetUserObjPtr()
+  {
+    return m_upUserObj;
   }
   // Construct the transport object appropriately.
   template < class... t_TysArgs >
