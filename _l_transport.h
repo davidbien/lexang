@@ -212,7 +212,10 @@ public:
     }
     m_frrFileDesBuffer.Init( m_file.HFileGet(), posInit, fReadAhead, stchLenRead );
   }
-
+  bool FDependentTransportContexts() const
+  {
+    return false;
+  }
   vtyDataPosition PosTokenStart() const
   {
     return m_frrFileDesBuffer.PosBase();
@@ -230,7 +233,6 @@ public:
   {
     return m_frrFileDesBuffer.FGetChar( _rc );
   }
-
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
   template < class t_TyToken, class t_TyValue, class t_TyUserObj >
@@ -435,6 +437,10 @@ public:
     Assert( ( m_bufCurrentToken.first + m_bufCurrentToken.second ) <= ( m_bufFull.first + m_bufFull.second ) );
 #endif //ASSERTSENABLED
   }
+  bool FDependentTransportContexts() const
+  {
+    return false;
+  }
   vtyDataPosition PosTokenStart() const
   {
     return ( m_bufCurrentToken.begin() - m_bufFull.begin() );
@@ -587,7 +593,6 @@ public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
-  typedef typename _TyTransportCtxt::_TyPrMemView _TyPrMemView;
 
   _l_transport_mapped() = default;
   _l_transport_mapped( _l_transport_mapped const & _r ) = delete;
@@ -630,7 +635,10 @@ public:
     Assert( !m_bufCurrentToken.second );
     m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
   }
-  
+  bool FDependentTransportContexts() const
+  {
+    return true;
+  }  
   void AssertValid() const
   {
 #if ASSERTSENABLED
@@ -746,6 +754,19 @@ public:
     }, m_var );
 #endif //ASSERTSENABLED
   }
+  bool FDependentTransportContexts() const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+      },
+      []( auto _transport )
+      {
+        return _transport.FDependentTransportContexts();
+      }
+    }, m_var );
+  }  
   vtyDataPosition PosTokenStart() const
   {
     return std::visit(_VisitHelpOverloadFCall {

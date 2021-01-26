@@ -252,7 +252,7 @@ public:
     get< _TySegArrayValues >( m_var ).SetSize( _stNEls );
   }
   // This fails with a throw if we don't contain an array.
-  void GetSize() const
+  size_t GetSize() const
   {
     return GetValueArray().NElements();
   }

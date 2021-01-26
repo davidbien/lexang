@@ -25,6 +25,7 @@ struct _l_traits
 {
   typedef t_TyTransport _TyTransport;
   typedef t_TyUserObj _TyUserObj;
+  typedef unique_ptr< _TyUserObj > _TyPtrUserObj;
   typedef typename t_TyUserObj::_TyChar _TyChar;
   typedef typename _TyTransport::_TyTransportCtxt _TyTransportCtxt;
   typedef t_TyValueTraits _TyValueTraits;

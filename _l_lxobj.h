@@ -155,7 +155,7 @@ public:
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
   using _TyTransport = typename _TyTraits::_TyTransport;
   using _TyUserObj = typename _TyTraits::_TyUserObj;
-  typedef unique_ptr< _TyUserObj > _TyPtrUserObj;
+  using _TyPtrUserObj = typename _TyTraits::_TyPtrUserObj;
   typedef basic_string< _TyChar > _TyStdStr;
   typedef _l_stream< _TyTraits > _TyStream;
   typedef _l_token< _TyTraits > _TyToken;

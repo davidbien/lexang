@@ -26,13 +26,13 @@ public:
   typedef typename _TyTransport::_TyChar _TyChar;
   typedef typename _TyTransport::_TyTransportCtxt _TyTransportCtxt;
   typedef typename _TyTraits::_TyUserObj _TyUserObj;
+  using _TyPtrUserObj = typename _TyTraits::_TyPtrUserObj;
   typedef _l_user_context< _TyTraits > _TyUserContext;
   typedef _l_data< _TyChar > _TyData;
   typedef _l_value< _TyTraits > _TyValue;
   typedef _l_token< _TyTraits > _TyToken;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
-  typedef unique_ptr< _TyUserObj > _TyPtrUserObj;
 
   _l_stream() = default;
   _l_stream( _l_stream const & ) = delete;
@@ -48,6 +48,14 @@ public:
   _l_stream( _TyUserObj const & _ruo )
     : m_upUserObj( make_unique< _TyUserObj >( _ruo ) )
   {
+  }
+  _TyTransport & GetTransport()
+  {
+    return *m_opttpImpl;
+  }
+  const _TyTransport & GetTransport() const
+  {
+    return *m_opttpImpl;
   }
   _TyUserObj & GetUserObj()
   {

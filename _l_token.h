@@ -48,8 +48,9 @@ public:
   }
   // Create a null token with an empty value object and no backing.
   // This is for placeholder tokens, etc.
-  _l_token( const _TyAxnObjBase * _paobCurToken )
-    : m_paobCurToken( _paobCurToken )
+  _l_token( _TyUserContext && _rrucxt, const _TyAxnObjBase * _paobCurToken )
+    : m_scx( std::move( _rrucxt ) ),
+      m_paobCurToken( _paobCurToken )
   {
   }
   // We are copyable:
