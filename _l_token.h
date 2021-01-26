@@ -110,32 +110,32 @@ public:
     m_scx.GetStringView( _rsvDest, *this, GetValue() );
   }
   template < class t_tyStringView >
-  void KGetStringView( t_tyStringView & _rsvDest, _TyValue const & _rval )
+  void KGetStringView( t_tyStringView & _rsvDest, _TyValue const & _rval ) const
   {
     m_scx.KGetStringView( _rsvDest, *this, _rval );
   }
   template < class t_tyStringView >
-  void KGetStringView( t_tyStringView & _rsvDest )
+  void KGetStringView( t_tyStringView & _rsvDest ) const
   {
     m_scx.KGetStringView( _rsvDest, *this, GetValue() );
   }
   template < class t_tyStringView, class t_tyString >
-  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval )
+  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval ) const
   {
     return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, _rval );
   }
   template < class t_tyStringView, class t_tyString >
-  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest )
+  bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest ) const
   {
     return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, GetValue() );
   }
   template < class t_tyString >
-  void GetString( t_tyString & _rstrDest, _TyValue const & _rval )
+  void GetString( t_tyString & _rstrDest, _TyValue const & _rval ) const
   {
     m_scx.GetString( _rstrDest, *this, _rval );
   }
   template < class t_tyString >
-  void GetString( t_tyString & _rstrDest )
+  void GetString( t_tyString & _rstrDest ) const
   {
     m_scx.GetString( _rstrDest, *this, GetValue() );
   }

@@ -34,7 +34,10 @@ public:
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
 
-  _l_stream() = default;
+  _l_stream()
+    : m_upUserObj( make_unique< _TyUserObj >() )
+  {
+  }
   _l_stream( _l_stream const & ) = delete;
   _l_stream & operator =( _l_stream const & ) = delete;
   _l_stream( _l_stream && ) = default;

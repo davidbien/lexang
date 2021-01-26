@@ -491,7 +491,7 @@ public:
       }
     }
     // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
-    if ( !!m_ucCur || !GetStream().FAtTokenStart() && _fThrowOnNoToken )
+    if ( ( !!m_ucCur || !GetStream().FAtTokenStart() ) && _fThrowOnNoToken )
     {
       _TyStdStr strCurToken;
       GetStream().GetCurTokenString( strCurToken );

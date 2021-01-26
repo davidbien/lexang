@@ -276,7 +276,7 @@ public:
   }
 
   template < class t_TyToken, class t_TyStringView >
-  void KGetStringView( t_TyToken & _rtok, t_TyStringView & _rsv )
+  void KGetStringView( t_TyToken & _rtok, t_TyStringView & _rsv ) const
   {
     static_assert( TIsStringView_v< t_TyStringView > );
     Assert( _rsv.empty() );
@@ -322,7 +322,7 @@ public:
       {
         _KGetStringView( _rsv, _rsv32 );
       },
-      [](_TySegArrayValues &)
+      [](_TySegArrayValues const &)
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
@@ -338,14 +338,13 @@ protected:
   static void _KGetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
     requires ( sizeof( typename t_TyStrViewDest::value_type) == sizeof( typename t_TySource::value_type ) )
   {
-    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type)*&_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type*)*&_rsrc[0], _rsrc.length() );
   }
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStrViewDest, class t_TySource >
-  void _KGetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
+  static void _KGetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
     requires ( sizeof( typename t_TyStrViewDest::value_type) != sizeof( typename t_TySource::value_type ) )
   {
-    static_assert( false );
     THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a constant string view of a character type not matching the character type of the lex.");
   }
 public:

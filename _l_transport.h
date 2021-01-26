@@ -611,11 +611,6 @@ public:
   }
   ~_l_transport_mapped()
   {
-    if ( m_bufFull.first != (const _TyChar*)vkpvNullMapping )
-    {
-      int iRet = ::munmap( m_bufFull.first, m_bufFull.second );
-      Assert( !iRet ); // not much to do about this...could log.
-    }
   }
   // We are keeping the hFile open for now for diagnostic purposes, etc. It would be referenced in the background
   //  by the mapping and remaing open but we wouldn't know what the descriptor value was.
@@ -623,20 +618,21 @@ public:
     : _TyBase( (const _TyChar*)vkpvNullMapping, 0 )// in case of throw so we don't call munmap with some random number in ~_l_transport_mapped().
   {
     FileObj foFile( OpenReadOnlyFile( _pszFileName ) );
-    if ( foFile.FIsOpen() )
+    if ( !foFile.FIsOpen() )
       THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "OpenReadOnlyFile() of [%s] failed.", _pszFileName );
     size_t stSizeMapping;
     FileMappingObj fmoFile( MapReadOnlyHandle( foFile.HFileGet(), &stSizeMapping ) );
     if ( !fmoFile.FIsOpen() )
       THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of [%s] failed, stSizeMapping[%lu].", _pszFileName, stSizeMapping );
-    m_bufFull.second = stSizeMapping;
-    m_bufFull.first = (const _TyChar*)fmoFile.PvTransferHandle();
-    m_bufCurrentToken.first = m_bufFull.first;
-    Assert( !m_bufCurrentToken.second );
+    m_bufFull.RLength() = stSizeMapping;
+    m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pv();
+    m_bufCurrentToken.RCharP() = m_bufFull.begin();
+    Assert( !m_bufCurrentToken.length() );
     m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
   }
   bool FDependentTransportContexts() const
   {
+    // Need to keep this mapped file open to maintain the validity of the returned transport_ctxts.
     return true;
   }  
   void AssertValid() const

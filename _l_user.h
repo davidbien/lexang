@@ -76,19 +76,19 @@ public:
     m_ruoUserObj.GetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
   }
   template < class t_TyStringView >
-  void KGetStringView( t_TyStringView & _rsvDest, _TyToken & _rtok, _TyValue const & _rval )
+  void KGetStringView( t_TyStringView & _rsvDest, _TyToken const & _rtok, _TyValue const & _rval ) const
   {
     // yet another delegation...and add another parameter.
     m_ruoUserObj.KGetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
   }
   template < class t_TyStringView, class t_TyString >
-  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest,_TyToken & _rtok, _TyValue const & _rval )
+  bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest,_TyToken const & _rtok, _TyValue const & _rval ) const
   {
     // yet another delegation...and add another parameter.
     return m_ruoUserObj.FGetStringViewOrString( _rsvDest,  _rstrDest, *(_TyBase*)this, _rtok, _rval );
   }
   template < class t_TyString >
-  void GetString( t_TyString & _rstrDest, _TyToken & _rtok, _TyValue const & _rval )
+  void GetString( t_TyString & _rstrDest, _TyToken const & _rtok, _TyValue const & _rval ) const
   {
     // yet another delegation...and add another parameter.
     m_ruoUserObj.GetString( _rstrDest, *(_TyBase*)this, _rtok, _rval );
