@@ -62,7 +62,12 @@ public:
     return *this;
   }
   // We are moveable:
-  _l_token( _l_token && ) = default;
+  _l_token( _l_token && _rr )
+    : m_scx( std::move( _rr.m_scx ) )
+  {
+    m_value.swap( _rr.m_value );
+    std::swap( m_paobCurToken, _rr.m_paobCurToken );
+  }
   _l_token & operator =( _l_token && _rr )
   {
     _l_token acquire( std::move( _rr ) );
@@ -89,7 +94,7 @@ public:
   }
   vtyTokenIdent GetTokenId() const
   {
-    return m_paobCurToken->VGetTokenId();
+    return !m_paobCurToken ? vktidInvalidIdToken : m_paobCurToken->VGetTokenId();
   }
   _TyValue & operator [] ( size_type _nEl )
   {

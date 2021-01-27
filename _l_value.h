@@ -112,7 +112,10 @@ public:
   _l_value() = default;
   _l_value(_l_value const & ) = default;
   _l_value & operator =( _l_value const & ) = default;
-  _l_value( _l_value && ) = default;
+  _l_value( _l_value && _rr )
+  {
+    swap( _rr );
+  }
   _l_value & operator =( _l_value && _rr )
   {
     _TyThis acquire( std::move( _rr ) );
@@ -266,8 +269,11 @@ public:
     Assert( FIsArray() ); // Assert and then we will throw below.
     return get< _TySegArrayValues >( m_var ); // We let this throw a bad type exception as it will if we don't contain an array.
   }
+  // Non-const method auto-resizes the array.
   _TyThis & operator [] ( size_type _nEl )
   {
+    if ( _nEl >= GetSize() )
+       SetSize( _nEl + 1 );
     return GetValueArray()[_nEl];
   }
   _TyThis const & operator [] ( size_type _nEl ) const

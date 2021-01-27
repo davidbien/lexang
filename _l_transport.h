@@ -392,7 +392,7 @@ protected:
 #if ASSERTSENABLED
     Assert( _posEnd >= _posBegin );
     Assert( _posBegin >= m_posTokenStart );
-    Assert( _posEnd <= m_posTokenStart + m_bufTokenData.length() );
+    Assert( ( vkdpNullDataPosition == _posEnd ) || ( _posEnd <= m_posTokenStart + m_bufTokenData.length() ) );
 #endif //ASSERTSENABLED  
   }
   vtyDataPosition m_posTokenStart{ (numeric_limits< vtyDataPosition >::max)() };

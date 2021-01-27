@@ -1307,15 +1307,29 @@ public:
 	}
 	void GetAndClearValue( _TyValue & _rv )
 	{
-		_rv.SetSize( sizeof...(t_TysTriggers) );
-		std::apply
-    (
-        [&_rv]( t_TysTriggers &... _tuple )
-        {
-					size_t nCurEl = 0;
-					( ..., _tuple.GetAndClearValue( _rv[nCurEl++] ) );
-        }, m_tuple
-    );
+		constexpr size_t knTriggers = sizeof...(t_TysTriggers);
+		if ( 1 == knTriggers )
+		{
+			std::apply
+			(
+					[&_rv]( t_TysTriggers &... _tuple )
+					{
+						( ..., _tuple.GetAndClearValue( _rv ) );
+					}, m_tuple
+			);
+		}
+		else
+		{
+			_rv.SetSize( sizeof...(t_TysTriggers) );
+			std::apply
+			(
+					[&_rv]( t_TysTriggers &... _tuple )
+					{
+						size_t nCurEl = 0;
+						( ..., _tuple.GetAndClearValue( _rv[nCurEl++] ) );
+					}, m_tuple
+			);
+		}
 	}
 	template < class t_TyTrigger >
 	const t_TyTrigger& GetConstituentTriggerObj() const
