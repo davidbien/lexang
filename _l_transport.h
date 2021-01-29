@@ -231,7 +231,17 @@ public:
   // Return the current character and advance the position.
   bool FGetChar( _TyChar & _rc )
   {
-    return m_frrFileDesBuffer.FGetChar( _rc );
+    if ( !s_kfSwitchEndian )
+      return m_frrFileDesBuffer.FGetChar( _rc );
+    else
+    {
+      if ( m_frrFileDesBuffer.FGetChar( _rc ) )
+      {
+        SwitchEndian(_rc);
+        return true;
+      }
+      return false;
+    }
   }
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
@@ -401,7 +411,7 @@ protected:
 
 // _l_transport_fixedmem:
 // Transport that uses a piece of memory.
-template < class t_TyChar >
+template < class t_TyChar, bool t_fSwitchEndian >
 class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
 {
   typedef _l_transport_fixedmem _TyThis;
@@ -409,6 +419,7 @@ class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
+  static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
   friend _TyTransportCtxt;
   typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
@@ -458,7 +469,10 @@ public:
   {
     if ( _FAtEnd() )
       return false;
-    _rc = m_bufCurrentToken.begin()[ m_bufCurrentToken.RLength()++ ];
+    if ( s_kfSwitchEndian )
+      _rc = SwitchEndian( m_bufCurrentToken.begin()[ m_bufCurrentToken.RLength()++ ] );
+    else
+      _rc = m_bufCurrentToken.begin()[ m_bufCurrentToken.RLength()++ ];
     return true;
   }
 
@@ -584,14 +598,15 @@ protected:
 
 // _l_transport_mapped
 // Transport that uses mapped memory.
-template < class t_TyChar >
-class _l_transport_mapped : public _l_transport_fixedmem< t_TyChar >
+template < class t_TyChar, bool t_fSwitchEndian >
+class _l_transport_mapped : public _l_transport_fixedmem< t_TyChar, t_fSwitchEndian >
 {
   typedef _l_transport_mapped _TyThis;
-  typedef _l_transport_fixedmem< t_TyChar > _TyBase;
+  typedef _l_transport_fixedmem< t_TyChar, t_fSwitchEndian > _TyBase;
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
+  static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
 
   _l_transport_mapped() = default;

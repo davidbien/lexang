@@ -124,9 +124,9 @@ template < class t_TyChar >
 class _l_transport_file;
 template < class t_TyChar >
 class _l_transport_fixedmem_ctxt;
-template < class t_TyChar >
+template < class t_TyChar, bool t_fSwitchEndian = false >
 class _l_transport_fixedmem;
-template < class t_TyChar >
+template < class t_TyChar, bool t_fSwitchEndian = false >
 class _l_transport_mapped;
 template < class ... t_TysTransportContexts >
 class _l_transport_var_ctxt;
