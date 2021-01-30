@@ -69,6 +69,11 @@ public:
   {
     return m_bufTokenData;
   }
+  // Only support a non-const GetTokenBufffer() in _l_transport_backed_ctxt because it allows us to rearrange endianness.
+  _TyBuffer & GetTokenBuffer()
+  {
+    return m_bufTokenData;
+  }
   template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
@@ -410,7 +415,7 @@ protected:
 };
 
 // _l_transport_fixedmem:
-// Transport that uses a piece of memory.
+// Transport that uses a piece of memory as an input stream.
 template < class t_TyChar, bool t_fSwitchEndian >
 class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
 {
@@ -420,9 +425,12 @@ public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
   static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
-  typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
+  // A transport that converts its input in any way must use a backed context when returning a token:
+  using _TyTransportCtxt = typename std::conditional< s_kfSwitchEndian, _l_transport_backed_ctxt< _TyChar >, _l_transport_fixedmem_ctxt< _TyChar > >::type;
   friend _TyTransportCtxt;
-  typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
+  // However we need to still read from the fixed buffer and maintain those in fixed format within the impl:
+  using _TyTransportCtxtFixed = _l_transport_fixedmem_ctxt< _TyChar >;
+  typedef typename _TyTransportCtxtFixed::_TyBuffer _TyBufferFixed;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   ~_l_transport_fixedmem() = default;
@@ -479,8 +487,8 @@ public:
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_bufCurrentToken from [m_posTokenStart,_kdpEndToken).
   template < class t_TyToken, class t_TyValue, class t_TyUserObj >
-  void GetPToken(const _TyAxnObjBase* _paobCurToken, const vtyDataPosition _kdpEndToken,
-    typename t_TyValue && _rrvalue, t_TyUserObj& _ruoUserObj, unique_ptr< t_TyToken >& _rupToken)
+  void GetPToken( const _TyAxnObjBase* _paobCurToken, const vtyDataPosition _kdpEndToken,
+                  typename t_TyValue && _rrvalue, t_TyUserObj& _ruoUserObj, unique_ptr< t_TyToken >& _rupToken)
   {
     typedef typename t_TyToken::_TyTraits _TyTraits;
     typedef _l_value< _TyTraits > _TyValue;
@@ -492,7 +500,10 @@ public:
     Assert( _kdpEndToken <= _PosTokenEnd() );
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
     Assert( nLenToken <= m_bufCurrentToken.length() );
+    typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
     _TyUserContext ucxt( _ruoUserObj, _PosTokenStart(), _TyBuffer( m_bufCurrentToken.begin(), nLenToken ) );
+    if ( s_kfSwitchEndian )
+      SwitchEndian( ucxt.GetTokenBuffer().begin(), ucxt.GetTokenBuffer().end() );
     m_bufCurrentToken.RCharP() += nLenToken;
     m_bufCurrentToken.RLength() = 0;
     unique_ptr< t_TyToken > upToken = make_unique< t_TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
@@ -503,11 +514,14 @@ public:
     Assert( _kdpEndToken >= _PosTokenStart() );
     Assert( _kdpEndToken <= _PosTokenEnd() );
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
+    typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
     _TyBuffer bufToken( m_bufCurrentToken.first, nLenToken );
+    if ( s_kfSwitchEndian )
+      SwitchEndian( bufToken.begin(), bufToken.end() );
     vtyDataPosition posTokenStart = _PosTokenStart();
     m_bufCurrentToken.RCharP() += nLenToken;
     m_bufCurrentToken.RLength() = 0;
-    return _TyTransportCtxt( posTokenStart, bufToken );
+    return _TyTransportCtxt( posTokenStart, std::move( bufToken ) );
   }
   void DiscardData( const vtyDataPosition _kdpEndToken )
   {
@@ -522,21 +536,57 @@ public:
     requires( sizeof( typename t_TyString::value_type ) == sizeof( _TyChar ) )
   {
     _rstr.assign( (typename t_TyString::value_type const *)m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
+    if ( s_kfSwitchEndian )
+      SwitchEndian( &_rstr[0], bufToken.length() );
   }
   template < class t_TyString >
   void GetCurTokenString( t_TyString & _rstr ) const
-    requires( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
+    requires( !s_kfSwitchEndian && ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
   {
     ConvertString( _rstr, m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
   }
+  template < class t_TyString >
+  void GetCurTokenString( t_TyString & _rstr ) const
+    requires( s_kfSwitchEndian && ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
+  {
+    // We must convert the string after switching the endianness or things won't work...
+    basic_string< _TyChar > strTemp;
+    static size_t knchMaxAllocaSize = vknbyMaxAllocaSize / sizeof( _TyChar );
+    _TyChar * pcBuf;
+    if ( m_bufCurrentToken.length() > knchMaxAllocaSize )
+    {
+      strTemp.resize( m_bufCurrentToken.length() );
+      pcBuf = &strTemp[0];
+    }
+    else
+      pcBuf = (_TyChar*)alloca( m_bufCurrentToken.length() * sizeof( _TyChar ) );
+    memcpy( pcBuf, m_bufCurrentToken.begin(), m_bufCurrentToken.length() * sizeof( _TyChar ) );
+    SwitchEndian( pcBuf, m_bufCurrentToken.length() );
+    ConvertString( _rstr, pcBuf, m_bufCurrentToken.length() );
+  }
   bool FSpanChars( const _TyData & _rdt, const _TyChar * _pszCharSet ) const
+    requires( !s_kfSwitchEndian )
   {
     Assert( _rdt.FContainsSingleDataRange() );
     AssertValidDataRange( _rdt );
     vtyDataPosition posBegin = _rdt.DataRangeGetSingle().begin() - _PosTokenStart();
     return _rdt.DataRangeGetSingle().length() == StrSpn( m_bufCurrentToken.RCharP() + posBegin, _rdt.DataRangeGetSingle().length(), _pszCharSet );
   }
+  bool FSpanChars( const _TyData & _rdt, const _TyChar * _pszCharSet ) const
+    requires( s_kfSwitchEndian )
+  {
+    Assert( _rdt.FContainsSingleDataRange() );
+    AssertValidDataRange( _rdt );
+    // Provide an endian-switched _pszCharSet to StrSpn() because it doesn't care and it's easier.
+    size_t stLenCharSet = StrNLen( _pszCharSet );
+    _TyChar * pcBufCharSet = (_TyChar*)alloca( ( stLenCharSet + 1 ) * sizeof( _TyChar ) );
+    memcpy( pcBufCharSet, _pszCharSet, ( stLenCharSet + 1 ) * sizeof( _TyChar ) );
+    SwitchEndian( pcBufCharSet, stLenCharSet );
+    vtyDataPosition posBegin = _rdt.DataRangeGetSingle().begin() - _PosTokenStart();
+    return _rdt.DataRangeGetSingle().length() == StrSpn( m_bufCurrentToken.RCharP() + posBegin, _rdt.DataRangeGetSingle().length(), pcBufCharSet );
+  }
   bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
+    requires( !s_kfSwitchEndian )
   {
     Assert( _rdt.FContainsSingleDataRange() );
     AssertValidDataRange( _rdt );
@@ -545,6 +595,22 @@ public:
     const _TyChar * pcTokBegin = m_bufCurrentToken.RCharP() + posBegin;
     const _TyChar * pcTokEnd = m_bufCurrentToken.RCharP() + posEnd;
     return pcTokEnd == mismatch( pcTokBegin, pcTokEnd, _pszMatch ).first;
+  }
+  bool FMatchChars( const _TyData & _rdt, const _TyChar * _pszMatch ) const
+    requires( s_kfSwitchEndian )
+  {
+    // Provide an endian-switched _pszMatch to mismatch() because...
+    Assert( _rdt.FContainsSingleDataRange() );
+    AssertValidDataRange( _rdt );
+    size_t stLenMatch = _rdt.DataRangeGetSingle().length();
+    _TyChar * pcBufMatch = (_TyChar*)alloca( stLenMatch * sizeof( _TyChar ) );
+    memcpy( pcBufMatch, _pszMatch, stLenMatch * sizeof( _TyChar ) );
+    SwitchEndian( pcBufMatch, stLenMatch );
+    vtyDataPosition posBegin = _rdt.DataRangeGetSingle().begin() - _PosTokenStart();
+    vtyDataPosition posEnd = _rdt.DataRangeGetSingle().end() - _PosTokenStart();
+    const _TyChar * pcTokBegin = m_bufCurrentToken.RCharP() + posBegin;
+    const _TyChar * pcTokEnd = m_bufCurrentToken.RCharP() + posEnd;
+    return pcTokEnd == mismatch( pcTokBegin, pcTokEnd, pcBufMatch ).first;
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -592,22 +658,22 @@ protected:
   {
     return _PosTokenStart() + m_bufCurrentToken.length();
   }
-  _TyBuffer m_bufFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
-  _TyBuffer m_bufCurrentToken; // The view for the current token's exploration.
+  _TyBufferFixed m_bufFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
+  _TyBufferFixed m_bufCurrentToken; // The view for the current token's exploration.
 };
 
 // _l_transport_mapped
 // Transport that uses mapped memory.
 template < class t_TyChar, bool t_fSwitchEndian >
-class _l_transport_mapped : public _l_transport_fixedmem< t_TyChar, t_fSwitchEndian >
+class _l_transport_mapped : protected _l_transport_fixedmem< t_TyChar, t_fSwitchEndian >
 {
   typedef _l_transport_mapped _TyThis;
   typedef _l_transport_fixedmem< t_TyChar, t_fSwitchEndian > _TyBase;
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
-  static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
-  typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxt;
+  using typename _TyBase::_TyTransportCtxt;
+  using _TyBase::s_kfSwitchEndian;
 
   _l_transport_mapped() = default;
   _l_transport_mapped( _l_transport_mapped const & _r ) = delete;
@@ -647,8 +713,9 @@ public:
   }
   bool FDependentTransportContexts() const
   {
+    // If we are switching endian and using a backing context then we don't need to keep this around.
     // Need to keep this mapped file open to maintain the validity of the returned transport_ctxts.
-    return true;
+    return !t_fSwitchEndian;
   }  
   void AssertValid() const
   {

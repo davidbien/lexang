@@ -106,6 +106,13 @@ public:
     first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
     second = _len;
   }
+  _l_backing_buf( const _TyChar * _pch, vtyDataPosition _len )
+  {
+    first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
+    second = _len;
+    if ( _pch )
+      memcpy( first, _pch, _len * sizeof( _TyChar ) );
+  }
   ~_l_backing_buf()
   {
     if ( first )
