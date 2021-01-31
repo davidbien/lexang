@@ -672,6 +672,7 @@ protected:
 			while( !lpi.FIsLast() )
 			{
 				Assert(*lpi >= 0);
+				Assert( !ssOutOnAlpha.isbitset( (size_t)*lpi ) );
 				ssOutOnAlpha.setbit( (size_t)*lpi );
 				_CheckMoveHead( lpi.PGLCur() );
 				lpi.NextChild();

@@ -56,6 +56,16 @@ struct _l_gen_dfa
 	_TyString			m_sStartStateName;	// Special name for start state.
 };
 
+// EGeneratorFamilyDisposition:
+// We allow families of generators but we need to declare each part specially since only the state machine need be written for the specializations.
+enum EGeneratorFamilyDisposition
+{
+	egfdStandaloneGenerator, // This is a standalone generator - we will only have this generator with this character type.
+	egfdBaseGenerator, // This is the base generator of a family of generators each recognizing a different character type.
+	egfdSpecializedGenerator, // This is a "specialized" generator for which the "base" generator has already been declared (or will be declared - the order that different headers are generated doesn't matter).
+	egfdEGeneratorFamilyDispositionCount // This at the end always.
+};
+
 template < class t_TyDfa, class t_TyCharOut >
 struct _l_generator
 {
@@ -88,12 +98,15 @@ struct _l_generator
 	_TyDfaList m_lDfaGen;
 	typename _TyDfaList::value_type *	m_pvtDfaCur{nullptr};
 
+	EGeneratorFamilyDisposition m_egfdFamilyDisp; // Our disposition wrt to same generators with other character types.
 	_TyString m_sfnHeader;			// The header file we are generating.
 	_TyString m_sPpBase;				// Preprocessor base name ( for #defines ).
 	bool m_fUseNamespaces;	// Whether to use namespaces when generating.
 	_TyString m_sNamespace;			// The namespace into which we generate.
 	_TyString m_sBaseStateName;	// The base name for state variables.
 	_TyString m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
+	_TyString m_sCharTypeNameHumanReadable; // "Human readable" version of the character type.
+	_TyString m_sStateProtoTypedef; // We name the _TyStateProto including the character type name on the end since we allow "families" of lexical analyzers for all character types.
 	_TyString m_sVisibleCharPrefix;	// Prefix for a visible character const.
 	_TyString m_sVisibleCharSuffix;	// Suffix for a visible character const.
 	_TyPrAI m_praiTriggers; // The range of trigger alpha indices (not vtyActionIdent, btw.)
@@ -120,7 +133,8 @@ struct _l_generator
 	typedef std::map< vtyTokenIdent, _TyGenActionInfo, less< vtyTokenIdent >, _TyMapActionInfoAllocator > _TyMapActionInfo;
 	_TyMapActionInfo m_mapActionInfo;
 
-	_l_generator( const t_TyCharOut * _pcfnHeader,
+	_l_generator( EGeneratorFamilyDisposition _egfdFamilyDisp,
+								const t_TyCharOut * _pcfnHeader,
 								const t_TyCharOut *	_pcPpBase,
 								bool _fUseNamespaces,
 								const t_TyCharOut * _pcNamespace,
@@ -130,6 +144,7 @@ struct _l_generator
 								const t_TyCharOut * _pcVisibleCharSuffix,
                 _TyAllocator const & _rA = _TyAllocator() )
 		: m_lDfaGen( _rA ),
+			m_egfdFamilyDisp( _egfdFamilyDisp ),
 			m_sfnHeader( _pcfnHeader, _rA ),
 			m_sPpBase( _pcPpBase, _rA ),
 			m_fUseNamespaces( _fUseNamespaces ),
@@ -145,12 +160,40 @@ struct _l_generator
       m_mapActions( typename _TyMapActions::key_compare(), _rA ),
 			m_mapActionInfo( typename _TyMapActionInfo::key_compare(), _rA )
 	{
+		if ( m_sCharTypeName == "char32_t" )
+			m_sCharTypeNameHumanReadable = "Char32";
+		else
+		if ( m_sCharTypeName == "char16_t" )
+			m_sCharTypeNameHumanReadable = "Char16";
+		else
+		if ( m_sCharTypeName == "char8_t" )
+			m_sCharTypeNameHumanReadable = "Char8";
+		else
+		if ( m_sCharTypeName == "char" )
+			m_sCharTypeNameHumanReadable = "Char";
+		else
+		if ( m_sCharTypeName == "wchar_t" )
+			m_sCharTypeNameHumanReadable = "WChar";
+		else
+			VerifyThrowSz( false, "Unknown character type [%s].", m_sCharTypeName.c_str() );
+
+		// We name the _TyStateProto including the character type name on the end since we allow "families" of lexical analyzers for all character types.
+		m_sStateProtoTypedef = "_TyStateProto";
+		m_sStateProtoTypedef += m_sCharTypeNameHumanReadable;
 	}
 
   _TyAllocator  get_allocator()
   {
     return m_mapActions.get_allocator();
   }
+	bool FIsStandaloneGenerator() const
+	{
+		return egfdStandaloneGenerator == m_egfdFamilyDisp;
+	}
+	bool FIsSpecializedGenerator() const
+	{
+		return egfdSpecializedGenerator == m_egfdFamilyDisp;
+	}
 
 	void add_dfa(	_TyDfa & _rDfa,
 								_TyDfaCtxt & _rDfaCtxt,
@@ -197,7 +240,8 @@ struct _l_generator
 			}
 		} //EB
 
-		_HeaderBody( ofsHeader );
+		if ( !FIsSpecializedGenerator() )
+			_HeaderBody( ofsHeader );
 
 		ofsHeader << ossStateDefinitions.str();
 
@@ -285,9 +329,7 @@ struct _l_generator
 
 	void	_HeaderHeader( ostream & _ros )
 	{
-		_ros << "#ifndef __" << m_sPpBase << "_H\n";
-		_ros << "#define __" << m_sPpBase << "_H\n";
-		_ros << "\n";
+		_ros << "#pragma once\n\n";
 		_ros << "// " << m_sfnHeader << "\n";
 		_ros << "// Generated DFA.\n";
 		_ros << "\n";
@@ -296,23 +338,28 @@ struct _l_generator
 		_ros << "\n";
 		if ( m_fUseNamespaces )
 		{
-			_ros << "#define __" << m_sPpBase << "_BEGIN_NAMESPACE namespace " << m_sNamespace << " {\n";
-			_ros << "#define __" << m_sPpBase << "_END_NAMESPACE }\n";
-			_ros << "#define __" << m_sPpBase << "_USING_NAMESPACE using namespace " << m_sNamespace << ";\n";
-			_ros << "#define __" << m_sPpBase << "_NAMESPACE " << m_sNamespace << "\n";
-			_ros << "\n";
+			if ( !FIsSpecializedGenerator() )
+			{
+				_ros << "#define __" << m_sPpBase << "_BEGIN_NAMESPACE namespace " << m_sNamespace << " {\n";
+				_ros << "#define __" << m_sPpBase << "_END_NAMESPACE }\n";
+				_ros << "#define __" << m_sPpBase << "_USING_NAMESPACE using namespace " << m_sNamespace << ";\n";
+				_ros << "#define __" << m_sPpBase << "_NAMESPACE " << m_sNamespace << "\n";
+				_ros << "\n";
+			}
 			_ros << "__" << m_sPpBase << "_BEGIN_NAMESPACE\n";
-			_ros << "\n";
 			_ros << "__LEXOBJ_USING_NAMESPACE\n";
 			_ros << "\n";
 		}
 
-		_ros << "typedef _l_state_proto< " << m_sCharTypeName << " > _TyStateProto;\n";
-		_ros << "typedef _l_transition< " << m_sCharTypeName << " > _TyTransition;\n";
-		_ros << "template < class t_TyTraits >\nusing TGetAnalyzerBase = _l_analyzer< t_TyTraits"
-					<< ( m_fLookaheads ? ", true" : ", false" )
-					<< ( m_fTriggers ? ", true" : ", false" )
-					<< " >;\n";
+		if ( !FIsSpecializedGenerator() )
+		{
+			_ros << "template < class t_TyTraits >\nusing TGetAnalyzerBase = _l_analyzer< t_TyTraits"
+						<< ( m_fLookaheads ? ", true" : ", false" )
+						<< ( m_fTriggers ? ", true" : ", false" )
+						<< " >;\n";
+		}
+
+		_ros << "typedef _l_state_proto< " << m_sCharTypeName << " > " << m_sStateProtoTypedef << ";\n";
 		_ros << "\n";
 	}
 
@@ -327,9 +374,11 @@ struct _l_generator
 		_ros << "\ttypedef TGetAnalyzerBase<t_TyTraits> _TyBase;\n";
 		_ros << "\ttypedef _lexical_analyzer _TyThis;\n";
 		_ros << "public:\n";
+		_ros << "\ttypedef t_tyTraits _tyTraits;\n";
+		_ros << "\ttypedef typename _tyTraits::_TyChar _TyChar;\n";
 
 		// Declare the base GetActionObject() template that is not implemented.
-		_ros << "\n\ttemplate < const int t_kiAction >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj();\n";
+		_ros << "\n\ttemplate < const int t_kiAction >\n\t_l_action_object_base< _TyChar, false > & GetActionObj();\n";
 
 
 		// We generate all referenced unique actions, and link them in a singly-linked list.
@@ -357,7 +406,7 @@ struct _l_generator
 					oss << "&m_axn"	<< rvt.second.first.m_strActionName.c_str();
 					strPreviousAction = oss.str();
 				}//EB
-				_ros << "\ttemplate < >\n\t_l_action_object_base< " << m_sCharTypeName << ", false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
+				_ros << "\ttemplate < >\n\t_l_action_object_base< _TyChar, false > & GetActionObj< s_kti" << rvt.second.first.m_strActionName.c_str() << " >()"
 							" { return m_axn" << rvt.second.first.m_strActionName.c_str() << "; }\n";
 				_ros << "\tbool Action" << rvt.second.first.m_strActionName.c_str() << "()\n";
 				_ros << "\t{\n";
@@ -367,8 +416,17 @@ struct _l_generator
 			}
 		}
 
-		_ros << "\t_lexical_analyzer()\n";
-		_ros << "\t\t: _TyBase( (_TyStateProto*) & " << m_pvtDfaCur->m_sStartStateName << "<t_TyTraits>, "; 
+		_ros << "\n\t_lexical_analyzer()\n";
+		if ( FIsStandaloneGenerator() )
+		{
+			// For a standalone generator we can reference the start state here because there is only one unique start state.
+			_ros << "\t\t: _TyBase( (" << m_sStateProtoTypedef << "*) & " << m_pvtDfaCur->m_sStartStateName << "<t_TyTraits>, "; 
+		}
+		else
+		{
+			// For a base generator we cannot reference the start state as it is unclear which start state will be used by the impl depending on the character type being parsed.
+			_ros << "\t\t: _TyBase( nullptr, "; 
+		}
 		if ( strPreviousAction.length() )
 			_ros << strPreviousAction;
 		else
@@ -388,7 +446,6 @@ struct _l_generator
 			_ros << "__" << m_sPpBase << "_END_NAMESPACE\n";
 			_ros << "\n";
 		}
-		_ros << "#endif //__" << m_sPpBase << "_H\n";
 	}
 
 	void	_GenHeaderState(	ostream & _ros, _TyGraphNode * _pgn, 
@@ -673,7 +730,7 @@ struct _l_generator
 		if ( fIsTriggerAction || ( fIsTriggerGateway && !fIsAntiAcceptingState ) )
 		{
 			// Then the first transition is the trigger:
-			_ros << "(_TyStateProto*)( & ";
+			_ros << "(" << m_sStateProtoTypedef << "*)( & ";
 			if ( (*(_pgn->PPGLChildHead()))->PGNChild() == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
 			{
 				_ros	<< m_pvtDfaCur->m_sStartStateName << "<t_TyTraits>";
@@ -742,7 +799,7 @@ struct _l_generator
 				 _ros << ", ";
 				_CharOut( _ros, r.second );
 
-				_ros << ", (_TyStateProto*)( & ";
+				_ros << ", (" << m_sStateProtoTypedef << "*)( & ";
 				if ( m_pvtDfaCur->m_rDfaCtxt.m_pgnStart == lpi.PGNChild() )
 				{
 					_ros << m_pvtDfaCur->m_sStartStateName << "<t_TyTraits>";

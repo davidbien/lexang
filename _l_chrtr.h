@@ -18,6 +18,7 @@ __REGEXP_BEGIN_NAMESPACE
 template < class t_TyCharType >
 struct _l_char_type_map;
 
+#if 0
 template <>
 struct _l_char_type_map< char >
 {
@@ -40,16 +41,69 @@ struct _l_char_type_map< unsigned char >
   typedef char            _TyChar;
   typedef unsigned char   _TyUnsigned;
   typedef signed char     _TySigned;
-  typedef unsigned short  _TyLarger;
+  typedef uint64_t  _TyLarger;
 
   static constexpr unsigned char ms_kcMin = 0;
   static constexpr unsigned char ms_kcMax = UCHAR_MAX;
 
+  static constexpr unsigned char ms_kcSurrogateFirst = 0;
+  static constexpr unsigned char ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // no surrogates present in UTF-8 or we at least are not checking for them.
+
   // Provide a large set of triggers and unsatisifiable transitions:
-  static constexpr _TyLarger ms_knTriggerStart = ms_kcMax + 1;
-  static constexpr _TyLarger ms_knTriggerLast = ( USHRT_MAX - ( ms_knTriggerStart ) ) / 2; // inclusive.
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
   static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
-  static constexpr _TyLarger ms_knUnsatisfiableLast = USHRT_MAX;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+};
+#endif //0
+
+template <>
+struct _l_char_type_map< char8_t >
+{
+  typedef char8_t       _TyChar;
+  typedef char8_t       _TyUnsigned;
+  typedef int8_t       _TySigned;
+  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
+  typedef uint64_t      _TyLarger;
+  static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
+
+  static constexpr char8_t ms_kcMin = 0;
+  static constexpr char8_t ms_kcMax = 0xFF;
+
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+
+  static constexpr char8_t ms_kcSurrogateFirst = 0;
+  static constexpr char8_t ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // while there are surrogates in UTF16 (that is what they are for) we don't limit by any surrogates because valid UTF16 codepoints begin with surrogates.
+};
+
+template <>
+struct _l_char_type_map< char16_t >
+{
+  typedef char16_t       _TyChar;
+  typedef char16_t       _TyUnsigned;
+  typedef int16_t       _TySigned;
+  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
+  typedef uint64_t      _TyLarger;
+  static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
+
+  static constexpr char16_t ms_kcMin = 0;
+  static constexpr char16_t ms_kcMax = 0xFFFF;
+
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+
+  static constexpr char16_t ms_kcSurrogateFirst = 0;
+  static constexpr char16_t ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // while there are surrogates in UTF16 (that is what they are for) we don't limit by any surrogates because valid UTF16 codepoints begin with surrogates.
 };
 
 template <>

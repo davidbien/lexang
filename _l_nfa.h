@@ -182,6 +182,7 @@ public:
 
 		_TyCharAllocBase::allocate_n( m_cpClosureCache, 
 																	m_ssClosureComputed.size_bytes() * NStates() );
+		memset( m_cpClosureCache, 0, m_ssClosureComputed.size_bytes() * NStates() );
 	}
 
 	void	DeallocClosureCache()
@@ -373,11 +374,13 @@ protected:	// accessed by _nfa_context:
 				{
 					_TyUnsignedChar ucNewLast = !*pcCur ? _l_char_type_map< _TyUnsignedChar >::ms_kcMax : ( *pcCur++ - 1 );
 					_TyRange rgNew( ucLast, ucNewLast );
-					ucLast = ucNewLast;
+					ucLast = ucNewLast + 1;
 					if ( !_rctxt.m_pgnStart )
 						CreateRangeNFA( _rctxt, rgNew );
 					else
 						_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+					if ( !ucLast )
+						break;
 				}
 			}
 			while ( _l_char_type_map< _TyUnsignedChar >::ms_kcMax > ucLast );

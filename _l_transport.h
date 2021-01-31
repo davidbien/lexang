@@ -121,7 +121,7 @@ protected:
 
 // _l_transport_file:
 // Transport using a file.
-template < class t_TyChar >
+template < class t_TyChar, bool t_fSwitchEndian >
 class _l_transport_file : public _l_transport_base< t_TyChar >
 {
   typedef _l_transport_file _TyThis;
@@ -129,6 +129,7 @@ class _l_transport_file : public _l_transport_base< t_TyChar >
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
+  static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
@@ -236,17 +237,8 @@ public:
   // Return the current character and advance the position.
   bool FGetChar( _TyChar & _rc )
   {
-    if ( !s_kfSwitchEndian )
-      return m_frrFileDesBuffer.FGetChar( _rc );
-    else
-    {
-      if ( m_frrFileDesBuffer.FGetChar( _rc ) )
-      {
-        SwitchEndian(_rc);
-        return true;
-      }
-      return false;
-    }
+    // Any endian switching is done within the buffer.
+    return m_frrFileDesBuffer.FGetChar( _rc );
   }
   // Return a token backed by a user context obtained from the transport plus a reference to our local UserObj.
   // This also consumes the data in the m_frrFileDesBuffer from [m_frrFileDesBuffer.m_saBuffer.IBaseElement(),_kdpEndToken).
@@ -324,7 +316,7 @@ public:
   }
 protected:
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
-  typedef FdReadRotating< _TyChar > _TyFdReadRotating;
+  typedef FdReadRotating< _TyChar, s_kfSwitchEndian > _TyFdReadRotating;
   _TyFdReadRotating m_frrFileDesBuffer{ vknchTransportFdTokenBufferSize * sizeof( _TyChar ) };
   FileObj m_file;
   bool m_fisatty{false};
@@ -478,7 +470,7 @@ public:
     if ( _FAtEnd() )
       return false;
     if ( s_kfSwitchEndian )
-      _rc = SwitchEndian( m_bufCurrentToken.begin()[ m_bufCurrentToken.RLength()++ ] );
+      SwitchEndian( _rc = m_bufCurrentToken.begin()[ m_bufCurrentToken.RLength()++ ] );
     else
       _rc = m_bufCurrentToken.begin()[ m_bufCurrentToken.RLength()++ ];
     return true;
@@ -537,17 +529,17 @@ public:
   {
     _rstr.assign( (typename t_TyString::value_type const *)m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
     if ( s_kfSwitchEndian )
-      SwitchEndian( &_rstr[0], bufToken.length() );
+      SwitchEndian( &_rstr[0], _rstr.length() );
   }
   template < class t_TyString >
   void GetCurTokenString( t_TyString & _rstr ) const
-    requires( !s_kfSwitchEndian && ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
+    requires( !s_kfSwitchEndian && ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) ) )
   {
     ConvertString( _rstr, m_bufCurrentToken.begin(), m_bufCurrentToken.length() );
   }
   template < class t_TyString >
   void GetCurTokenString( t_TyString & _rstr ) const
-    requires( s_kfSwitchEndian && ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) )
+    requires( s_kfSwitchEndian && ( sizeof( typename t_TyString::value_type ) != sizeof( _TyChar ) ) )
   {
     // We must convert the string after switching the endianness or things won't work...
     basic_string< _TyChar > strTemp;

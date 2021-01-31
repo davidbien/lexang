@@ -769,7 +769,7 @@ public:
 										for (; !!pglFirstCheck && (pglFirstCheck->RElConst() >= praiTriggers.first) && (pglFirstCheck->RElConst() < praiTriggers.second);
 											pglFirstCheck = *pglFirstCheck->PPGLGetNextChild())
 										{
-											// REVIEW<dbien>: Want to see this scenario if it happens. It's likely that the connection to the trigger will keep this "to be excised" potion of the graph connected to the main graph and cause crashing issues.
+											// REVIEW<dbien>: Want to see this scenario if it happens. It's likely that the connection to the trigger will keep this "to be excised" portion of the graph connected to the main graph and cause crashing issues.
 											Assert( false ); 
 										}
 										Assert( !!pglFirstCheck ); // REVIEW<dbien>:Want to see if this ever fires and check out that scenario - could just remove this.
