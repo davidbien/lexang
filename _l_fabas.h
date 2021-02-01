@@ -98,6 +98,7 @@ public:
 		if ( !!( e_aatTrigger & m_eaatType ) )
 		{
 			//Assert( !!m_pSdpAction ); // Should have an action.
+			Assert( !m_psrTriggers );
 			if ( !!m_psrTriggers )
 				Assert( m_psrTriggers->countsetbits() );
 		}

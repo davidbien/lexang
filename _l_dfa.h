@@ -952,7 +952,16 @@ public:
 				RDfa()._RemoveLink( lpi.PGLCur() );
 			}
 
-			// Dead state is orphaned - but has a lot of children ( itself ).
+			// Dead state is orphaned - but has a lot of children ( itself ) - assert that is the case:
+#if ASSERTSENABLED
+			{//B
+				typename _TyGraph::_TyLinkPosIterConst	lpi( RDfa().PGNGetNode( 0 )->PPGLChildHead() );
+				_TyGraphNode * pgnDead = RDfa().PGNGetNode( 0 );
+				while( !lpi.FIsLast() )
+					Assert( lpi.PGLCur()->PGNChild() == pgnDead );
+			} //EB
+#endif //ASSERTSENABLED
+
 			RDfa().m_gDfa.destroy_node( RDfa().PGNGetNode( 0 ) );
 			RDfa().m_nodeLookup[ 0 ] = 0;
 

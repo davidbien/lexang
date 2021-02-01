@@ -106,7 +106,7 @@ struct _l_generator
 	_TyString m_sBaseStateName;	// The base name for state variables.
 	_TyString m_sCharTypeName;		// The name of the character type for the analyzer we are generating,
 	_TyString m_sCharTypeNameHumanReadable; // "Human readable" version of the character type.
-	_TyString m_sStateProtoTypedef; // We name the _TyStateProto including the character type name on the end since we allow "families" of lexical analyzers for all character types.
+	_TyString m_sStateProtoTypedef; // We name the vTyStateProto including the character type name on the end since we allow "families" of lexical analyzers for all character types.
 	_TyString m_sVisibleCharPrefix;	// Prefix for a visible character const.
 	_TyString m_sVisibleCharSuffix;	// Suffix for a visible character const.
 	_TyPrAI m_praiTriggers; // The range of trigger alpha indices (not vtyActionIdent, btw.)
@@ -177,8 +177,8 @@ struct _l_generator
 		else
 			VerifyThrowSz( false, "Unknown character type [%s].", m_sCharTypeName.c_str() );
 
-		// We name the _TyStateProto including the character type name on the end since we allow "families" of lexical analyzers for all character types.
-		m_sStateProtoTypedef = "_TyStateProto";
+		// We name the vTyStateProto including the character type name on the end since we allow "families" of lexical analyzers for all character types.
+		m_sStateProtoTypedef = "vTyStateProto";
 		m_sStateProtoTypedef += m_sCharTypeNameHumanReadable;
 	}
 
@@ -374,8 +374,8 @@ struct _l_generator
 		_ros << "\ttypedef TGetAnalyzerBase<t_TyTraits> _TyBase;\n";
 		_ros << "\ttypedef _lexical_analyzer _TyThis;\n";
 		_ros << "public:\n";
-		_ros << "\ttypedef t_tyTraits _tyTraits;\n";
-		_ros << "\ttypedef typename _tyTraits::_TyChar _TyChar;\n";
+		_ros << "\ttypedef t_TyTraits _TyTraits;\n";
+		_ros << "\ttypedef typename _TyTraits::_TyChar _TyChar;\n";
 
 		// Declare the base GetActionObject() template that is not implemented.
 		_ros << "\n\ttemplate < const int t_kiAction >\n\t_l_action_object_base< _TyChar, false > & GetActionObj();\n";

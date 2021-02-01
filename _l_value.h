@@ -101,11 +101,10 @@ public:
   // Our big old variant.
   // Use monostate to allow an "empty" value here.
   // First define the "base" variant which doesn't include any user defined types.
-  typedef variant<  monostate, bool, vtyDataPosition, _TyData, 
+  typedef variant<  monostate, _TySegArrayValues, _TyData, vtyDataPosition, bool, 
                     _TyStrChar, _TyStrViewChar,
                     _TyStrChar16, _TyStrViewChar16,
-                    _TyStrChar32, _TyStrViewChar32,
-                    _TySegArrayValues > _TyVariantBase;
+                    _TyStrChar32, _TyStrViewChar32 > _TyVariantBase;
   // Now define our full variant type by concatenating on any user defined types.
   typedef typename concatenator_pack< _TyVariantBase, typename _TyTraits::_TyValueTraits > ::type _TyVariant;
 

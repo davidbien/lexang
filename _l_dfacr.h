@@ -92,13 +92,11 @@ public:
 	_create_dfa(	_TyNfa & _rNfa, _TyNfaCtxt & _rNfaCtxt,
 								_TyDfa & _rDfa, _TyDfaCtxt & _rDfaCtxt,
 								bool _fCreateDeadState,
-								size_t _stHashSize = 1000,
-								int _iDfaNodeLimit = 100000 )
+								size_t _stHashSize = 3000 )
 		:	m_rNfa( _rNfa ),
 			m_rNfaCtxt( _rNfaCtxt ),
 			m_rDfa( _rDfa ),
 			m_rDfaCtxt( _rDfaCtxt ),
-			m_iDfaNodeLimit( _iDfaNodeLimit ),
 			m_sCur( 0 ),
 			m_ssLookup( _stHashSize, typename _TyLookupSS::hasher(),
 									typename _TyLookupSS::key_equal(), 
@@ -296,11 +294,6 @@ public:
 				Assert( !pssInLookup->empty() );
 				*m_pssCur = *pssInLookup;
 				pgnCurDfa = m_rDfa.PGNGetNode( m_sCur );
-			}
-
-			if ( m_sCur > m_iDfaNodeLimit )
-			{
-				return false;	// Over the node limit.
 			}
 		}
 

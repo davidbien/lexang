@@ -9,6 +9,7 @@
 // _l_dfopt.h
 
 #include "_garcoll.h"
+#include <vector>
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -18,8 +19,10 @@ struct _partition_el
 private:
 	typedef _partition_el< t_TySwapSS >	_TyThis;
 public:
+	typedef ptrdiff_t _TyPartitionType;
+	static constexpr _TyPartitionType s_kptNullPartition = (numeric_limits< _TyPartitionType >::max)();
 
-	ptrdiff_t		first;
+	_TyPartitionType first;
 	t_TySwapSS	second;
 
 	_partition_el(ptrdiff_t _first, t_TySwapSS const & _rss )
@@ -196,8 +199,10 @@ protected:
 
 	// We also need a mapping from set number to the partition element containing that set -
 	//	since the number of states is fixed just need a simple array:
-	typedef _TyPartitionEl *	_TyStateMapEl;
-	_TyStateMapEl *						m_rgsmeMap;
+	typedef _TyPartitionEl * _TyStateMapEl;
+  typedef typename _Alloc_traits< typename vector< _TyStateMapEl >::value_type, _TyAllocator >::allocator_type TyRgStateMapElAlloc;
+	typedef vector< _TyStateMapEl, TyRgStateMapElAlloc > _TyRgStateMapEl;
+	_TyRgStateMapEl m_rgsmeMap;
 
 	// As we compute the partition we need to accumulate the new sets ( relative to the current
 	//	sets ). The number of unique sets in the partition could be as high as the number of states 
@@ -216,7 +221,9 @@ protected:
 	_TySetPartClasses	m_setPartClasses;
 
 	// Lookup the representative for a node.
-	_sdpn< _TyGraphNode *, _TyAllocator >	m_rgLookupRep;
+  typedef typename _Alloc_traits< typename vector< _TyGraphNode * >::value_type, _TyAllocator >::allocator_type TyRgLookupRepAlloc;
+	typedef vector< _TyGraphNode *, TyRgLookupRepAlloc > TyRgLookupRep;
+	TyRgLookupRep	m_rgLookupRep;
 
 public:
 	
@@ -227,33 +234,26 @@ public:
 			m_rDfaCtxt( _rDfaCtxt ),
 			m_stDfaStatesOrig( m_rDfa.NStates() ),
 			m_partition( _TyCompPE(), _rDfa.get_allocator() ),
-			m_rgsmeMap( 0 ),
+			m_rgsmeMap( _rDfa.get_allocator() ),
 			m_cachePartClasses( 0 ),
 			m_stUsedClassCache( 0 ),
 			m_stSizeClassCache( 0 ),
-			m_setPartClasses( _TyCompPartClases( _rDfa.AlphabetSize() ), 
-												_rDfa.get_allocator() ),
+			m_setPartClasses( _TyCompPartClases( _rDfa.AlphabetSize() ), _rDfa.get_allocator() ),
 			m_rgLookupRep( m_rDfa.get_allocator() )
 	{
-		_TyPartitionEl	peSingleton( INT_MAX, _TySetStates( 0, m_rDfa.get_allocator() ) );
+		_TyPartitionEl peSingleton( _TyPartitionEl::s_kptNullPartition, _TySetStates( 0, m_rDfa.get_allocator() ) );
 		m_gcppeSingleton.template Create1< _TyPartitionEl const & >( peSingleton, m_rDfa.get_allocator() );
 
-		_sdp< void *, _TyAllocator >	pvAllocMap( _TyAllocVPBase::get_allocator() );
-		_TyAllocVPBase::allocate_n( pvAllocMap.PtrRef(), m_stDfaStatesOrig );
-		memset( pvAllocMap.Ptr(), 0, m_stDfaStatesOrig * sizeof( void *) );
-		void **	pvPartClassCache;
-		_TyAllocVPBase::allocate_n( pvPartClassCache, m_stDfaStatesOrig + 1 );
-		m_cachePartClasses = reinterpret_cast< _TyPartitionClass ** >( pvPartClassCache );
-		m_rgsmeMap = reinterpret_cast< _TyStateMapEl * >( pvAllocMap.transfer() );
+		m_rgsmeMap.resize( m_stDfaStatesOrig );
+		{//B 
+			void **	pvPartClassCache;
+			_TyAllocVPBase::allocate_n( pvPartClassCache, m_stDfaStatesOrig + 1 );
+			m_cachePartClasses = reinterpret_cast< _TyPartitionClass ** >( pvPartClassCache );
+		}//EB
 	}
 
 	~_optimize_dfa()
 	{
-		if ( m_rgsmeMap )
-		{
-			_TyAllocVPBase::deallocate_n( reinterpret_cast< void ** >( m_rgsmeMap ), 
-																		m_stDfaStatesOrig );
-		}
 		_DeallocPartClassCache();
 	}
 
@@ -373,13 +373,11 @@ public:
 		// Now set the state->state set map pointers:
 		_UpdateStateMap( gcpPeInsert, _rssInsert );
 
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair< typename _TyPartition::iterator, bool >	pibDebug = 
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_partition.insert( gcpPeInsert );
-#ifndef NDEBUG
 		Assert( pibDebug.second );
-#endif //!NDEBUG
 	}
 
 	// Return true if created a new DFA.
@@ -503,23 +501,23 @@ protected:
 
 				_TyPartitionEl ** pppelPartClass = (*pppc)->begin();
 
-#ifndef NDEBUG
+#if ASSERTSENABLED
 				size_t dbg_nLinksCur = 0;
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 				while( !lpi.FIsLast() )
 				{
-#ifndef NDEBUG
+#if ASSERTSENABLED
 					++dbg_nLinksCur;
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 					*pppelPartClass++ = m_rgsmeMap[ lpi.PGNChild()->REl() ];
 					lpi.NextChild();
 				}
-#ifndef NDEBUG
+#if ASSERTSENABLED
 				if ( size_t(-1) == dbg_nLinksFirst )
 					dbg_nLinksFirst = dbg_nLinksCur;
 				else
 					Assert( dbg_nLinksCur == dbg_nLinksFirst ); // Each node should have the same number of links out.
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 
 				// Now attempt to insert this new transition container into the set of unique
 				//	transition sets of the current group of the partition:
@@ -613,7 +611,7 @@ protected:
 			// Then need to move the link:
 			_pgl->RemoveParent();
 			_pgl->InsertParent( m_rgLookupRep[ (size_type)iTransState ]->PPGLParentHead() );
-			_pgl->SetChildNode( m_rgLookupRep[(size_type)iTransState ] );
+			_pgl->SetChildNode( m_rgLookupRep[ (size_type)iTransState ] );
 		}
 	}
 
@@ -621,7 +619,6 @@ protected:
 													_TySetStates & _rssUtil )
 	{
 		// Compress the graph in place.
-
 		m_rDfaCtxt.RemoveDeadState( );
 
 		// Now start compressing partition groups.
@@ -645,14 +642,12 @@ protected:
 		// ( Also they will be the only ones that are left. )
 		_TySetStates	ssOutOnAlpha( (_TyState)m_rDfa.AlphabetSize(), m_rDfa.get_allocator() );
 
-		// Create a lookup which we will lazily fill with the representative state's graph node
-		//	as we process:
-		m_rgLookupRep.allocate( m_stDfaStatesOrig );
-		memset( m_rgLookupRep.begin(), 0, m_stDfaStatesOrig * sizeof( _TyGraphNode * ) );
+		// Create a lookup which we will lazily fill with the representative state's graph node as we process:
+		m_rgLookupRep.resize( m_stDfaStatesOrig );
 
 		typename _TyPartition::iterator itCur = _rcitUpper;
 
-    typename _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing.
+    typename _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing. Initialize to 1 due to dead state removal above.
 
 		typename _TyGraph::_TyLinkPosIterNonConst	lpi;
 
