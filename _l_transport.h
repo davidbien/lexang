@@ -793,6 +793,7 @@ public:
   using typename _TyBase::_TyData;
   typedef _l_transport_var_ctxt< typename t_TysTransports::_TyTransportCtxt ... > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
+  typedef variant< monostate, t_TysTransports... > _TyVariant;
 
   _l_transport_var() = default;
   _l_transport_var( _l_transport_var const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
@@ -985,7 +986,7 @@ public:
 #endif //ASSERTSENABLED  
   }
 protected:
-  variant< monostate, t_TysTransports... > m_var;
+  _TyVariant m_var;
 };
 
 __LEXOBJ_END_NAMESPACE

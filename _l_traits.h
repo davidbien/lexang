@@ -8,19 +8,13 @@
 // This will allow injection of user defined types into the _l_value class ( as one benefit ).
 // It centralizes the types for all lexang objects.
 
+#include <tuple>
 #include "_l_ns.h"
 #include "_l_types.h"
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-// _l_value_traits:
-// This is used to add additional user-defined types to _l_value's variant object.
-template < class ... t_TysUserValueTypes >
-struct _l_value_traits
-{
-};
-
-template < class t_TyTransport, class t_TyUserObj, class t_TyValueTraits = _l_value_traits<> >
+template < class t_TyTransport, class t_TyUserObj, class t_TyValueTraits = tuple<> >
 struct _l_traits
 {
   typedef t_TyTransport _TyTransport;
