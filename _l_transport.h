@@ -121,7 +121,7 @@ protected:
 
 // _l_transport_file:
 // Transport using a file.
-template < class t_TyChar, bool t_fSwitchEndian >
+template < class t_TyChar, class t_TyBoolSwitchEndian >
 class _l_transport_file : public _l_transport_base< t_TyChar >
 {
   typedef _l_transport_file _TyThis;
@@ -129,7 +129,7 @@ class _l_transport_file : public _l_transport_base< t_TyChar >
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
-  static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
+  static constexpr bool s_kfSwitchEndian = t_TyBoolSwitchEndian::value;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
@@ -408,7 +408,7 @@ protected:
 
 // _l_transport_fixedmem:
 // Transport that uses a piece of memory as an input stream.
-template < class t_TyChar, bool t_fSwitchEndian >
+template < class t_TyChar, class t_TyBoolSwitchEndian >
 class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
 {
   typedef _l_transport_fixedmem _TyThis;
@@ -416,7 +416,7 @@ class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
-  static constexpr bool s_kfSwitchEndian = t_fSwitchEndian;
+  static constexpr bool s_kfSwitchEndian = t_TyBoolSwitchEndian::value;
   // A transport that converts its input in any way must use a backed context when returning a token:
   using _TyTransportCtxt = typename std::conditional< s_kfSwitchEndian, _l_transport_backed_ctxt< _TyChar >, _l_transport_fixedmem_ctxt< _TyChar > >::type;
   friend _TyTransportCtxt;
@@ -656,7 +656,7 @@ protected:
 
 // _l_transport_mapped
 // Transport that uses mapped memory.
-template < class t_TyChar, bool t_fSwitchEndian >
+template < class t_TyChar, class t_TyBoolSwitchEndian >
 class _l_transport_mapped : protected _l_transport_fixedmem< t_TyChar, t_fSwitchEndian >
 {
   typedef _l_transport_mapped _TyThis;
