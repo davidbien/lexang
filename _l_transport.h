@@ -38,11 +38,10 @@ public:
   typedef _l_backing_buf< t_TyChar > _TyBuffer;
   typedef _l_data< t_TyChar > _TyData;
 
-  _l_transport_backed_ctxt( vtyDataPosition _posTokenStart, vtyDataPosition _posTokenEnd )
+  _l_transport_backed_ctxt( vtyDataPosition _posTokenStart, _TyBuffer && _rrbufTokenData )
     : m_posTokenStart( _posTokenStart ),
-      m_bufTokenData( _posTokenEnd > _posTokenStart ? ( _posTokenEnd - _posTokenStart ) : 0 )
+      m_bufTokenData( std::move( _rrbufTokenData ) )
   {
-    VerifyThrowSz( _posTokenEnd >= _posTokenStart, "duh" ); // Above we don't try to allocate a huge amount of memory and then we also throw if passed bogus parameters.
   }
   ~_l_transport_backed_ctxt() = default;
   _l_transport_backed_ctxt() = default;
@@ -88,7 +87,7 @@ public:
     {
       if ( _rdt.FContainsSingleDataRange() )
       {
-        _AssertValidRange( _rdt.begin(), _rdt.end() );
+        _AssertValidRange( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end() );
       }
       else
       {
@@ -112,7 +111,7 @@ protected:
 #if ASSERTSENABLED
     Assert( _posEnd >= _posBegin );
     Assert( _posBegin >= m_posTokenStart );
-    Assert( _posEnd <= m_posTokenStart + m_bufTokenData.length() );
+    Assert( ( vkdpNullDataPosition == _posEnd ) || ( _posEnd <= m_posTokenStart + m_bufTokenData.length() ) );
 #endif //ASSERTSENABLED  
   }
   vtyDataPosition m_posTokenStart{ (numeric_limits< vtyDataPosition >::max)() };
@@ -657,10 +656,10 @@ protected:
 // _l_transport_mapped
 // Transport that uses mapped memory.
 template < class t_TyChar, class t_TyBoolSwitchEndian >
-class _l_transport_mapped : protected _l_transport_fixedmem< t_TyChar, t_fSwitchEndian >
+class _l_transport_mapped : protected _l_transport_fixedmem< t_TyChar, t_TyBoolSwitchEndian >
 {
   typedef _l_transport_mapped _TyThis;
-  typedef _l_transport_fixedmem< t_TyChar, t_fSwitchEndian > _TyBase;
+  typedef _l_transport_fixedmem< t_TyChar, t_TyBoolSwitchEndian > _TyBase;
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
@@ -703,11 +702,28 @@ public:
     Assert( !m_bufCurrentToken.length() );
     m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
   }
+  // We must map starting at the current seek position of the file. This skips any BOM - or whatever the caller wants to skip, etc.
+  // However we must store the resultant offset from the actual map point. This is because the map address is aligned to page size boundaries.
+  _l_transport_mapped( FileObj & _rfoFile )
+    : _TyBase( (const _TyChar*)vkpvNullMapping, 0 )// in case of throw so we don't call munmap with some random number in ~_l_transport_mapped().
+  {
+    VerifyThrowSz( _rfoFile.FIsOpen(), "Caller should pass an open file..." );
+	  size_t stMapAtPosition = (size_t)NFileSeekAndThrow(_rfoFile.HFileGet(), 0, vkSeekCur);
+    size_t stSizeMapping;
+    FileMappingObj fmoFile( MapReadOnlyHandle( _rfoFile.HFileGet(), &stSizeMapping, &stMapAtPosition ) );
+    if ( !fmoFile.FIsOpen() )
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of handle[%lu] failed, stSizeMapping[%lu].", (size_t)_rfoFile.HFileGet(), stSizeMapping );
+    m_bufFull.RLength() = stSizeMapping - stMapAtPosition;
+    m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pby(stMapAtPosition);
+    m_bufCurrentToken.RCharP() = m_bufFull.begin();
+    Assert( !m_bufCurrentToken.length() );
+    m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
+  }
   bool FDependentTransportContexts() const
   {
     // If we are switching endian and using a backing context then we don't need to keep this around.
     // Need to keep this mapped file open to maintain the validity of the returned transport_ctxts.
-    return !t_fSwitchEndian;
+    return !s_kfSwitchEndian;
   }  
   void AssertValid() const
   {
@@ -717,12 +733,15 @@ public:
   }
 
   using _TyBase::PosCurrent;
+  using _TyBase::PosTokenStart;
   using _TyBase::FAtTokenStart;
   using _TyBase::FGetChar;
   using _TyBase::GetPToken;
   using _TyBase::CtxtEatCurrentToken;
   using _TyBase::DiscardData;
   using _TyBase::GetCurTokenString;
+  using _TyBase::FSpanChars;
+  using _TyBase::FMatchChars;
 protected:
   using _TyBase::m_bufFull; // The full view of the fixed memory that we are passing through the lexical analyzer.
   using _TyBase::m_bufCurrentToken; // The view for the current token's exploration.
