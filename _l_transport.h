@@ -159,9 +159,15 @@ public:
     m_file.SetHFile( hFile, true );
     _InitNonTty();
   }
+  // We must read starting at the current seek position of the file. This skips any BOM - or whatever the caller wants to skip, etc.
+  _l_transport_file( FileObj & _rfoFile )
+  {
+    VerifyThrowSz( _rfoFile.FIsOpen(), "Caller should pass an open file..." );
+    m_file = std::move( _rfoFile );
+    _InitNonTty();
+  }
   // Attach to an hFile like STDIN - in which case you would set _fOwnFd to false.
-  // The hFile will 
-  _l_transport_file( vtyFileHandle _hFile, size_t _posEnd = 0, bool _fOwnFd = false )
+  _l_transport_file( vtyFileHandle _hFile, size_t _posEnd /*= 0*/, bool _fOwnFd = false )
     : m_file( _hFile, _fOwnFd )
   {
     m_fisatty = FIsConsoleFileHandle( m_file.HFileGet() );
@@ -214,8 +220,12 @@ public:
       else
         posEnd = _posEnd;
       stchLenRead = posEnd - posInit;
+      // Reset the seek to where we were at the beginning.
+      (void)NFileSeekAndThrow( m_file.HFileGet(), nbySeekCur, vkSeekBegin );
     }
-    m_frrFileDesBuffer.Init( m_file.HFileGet(), posInit, fReadAhead, stchLenRead );
+    // The initial position is always 0 - regardless of where we actually started in the file.
+    // We could do it otherwise which would allow easier debugging but... this is how we are doing it now.
+    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, fReadAhead, stchLenRead );
   }
   bool FDependentTransportContexts() const
   {
@@ -232,6 +242,10 @@ public:
   bool FAtTokenStart() const
   {
     return m_frrFileDesBuffer.PosCurrent() == m_frrFileDesBuffer.PosBase();
+  }
+  void ResetToTokenStart()
+  {
+    m_frrFileDesBuffer.ResetPositionToBase();
   }
   // Return the current character and advance the position.
   bool FGetChar( _TyChar & _rc )
@@ -253,7 +267,9 @@ public:
     typedef typename _TyUserContext::_TyUserObj _TyUserObj;
     static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
-    _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _kdpEndToken );
+    vtyDataPosition nLenToken = ( _kdpEndToken - m_frrFileDesBuffer.PosBase() );
+    typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
+    _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _TyBuffer( nLenToken ) );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
     m_frrFileDesBuffer.ConsumeData( ucxt.GetTokenBuffer().begin(), ucxt.GetTokenBuffer().length() );
     unique_ptr< t_TyToken > upToken = make_unique< t_TyToken >( std::move( ucxt ), std::move( _rrvalue ), _paobCurToken );
@@ -295,7 +311,7 @@ public:
     {
       if ( _rdt.FContainsSingleDataRange() )
       {
-        m_frrFileDesBuffer.AssertValidRange( _rdt.begin(), _rdt.end() );
+        m_frrFileDesBuffer.AssertValidRange( _rdt.DataRangeGetSingle().begin(), _rdt.DataRangeGetSingle().end() );
       }
       else
       {
@@ -462,6 +478,10 @@ public:
   bool FAtTokenStart() const
   {
     return !m_bufCurrentToken.length();
+  }
+  void ResetToTokenStart()
+  {
+    m_bufCurrentToken.RLength() = 0;
   }
   // Return the current character and advance the position.
   bool FGetChar( _TyChar & _rc )
@@ -735,6 +755,7 @@ public:
   using _TyBase::PosCurrent;
   using _TyBase::PosTokenStart;
   using _TyBase::FAtTokenStart;
+  using _TyBase::ResetToTokenStart;
   using _TyBase::FGetChar;
   using _TyBase::GetPToken;
   using _TyBase::CtxtEatCurrentToken;

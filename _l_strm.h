@@ -102,7 +102,11 @@ public:
     Assert( m_opttpImpl.has_value() );
     return m_opttpImpl->FAtTokenStart();
   }
-
+  void ResetToTokenStart()
+  {
+    Assert( m_opttpImpl.has_value() );
+    return m_opttpImpl->ResetToTokenStart();
+  }
   // Get a single character from the transport and advance the input stream.
   bool FGetChar( _TyChar & _rc )
   {
