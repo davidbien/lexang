@@ -127,8 +127,9 @@ class _l_transport_file : public _l_transport_base< t_TyChar >
   typedef _l_transport_base< t_TyChar > _TyBase;
 public:
   using typename _TyBase::_TyChar;
+  typedef t_TyBoolSwitchEndian _TyBoolSwitchEndian;
   using typename _TyBase::_TyData;
-  static constexpr bool s_kfSwitchEndian = t_TyBoolSwitchEndian::value;
+  static constexpr bool s_kfSwitchEndian = _TyBoolSwitchEndian::value;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
@@ -173,59 +174,9 @@ public:
     m_fisatty = FIsConsoleFileHandle( m_file.HFileGet() );
     m_fisatty ? _InitTty() : _InitNonTty( _posEnd );
   }
-  void _InitTty()
+  static EFileCharacterEncoding GetSupportedCharacterEncoding()
   {
-    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, false, (numeric_limits< vtyDataPosition >::max)() );
-  }
-  void _InitNonTty( size_t _posEnd = 0 )
-  {
-    bool fReadAhead = false;
-    size_t posInit = 0;
-    size_t posEnd = 0;
-    size_t stchLenRead = (std::numeric_limits<size_t>::max)();
-
-    // Then stat will return meaningful info:
-    vtyHandleAttr attrHandle;
-    int iGetAttrRtn = GetHandleAttrs( m_file.HFileGet(), attrHandle );
-    if ( !!iGetAttrRtn )
-    {
-      Assert( -1 == iGetAttrRtn );
-      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "GetHandleAttrs() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
-    }
-    // We will support any hFile type here but we will only use read ahead on regular files.
-    fReadAhead = FIsRegularFile_HandleAttr( attrHandle );
-    if ( fReadAhead )
-    {
-      vtySeekOffset nbySeekCur;
-      int iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekCur, &nbySeekCur );
-      if ( !!iSeekResult )
-      {
-        Assert( -1 == iSeekResult );
-        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
-      }
-      VerifyThrowSz( !( nbySeekCur % sizeof( _TyChar ) ), "Current offset in file is not a multiple of a character byte length." );
-      posInit = nbySeekCur / sizeof( _TyChar );
-      // Validate any ending position given to us, also find the end regardless:
-      vtySeekOffset nbySeekEnd;
-      iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekEnd, &nbySeekEnd );
-      if ( !!iSeekResult )
-      {
-        Assert( -1 == iSeekResult );
-        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
-      }
-      posEnd = nbySeekEnd / sizeof( _TyChar );
-      VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( _TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
-      if ( !_posEnd )
-        VerifyThrowSz( !( nbySeekEnd % sizeof( _TyChar ) ), "End of file position is not a multiple of a character byte length." );
-      else
-        posEnd = _posEnd;
-      stchLenRead = posEnd - posInit;
-      // Reset the seek to where we were at the beginning.
-      (void)NFileSeekAndThrow( m_file.HFileGet(), nbySeekCur, vkSeekBegin );
-    }
-    // The initial position is always 0 - regardless of where we actually started in the file.
-    // We could do it otherwise which would allow easier debugging but... this is how we are doing it now.
-    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, fReadAhead, stchLenRead );
+    return GetCharacterEncoding< _TyChar, _TyBoolSwitchEndian >();
   }
   bool FDependentTransportContexts() const
   {
@@ -330,6 +281,60 @@ public:
 #endif //ASSERTSENABLED  
   }
 protected:
+  void _InitTty()
+  {
+    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, false, (numeric_limits< vtyDataPosition >::max)() );
+  }
+  void _InitNonTty( size_t _posEnd = 0 )
+  {
+    bool fReadAhead = false;
+    size_t posInit = 0;
+    size_t posEnd = 0;
+    size_t stchLenRead = (std::numeric_limits<size_t>::max)();
+
+    // Then stat will return meaningful info:
+    vtyHandleAttr attrHandle;
+    int iGetAttrRtn = GetHandleAttrs( m_file.HFileGet(), attrHandle );
+    if ( !!iGetAttrRtn )
+    {
+      Assert( -1 == iGetAttrRtn );
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "GetHandleAttrs() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
+    }
+    // We will support any hFile type here but we will only use read ahead on regular files.
+    fReadAhead = FIsRegularFile_HandleAttr( attrHandle );
+    if ( fReadAhead )
+    {
+      vtySeekOffset nbySeekCur;
+      int iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekCur, &nbySeekCur );
+      if ( !!iSeekResult )
+      {
+        Assert( -1 == iSeekResult );
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
+      }
+      VerifyThrowSz( !( nbySeekCur % sizeof( _TyChar ) ), "Current offset in file is not a multiple of a character byte length." );
+      posInit = nbySeekCur / sizeof( _TyChar );
+      // Validate any ending position given to us, also find the end regardless:
+      vtySeekOffset nbySeekEnd;
+      iSeekResult = FileSeek( m_file.HFileGet(), 0, vkSeekEnd, &nbySeekEnd );
+      if ( !!iSeekResult )
+      {
+        Assert( -1 == iSeekResult );
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
+      }
+      posEnd = nbySeekEnd / sizeof( _TyChar );
+      VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( _TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
+      if ( !_posEnd )
+        VerifyThrowSz( !( nbySeekEnd % sizeof( _TyChar ) ), "End of file position is not a multiple of a character byte length." );
+      else
+        posEnd = _posEnd;
+      stchLenRead = posEnd - posInit;
+      // Reset the seek to where we were at the beginning.
+      (void)NFileSeekAndThrow( m_file.HFileGet(), nbySeekCur, vkSeekBegin );
+    }
+    // The initial position is always 0 - regardless of where we actually started in the file.
+    // We could do it otherwise which would allow easier debugging but... this is how we are doing it now.
+    m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, fReadAhead, stchLenRead );
+  }
   // We define a "rotating buffer" that will hold a single token *no matter how large* (since this is how the algorithm works to allow for STDIN filters to work).
   typedef FdReadRotating< _TyChar, s_kfSwitchEndian > _TyFdReadRotating;
   _TyFdReadRotating m_frrFileDesBuffer{ vknchTransportFdTokenBufferSize * sizeof( _TyChar ) };
@@ -430,8 +435,9 @@ class _l_transport_fixedmem : public _l_transport_base< t_TyChar >
   typedef _l_transport_base< t_TyChar > _TyBase;
 public:
   using typename _TyBase::_TyChar;
+  typedef t_TyBoolSwitchEndian _TyBoolSwitchEndian;
   using typename _TyBase::_TyData;
-  static constexpr bool s_kfSwitchEndian = t_TyBoolSwitchEndian::value;
+  static constexpr bool s_kfSwitchEndian = _TyBoolSwitchEndian::value;
   // A transport that converts its input in any way must use a backed context when returning a token:
   using _TyTransportCtxt = typename std::conditional< s_kfSwitchEndian, _l_transport_backed_ctxt< _TyChar >, _l_transport_fixedmem_ctxt< _TyChar > >::type;
   friend _TyTransportCtxt;
@@ -462,6 +468,10 @@ public:
     Assert( m_bufCurrentToken.first >= m_bufFull.first );
     Assert( ( m_bufCurrentToken.first + m_bufCurrentToken.second ) <= ( m_bufFull.first + m_bufFull.second ) );
 #endif //ASSERTSENABLED
+  }
+  static EFileCharacterEncoding GetSupportedCharacterEncoding()
+  {
+    return GetCharacterEncoding< _TyChar, _TyBoolSwitchEndian >();
   }
   bool FDependentTransportContexts() const
   {
@@ -682,6 +692,7 @@ class _l_transport_mapped : protected _l_transport_fixedmem< t_TyChar, t_TyBoolS
   typedef _l_transport_fixedmem< t_TyChar, t_TyBoolSwitchEndian > _TyBase;
 public:
   using typename _TyBase::_TyChar;
+  using typename _TyBase::_TyBoolSwitchEndian;
   using typename _TyBase::_TyData;
   using typename _TyBase::_TyTransportCtxt;
   using _TyBase::s_kfSwitchEndian;
@@ -738,6 +749,10 @@ public:
     m_bufCurrentToken.RCharP() = m_bufFull.begin();
     Assert( !m_bufCurrentToken.length() );
     m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.
+  }
+  static EFileCharacterEncoding GetSupportedCharacterEncoding()
+  {
+    return GetCharacterEncoding< _TyChar, _TyBoolSwitchEndian >();
   }
   bool FDependentTransportContexts() const
   {
