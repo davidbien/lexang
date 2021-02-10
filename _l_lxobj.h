@@ -178,7 +178,7 @@ public:
   const _TyStateProto *m_pspCur{nullptr}; // Current state.
   vtyDataPosition m_posLastAccept{vkdpNullDataPosition};
   // The start of the current token is stored in the transport.
-  _TyUnsignedChar m_ucCur; // The current character obtained from the transport.
+  _TyUnsignedChar m_ucCur{0}; // The current character obtained from the transport.
   _TyCompSearch m_compSearch;        // search object.
 
   _l_analyzer() = delete;
@@ -261,7 +261,11 @@ public:
     }
     return true;
   }
+#if TRACESENABLED
 #define LXOBJ_DOTRACE(MESG, ...) _DoTrace( __FILE__, __LINE__, FUNCTION_PRETTY_NAME, MESG, ##__VA_ARGS__)
+#else //!TRACESENABLED
+#define LXOBJ_DOTRACE(MESG, ...)
+#endif //!TRACESENABLED
   void _DoTrace(const char *_szFile, unsigned int _nLine, const char *_szFunction, const char *_szMesg, ...)
   {
     std::string strCur;
@@ -418,12 +422,14 @@ public:
   // For instance an XML parser may be in "ignore comments and processing instructions" mode and then we would just skip those after recognizing them and move on to the next token if any.
   bool FGetToken( unique_ptr< _TyToken > & _rpuToken, vtyTokenIdent * _ptidIgnoreBegin = nullptr, vtyTokenIdent * _ptidIgnoreEnd = nullptr, const _TyStateProto *_pspStart = nullptr, bool _fThrowOnNoToken = false )
   {
+#ifdef LEXOBJ_STRICT
     {//B: We should be clear at the beginning of GetToken.
       vtyTokenIdent tidNonNull;
       VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "At beginning: Token id[%u] still has data in it - this will result in bogus translations."
         "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
         "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
     }//EB
+#endif LEXOBJ_STRICT
     _InitGetToken( _pspStart );
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     _NextChar();
@@ -458,10 +464,12 @@ public:
             // Delegate to the stream to obtain the token as it needs to get the context from the transport.
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
             // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
+#ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+#endif LEXOBJ_STRICT
             _rpuToken.swap( upToken );
             return true;
           }
@@ -471,10 +479,12 @@ public:
             LXOBJ_DOTRACE("Ignoring token:[%u]", paobCurToken->VGetTokenId() );
             // We only need clear this token - the rest of the action objects in the state machine should be clear (must be clear):
             paobCurToken->Clear();
+#ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+#endif LEXOBJ_STRICT
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found.
           }
         }
@@ -483,8 +493,10 @@ public:
           Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
           // We had hit a dead end. To continue from here we must return to the start state.
           // If the token action didn't accept then it should have cleared all token data:
+#ifdef LEXOBJ_STRICT
           vtyTokenIdent tidNonNull;
           VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+#endif LEXOBJ_STRICT
           GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
           // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
         }
@@ -537,10 +549,12 @@ public:
             _TyAxnObjBase * paobCurToken = PGetToken();
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+#ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+#endif LEXOBJ_STRICT
             if ( !_callback( upToken ) )
               return true; // The caller is done with getting tokens for now.
             // else continue to get tokens.
@@ -550,8 +564,10 @@ public:
             Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
             // We had hit a dead end. To continue from here we must return to the start state.
             // If the token action didn't accept then it should have cleared all token data:
+#ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+#endif LEXOBJ_STRICT
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh..
             // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
           }
