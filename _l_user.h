@@ -36,9 +36,9 @@ public:
   // But not assignable.
   _l_user_context & operator =( _l_user_context const & ) = delete;
   _l_user_context( _l_user_context && _rr )
-    : m_ruoUserObj( _rr.m_ruoUserObj )
+    : m_ruoUserObj( _rr.m_ruoUserObj ),
+      _TyBase( std::move( static_cast< _TyBase && >( _rr ) ) )
   {
-    swap( _rr );
   }
   _l_user_context & operator =( _l_user_context && _rr )
   {
@@ -96,19 +96,6 @@ public:
 protected:
   _TyUserObj & m_ruoUserObj; // This is a reference to the user object that was passed into the _l_stream constructor.
 };
-
-template < class t_ty >
-struct TFIsTransportVarCtxt
-{
-  static constexpr bool value = false;  
-};
-template < class ... t_tys >
-struct TFIsTransportVarCtxt< _l_transport_var_ctxt< t_tys ... > >
-{
-  static constexpr bool value = false;  
-};
-template < class ... t_tys >
-inline constexpr bool TFIsTransportVarCtxt_v = TFIsTransportVarCtxt< t_tys ... >::value;
 
 template < class t_TyChar >
 class _l_default_user_obj

@@ -367,7 +367,6 @@ public:
      std::swap( m_posTokenStart, _r.m_posTokenStart );
      m_bufTokenData.swap( _r.m_bufTokenData );
   }
-
   vtyDataPosition PosTokenStart() const
   {
     return m_posTokenStart;
@@ -536,7 +535,7 @@ public:
     Assert( _kdpEndToken <= _PosTokenEnd() );
     vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
     typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
-    _TyBuffer bufToken( m_bufCurrentToken.first, nLenToken );
+    _TyBuffer bufToken( m_bufCurrentToken.begin(), nLenToken );
     if ( s_kfSwitchEndian )
       SwitchEndian( bufToken.begin(), bufToken.end() );
     vtyDataPosition posTokenStart = _PosTokenStart();
@@ -786,22 +785,24 @@ protected:
 
 // Produce a variant that is the set of all potential transports that the user of the object may care to use.
 // We provide no functionality in this class
-template < class ... t_TysTransportContexts >
+template < class t_TyVariant >
 class _l_transport_var_ctxt
 {
   typedef _l_transport_var_ctxt _TyThis;
 public:
   // We only want uniquely typed transport contexts here.
-  typedef unique_variant_t< variant< t_TysTransportContexts... > > _TyVariant;
+  typedef t_TyVariant _TyVariant;
+  typedef typename variant_alternative<0,_TyVariant>::type::_TyChar _TyChar;
+  typedef _l_data< _TyChar > _TyData;
   // Construction by moved contained context:
   template < class t_TyTransportContext >
   _l_transport_var_ctxt( t_TyTransportContext && _rrtcxt )
+    : m_var( _rrtcxt )
   {
-    m_var.template emplace< t_TyTransportContext >( std::move( _rrtcxt ) );
   }
   ~ _l_transport_var_ctxt() = default;
-  _l_transport_var_ctxt() = delete; // We don't want to have a monostate unless we need to and I don't think we do.
-  _l_transport_var_ctxt( _l_transport_var_ctxt && _rr ) = default;
+  _l_transport_var_ctxt() = default;
+  _l_transport_var_ctxt( _l_transport_var_ctxt && _rr ) noexcept = default;
   _l_transport_var_ctxt & operator=( _TyThis && _rr )
   {
     _l_transport_var_ctxt acquire( std::move(_rr) );
@@ -809,10 +810,10 @@ public:
     return *this;
   }
   _l_transport_var_ctxt( const _TyThis & ) = default;
-  _l_transport_var_ctxt & operator=( const _TyThis & _r )
+  _l_transport_var_ctxt & operator=( const _TyThis & ) = delete;
+  _l_transport_var_ctxt & operator=( _TyThis _new )
   {
-    _l_transport_var_ctxt copy( _r );
-    swap(copy);
+    swap(_new);
     return *this;
   }
   void swap( _TyThis & _r )
@@ -827,12 +828,43 @@ public:
   {
     return m_var;
   }
-// operations:
-  // This will convert any fixed memory context to a backed memory context.
-  template < class t_TyTransportCtxt >
-  void ConvertToBacked()
+  vtyDataPosition PosTokenStart() const
   {
-    // Might be need eventually.
+    return std::visit(_VisitHelpOverloadFCall {
+      []( auto & _tcxt )
+      {
+        return _tcxt.PosTokenStart();
+      }
+    }, m_var );
+  }
+  void GetTokenDataRange( _l_data_range & _rdr ) const
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      [&_rdr]( auto & _tcxt )
+      {
+        _tcxt.GetTokenDataRange( _rdr );
+      }
+    }, m_var );
+  }
+  template < class t_TyStrView >
+  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
+    requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      [&_rsv,&_rdtr]( auto & _tcxt )
+      {
+        _tcxt.GetStringView( _rsv, _rdtr );
+      }
+    }, m_var );
+  }
+  void AssertValidDataRange( _TyData const & _rdt ) const
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      [&_rdt]( auto & _tcxt )
+      {
+        _tcxt.AssertValidDataRange( _rdt );
+      }
+    }, m_var );
   }
 protected:
   _TyVariant m_var;
@@ -846,15 +878,16 @@ class _l_transport_var : public _l_transport_base< typename tuple_element<0,tupl
 public:
   using typename _TyBase::_TyChar;
   using typename _TyBase::_TyData;
-  typedef _l_transport_var_ctxt< typename t_TysTransports::_TyTransportCtxt ... > _TyTransportCtxt;
+  typedef unique_variant_t< variant< typename t_TysTransports::_TyTransportCtxt ... > > _TyVariantTransportCtxt;
+  typedef _l_transport_var_ctxt< _TyVariantTransportCtxt > _TyTransportCtxt;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef variant< monostate, t_TysTransports... > _TyVariant;
 
   _l_transport_var() = default;
   _l_transport_var( _l_transport_var const & _r ) = delete; // Don't let any transports be copyable since they can't all be copyable.
   _TyThis & operator = ( _TyThis const & _r ) = delete;
-  _l_transport_var(_l_transport_var&&) = default;
-  _TyThis & operator = (_TyThis && ) = default;
+  _l_transport_var(_l_transport_var&&) noexcept = default;
+  _TyThis & operator = (_TyThis && ) noexcept = default;
   void swap(_TyThis& _r)
   {
     m_var.swap(_r.m_var);
@@ -873,12 +906,18 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
-      []( auto _transport )
+      []( auto & _transport )
       {
         _transport.AssertValid();
       }
     }, m_var );
 #endif //ASSERTSENABLED
+  }
+  static size_t GetSupportedEncodingBitVector()
+  {
+    size_t grfEncodings = 0;
+    ( ( grfEncodings |= ( 1ull << t_TysTransports::GetSupportedCharacterEncoding() ) ), ... );
+    return grfEncodings;
   }
   bool FDependentTransportContexts() const
   {
@@ -886,8 +925,9 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return false;
       },
-      []( auto _transport )
+      []( auto & _transport )
       {
         return _transport.FDependentTransportContexts();
       }
@@ -899,8 +939,9 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return vtyDataPosition();
       },
-      []( auto _transport )
+      []( auto & _transport )
       {
         return _transport.PosTokenStart();
       }
@@ -912,8 +953,9 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return vtyDataPosition();
       },
-      []( auto _transport )
+      []( auto & _transport )
       {
         return _transport.PosCurrent();
       }
@@ -925,13 +967,28 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return false;
       },
-      []( auto _transport )
+      []( auto & _transport )
       {
         return _transport.FAtTokenStart();
       }
     }, m_var );
   }
+  void ResetToTokenStart()
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+      },
+      []( auto & _transport )
+      {
+        _transport.ResetToTokenStart();
+      }
+    }, m_var );
+  }
+  
   // Return the current character and advance the position.
   bool FGetChar( _TyChar & _rc )
   {
@@ -939,8 +996,9 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return false;
       },
-      [&_rc]( auto _transport )
+      [&_rc]( auto & _transport )
       {
         return _transport.FGetChar(_rc);
       }
@@ -958,7 +1016,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
-      [_paobCurToken,_kdpEndToken,_rrvalue{move(_rrvalue)},&_ruoUserObj,&_rupToken]( auto _transport )
+      [_paobCurToken,_kdpEndToken,_rrvalue{move(_rrvalue)},&_ruoUserObj,&_rupToken]( auto & _transport )
       {
         typedef typename t_TyToken::_TyTraits _TyTraits;
         typedef _l_value< _TyTraits > _TyValue;
@@ -979,7 +1037,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
-      [_kdpEndToken]( auto _transport )
+      [_kdpEndToken]( auto & _transport )
       {
         _transport.DiscardData( _kdpEndToken );
       }
@@ -993,7 +1051,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
-      [&_rstr]( auto _transport )
+      [&_rstr]( auto & _transport )
       {
         _transport.GetCurTokenString(_rstr);
       }
@@ -1005,8 +1063,9 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return false;
       },
-      [&_rdt,_pszCharSet]( auto _transport )
+      [&_rdt,_pszCharSet]( auto & _transport )
       {
         return _transport.FSpanChars(_rdt,_pszCharSet);
       }
@@ -1018,8 +1077,9 @@ public:
       [](monostate) 
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
+        return false;
       },
-      [&_rdt,_pszMatch]( auto _transport )
+      [&_rdt,_pszMatch]( auto & _transport )
       {
         return _transport.FMatchChars(_rdt,_pszMatch);
       }
@@ -1033,7 +1093,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Transport object hasn't been created.");
       },
-      [&_rdt]( auto _transport )
+      [&_rdt]( auto & _transport )
       {
         _transport.AssertValidDataRange(_rdt);
       }

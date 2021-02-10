@@ -29,6 +29,10 @@
 #include "_l_state.h"
 #include "_l_strm.h"
 
+#ifndef NDEBUG
+#define LEXOBJ_STRICT
+#endif //!NDEBUG
+
 __LEXOBJ_BEGIN_NAMESPACE
 
 // This exception is thrown when a token is not found in a non-empty stream.

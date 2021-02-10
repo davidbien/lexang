@@ -128,11 +128,39 @@ template < class t_TyChar, class t_TyBoolSwitchEndian = false_type >
 class _l_transport_fixedmem;
 template < class t_TyChar, class t_TyBoolSwitchEndian = false_type >
 class _l_transport_mapped;
-template < class ... t_TysTransportContexts >
+template < class t_TyVariant >
 class _l_transport_var_ctxt;
 template < class ... t_TysTransports >
 class _l_transport_var;
 template < class t_TyTraits >
 class _l_stream;
+
+// TFIsTransportVarCtxt:
+template < class t_ty >
+struct TFIsTransportVarCtxt
+{
+  static constexpr bool value = false;  
+};
+template < class ... t_tys >
+struct TFIsTransportVarCtxt< _l_transport_var_ctxt< t_tys ... > >
+{
+  static constexpr bool value = true;
+};
+template < class t_TyTransportCtxt >
+inline constexpr bool TFIsTransportVarCtxt_v = TFIsTransportVarCtxt< t_TyTransportCtxt >::value;
+
+// TFIsTransportVar:
+template < class t_ty >
+struct TFIsTransportVar
+{
+  static constexpr bool value = false;  
+};
+template < class ... t_tys >
+struct TFIsTransportVar< _l_transport_var< t_tys ... > >
+{
+  static constexpr bool value = true;  
+};
+template < class t_TyTransport >
+inline constexpr bool TFIsTransportVar_v = TFIsTransportVar< t_TyTransport >::value;
 
 __LEXOBJ_END_NAMESPACE
