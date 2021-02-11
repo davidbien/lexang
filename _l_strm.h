@@ -119,7 +119,7 @@ public:
     Assert( m_opttpImpl.has_value() );
     _TyValue value;
     _paobCurToken->GetAndClearValue( value );
-    m_opttpImpl->GetPToken( _paobCurToken, _kdpEndToken, std::move( value ), *m_upUserObj, _rupToken );
+    m_opttpImpl->GetPToken( _paobCurToken, _kdpEndToken, value, *m_upUserObj, _rupToken );
   }
   // This method is called when an action object returns false from its action() method.
   // This will cause the entire token found to be discarded without further processing - the fastest way if ignoring a token.

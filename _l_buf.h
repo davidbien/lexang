@@ -101,7 +101,7 @@ class _l_backing_buf : public pair< t_TyChar *, vtyDataPosition >
   typedef pair< t_TyChar *, vtyDataPosition > _TyBase;
 public:
   typedef t_TyChar _TyChar;
-  _l_backing_buf( vtyDataPosition _len )
+  explicit _l_backing_buf( vtyDataPosition _len )
   {
     first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
     second = _len;
