@@ -453,8 +453,8 @@ public:
   _TyThis & operator = ( _TyThis const & _r ) = default;
   _l_transport_fixedmem( _l_transport_fixedmem && _rr ) = default;
   _TyThis & operator = ( _TyThis && _r ) = default;
-  _l_transport_fixedmem( const _TyChar * _pcBase, vtyDataPosition _nLen )
-    : m_bufFull( _pcBase, _nLen ),
+  _l_transport_fixedmem( const _TyChar * _pcBase, vtyDataPosition _nLenChars )
+    : m_bufFull( _pcBase, _nLenChars ),
       m_bufCurrentToken( _pcBase, 0 )
   {
   }
@@ -728,7 +728,8 @@ public:
     FileMappingObj fmoFile( MapReadOnlyHandle( foFile.HFileGet(), &stSizeMapping ) );
     if ( !fmoFile.FIsOpen() )
       THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of [%s] failed, stSizeMapping[%lu].", _pszFileName, stSizeMapping );
-    m_bufFull.RLength() = stSizeMapping;
+    VerifyThrowSz( !( stSizeMapping % sizeof( _TyChar ) ), "File size[%lu] is not an integral multiple of character size.", stSizeMapping );
+    m_bufFull.RLength() = stSizeMapping / sizeof( _TyChar );
     m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pv();
     m_bufCurrentToken.RCharP() = m_bufFull.begin();
     Assert( !m_bufCurrentToken.length() );
@@ -745,7 +746,9 @@ public:
     FileMappingObj fmoFile( MapReadOnlyHandle( _rfoFile.HFileGet(), &stSizeMapping, &stMapAtPosition ) );
     if ( !fmoFile.FIsOpen() )
       THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of handle[%lu] failed, stSizeMapping[%lu].", (size_t)_rfoFile.HFileGet(), stSizeMapping );
-    m_bufFull.RLength() = stSizeMapping - stMapAtPosition;
+    size_t nbyLenMapping = stSizeMapping - stMapAtPosition;
+    VerifyThrowSz( !( nbyLenMapping % sizeof( _TyChar ) ), "Mapping size[%lu] is not an integral multiple of character size.", nbyLenMapping );
+    m_bufFull.RLength() = nbyLenMapping / sizeof( _TyChar );
     m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pby(stMapAtPosition);
     m_bufCurrentToken.RCharP() = m_bufFull.begin();
     Assert( !m_bufCurrentToken.length() );
