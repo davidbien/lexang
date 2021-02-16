@@ -65,7 +65,7 @@ class _l_value
 public:
   typedef t_TyTraits _TyTraits;
   using _TyChar = typename _TyTraits::_TyChar;
-  typedef _l_data< _TyChar > _TyData;
+  typedef _l_data<> _TyData;
   static constexpr size_t s_knValsSegSize = _TyTraits::s_knValsSegSize;
 #ifdef _MSC_VER
    // vc has a problem with asking for the size of an incomplete type here.
@@ -756,9 +756,8 @@ __LEXOBJ_END_NAMESPACE
 namespace std
 {
   __LEXOBJ_USING_NAMESPACE
-    // override std::swap so that it is efficient:
-    template < class t_TyChar, size_t s_knbySegSize >
-  void swap(_l_data< t_TyChar, s_knbySegSize >& _rl, _l_data< t_TyChar, s_knbySegSize >& _rr)
+  template< class t_TyTraits >
+  void swap(_l_value< t_TyTraits >& _rl, _l_value< t_TyTraits >& _rr)
   {
     _rl.swap(_rr);
   }

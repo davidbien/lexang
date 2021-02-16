@@ -137,17 +137,15 @@ public:
 };
 
 // by default we will keep the segment size small but large enough that most strings will fit in it.
-template < class t_TyChar, size_t s_knbySegSize >
+template < size_t s_knbySegSize >
 class _l_data
 {
   typedef _l_data _TyThis;
 public:
-  typedef t_TyChar _TyChar;
   typedef SegArray< _l_data_typed_range, std::false_type, vtyDataPosition > _TySegArray;
   typedef _TySegArray::_tySizeType size_type;
   static constexpr size_t s_knSegArrayInit = s_knbySegSize;
   static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
-  typedef std::basic_string< _TyChar > _TyStdStr;
 
   union
   {
@@ -468,8 +466,9 @@ __LEXOBJ_USING_NAMESPACE
   {
     _rl.swap(_rr);
   }
-  template< class t_TyTraits >
-  void swap(_l_value< t_TyTraits >& _rl, _l_value< t_TyTraits >& _rr)
+    // override std::swap so that it is efficient:
+  template < size_t s_knbySegSize >
+  void swap(_l_data< s_knbySegSize >& _rl, _l_data< s_knbySegSize >& _rr)
   {
     _rl.swap(_rr);
   }

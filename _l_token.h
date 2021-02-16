@@ -33,7 +33,7 @@ public:
   typedef t_TyTraits _TyTraits;
   typedef typename _TyTraits::_TyChar _TyChar;
   typedef _l_user_context< _TyTraits > _TyUserContext;
-  typedef _l_data< _TyChar > _TyData;
+  typedef _l_data<> _TyData;
   typedef _l_value< _TyTraits > _TyValue;
   typedef typename _TyValue::size_type size_type;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;

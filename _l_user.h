@@ -103,7 +103,7 @@ class _l_default_user_obj
   typedef _l_default_user_obj _TyThis;
 public:
   typedef t_TyChar _TyChar;
-  typedef _l_data< _TyChar > _TyData;
+  typedef _l_data<> _TyData;
   typedef _l_transport_backed_ctxt< _TyChar > _TyTransportCtxtBacked;
   typedef _l_transport_fixedmem_ctxt< _TyChar > _TyTransportCtxtFixedMem;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;

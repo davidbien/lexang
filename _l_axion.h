@@ -726,7 +726,7 @@ public:
 	using _TyBase::s_kiToken;
 	using _TyBase::s_kiTriggerBegin;
 	using _TyBase::s_fInLexGen;	
-	typedef __LEXOBJ_NAMESPACE _l_data< _TyChar > _TyData;
+	typedef __LEXOBJ_NAMESPACE _l_data<> _TyData;
 	typedef _l_trigger_position< _TyTraits, t_kiTriggerBegin, t_fInLexGen > _TyTriggerBegin;
 	using typename _TyBase::_TyValue;
 	using typename _TyBase::_TyActionObjectBase;

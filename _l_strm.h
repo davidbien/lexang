@@ -28,7 +28,7 @@ public:
   typedef typename _TyTraits::_TyUserObj _TyUserObj;
   using _TyPtrUserObj = typename _TyTraits::_TyPtrUserObj;
   typedef _l_user_context< _TyTraits > _TyUserContext;
-  typedef _l_data< _TyChar > _TyData;
+  typedef _l_data<> _TyData;
   typedef _l_value< _TyTraits > _TyValue;
   typedef _l_token< _TyTraits > _TyToken;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;

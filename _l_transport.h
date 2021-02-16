@@ -20,7 +20,7 @@ class _l_transport_base
   typedef _l_transport_base _TyThis;
 public:
   typedef t_TyChar _TyChar;
-  typedef _l_data< t_TyChar > _TyData;
+  typedef _l_data<> _TyData;
 };
 
 static const size_t vknchTransportFdTokenBufferSize = 256;
@@ -36,7 +36,7 @@ class _l_transport_backed_ctxt
 public:
   typedef t_TyChar _TyChar;
   typedef _l_backing_buf< t_TyChar > _TyBuffer;
-  typedef _l_data< t_TyChar > _TyData;
+  typedef _l_data<> _TyData;
 
   _l_transport_backed_ctxt( vtyDataPosition _posTokenStart, _TyBuffer && _rrbufTokenData )
     : m_posTokenStart( _posTokenStart ),
@@ -352,7 +352,7 @@ public:
   typedef t_TyChar _TyChar;
   typedef _l_transport_fixedmem< t_TyChar > _TyTransportFixedMem;
   typedef _l_fixed_buf< _TyChar > _TyBuffer;
-  typedef _l_data< _TyChar > _TyData;
+  typedef _l_data<> _TyData;
 
   _l_transport_fixedmem_ctxt( vtyDataPosition _posTokenStart, _TyBuffer const & _bufTokenData )
     : m_posTokenStart( _posTokenStart ),
@@ -798,7 +798,7 @@ public:
   // We only want uniquely typed transport contexts here.
   typedef t_TyVariant _TyVariant;
   typedef typename variant_alternative<0,_TyVariant>::type::_TyChar _TyChar;
-  typedef _l_data< _TyChar > _TyData;
+  typedef _l_data<> _TyData;
   // Construction by moved contained context:
   template < class t_TyTransportContext >
   _l_transport_var_ctxt( t_TyTransportContext && _rrtcxt )

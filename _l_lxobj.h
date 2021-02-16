@@ -164,7 +164,6 @@ public:
   typedef _l_stream< _TyTraits > _TyStream;
   typedef _l_token< _TyTraits > _TyToken;
 
-
   typedef _l_transition<_TyChar> _TyTransition;
   typedef _l_compare_input_with_range<_TyChar> _TyCompSearch;
 
