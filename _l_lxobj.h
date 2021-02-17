@@ -158,11 +158,13 @@ public:
   using typename _TyBase::_TyAxnObjBase;
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
   using _TyTransport = typename _TyTraits::_TyTransport;
+  using _TyTransportCtxt = typename _TyTraits::_TyTransportCtxt;
   using _TyUserObj = typename _TyTraits::_TyUserObj;
   using _TyPtrUserObj = typename _TyTraits::_TyPtrUserObj;
+  using _TyTpValueTraits = typename _TyTraits::_TyTpValueTraits;
   typedef basic_string< _TyChar > _TyStdStr;
   typedef _l_stream< _TyTraits > _TyStream;
-  typedef _l_token< _TyTraits > _TyToken;
+  typedef _l_token< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyToken;
 
   typedef _l_transition<_TyChar> _TyTransition;
   typedef _l_compare_input_with_range<_TyChar> _TyCompSearch;

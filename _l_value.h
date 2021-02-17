@@ -58,15 +58,15 @@ struct _l_value_get_string_view_type< wchar_t >
 #endif //!BIEN_WCHAR_16BIT
 };
 
-template< class t_TyTraits >
+template< class t_TyChar, class t_TyTpValueTraits, size_t t_knValsSegSize >
 class _l_value
 {
   typedef _l_value _TyThis;
 public:
-  typedef t_TyTraits _TyTraits;
-  using _TyChar = typename _TyTraits::_TyChar;
+  typedef t_TyChar _TyChar;
+  typedef t_TyTpValueTraits _TyTpValueTraits;
   typedef _l_data<> _TyData;
-  static constexpr size_t s_knValsSegSize = _TyTraits::s_knValsSegSize;
+  static constexpr size_t s_knValsSegSize = t_knValsSegSize;
 #ifdef _MSC_VER
    // vc has a problem with asking for the size of an incomplete type here.
   static const size_t s_knbySegArrayInit;
@@ -74,8 +74,7 @@ public:
   static constexpr size_t s_knbySegArrayInit = s_knValsSegSize * sizeof(_TyThis);
 #endif
   typedef SegArray< _TyThis, std::true_type > _TySegArrayValues;
-  typedef typename _TySegArrayValues::_tySizeType _tySizeType;
-  typedef _tySizeType size_type;
+  typedef typename _TySegArrayValues::_tySizeType size_type;
   // These are the possible values of a action object.
   // We add all three types of STL strings to the variant - at least under linux - char, char16_t and char32_t.
   // Specifying them in this manner should allow for no code changes under Windows even though wchar_t is char16_t under Windows.
@@ -106,7 +105,7 @@ public:
                     _TyStrChar16, _TyStrViewChar16,
                     _TyStrChar32, _TyStrViewChar32 > _TyVariantBase;
   // Now define our full variant type by concatenating on any user defined types.
-  typedef typename concatenator_pack< _TyVariantBase, typename _TyTraits::_TyValueTraits > ::type _TyVariant;
+  typedef typename concatenator_pack< _TyVariantBase, _TyTpValueTraits > ::type _TyVariant;
 
   _l_value() = default;
   _l_value(_l_value const & ) = default;
@@ -746,9 +745,9 @@ protected:
 };
 
 #ifdef WIN32
-template< class t_TyTraits >
+template< class t_TyChar, class t_TyTpValueTraits, size_t t_knValsSegSize >
 inline const size_t
-_l_value< t_TyTraits >::s_knbySegArrayInit = _l_value::s_knValsSegSize * sizeof(_l_value);
+_l_value< t_TyChar, t_TyTpValueTraits, t_knValsSegSize >::s_knbySegArrayInit = _l_value::s_knValsSegSize * sizeof(_l_value);
 #endif //WIN32
 
 __LEXOBJ_END_NAMESPACE
@@ -756,8 +755,8 @@ __LEXOBJ_END_NAMESPACE
 namespace std
 {
   __LEXOBJ_USING_NAMESPACE
-  template< class t_TyTraits >
-  void swap(_l_value< t_TyTraits >& _rl, _l_value< t_TyTraits >& _rr)
+  template< class t_TyChar, class t_TyTpValueTraits, size_t t_knValsSegSize >
+  void swap(_l_value< t_TyChar, t_TyTpValueTraits, t_knValsSegSize >& _rl, _l_value< t_TyChar, t_TyTpValueTraits, t_knValsSegSize >& _rr)
   {
     _rl.swap(_rr);
   }

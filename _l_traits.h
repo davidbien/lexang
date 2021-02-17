@@ -14,7 +14,7 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-template < class t_TyTransport, class t_TyUserObj, class t_TyValueTraits = tuple<> >
+template < class t_TyTransport, class t_TyUserObj, class t_TyTpValueTraits = tuple<> >
 struct _l_traits
 {
   typedef t_TyTransport _TyTransport;
@@ -22,7 +22,10 @@ struct _l_traits
   typedef unique_ptr< _TyUserObj > _TyPtrUserObj;
   typedef typename t_TyUserObj::_TyChar _TyChar;
   typedef typename _TyTransport::_TyTransportCtxt _TyTransportCtxt;
-  typedef t_TyValueTraits _TyValueTraits;
+  typedef t_TyTpValueTraits _TyTpValueTraits;
+  typedef _l_value< _TyChar, _TyTpValueTraits > _TyValue;
+  typedef _l_token< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyToken;
+  typedef _l_user_context< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyUserContext;
   // The number of values per segment in the _l_value segmented array.
   static constexpr size_t s_knValsSegSize = 16;
 };

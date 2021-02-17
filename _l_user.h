@@ -18,17 +18,18 @@ __LEXOBJ_BEGIN_NAMESPACE
 
 // _l_user_context:
 // This produces an aggregate which provides customizable treatment of a token's constituent _l_data_typed_range objects.
-template < class t_TyTraits >
-class _l_user_context : public t_TyTraits::_TyTransportCtxt
+template < class t_TyTransportCtxt, class t_TyUserObj, class t_TyTpValueTraits >
+class _l_user_context : public t_TyTransportCtxt
 {
   typedef _l_user_context _TyThis;
-  typedef typename t_TyTraits::_TyTransportCtxt _TyBase;
+  typedef typename t_TyTransportCtxt _TyBase;
 public:
-  typedef t_TyTraits _TyTraits;
-  typedef typename _TyTraits::_TyUserObj _TyUserObj;
-  typedef typename _TyTraits::_TyChar _TyChar;
-  typedef _l_token< _TyTraits > _TyToken;
-  typedef _l_value< _TyTraits > _TyValue;
+  typedef t_TyTransportCtxt _TyTransportCtxt;
+  typedef t_TyUserObj _TyUserObj;
+  typedef t_TyTpValueTraits _TyTpValueTraits;
+  typedef typename _TyTransportCtxt::_TyChar _TyChar;
+  typedef _l_token< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyToken;
+  typedef _l_value< _TyChar, _TyTpValueTraits > _TyValue;
 
   _l_user_context() = delete;
   // We are copyable.

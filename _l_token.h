@@ -25,16 +25,18 @@
 
 __LEXOBJ_BEGIN_NAMESPACE
 
-template < class t_TyTraits >
+template < class t_TyTransportCtxt, class t_TyUserObj, class t_TyTpValueTraits >
 class _l_token
 {
   typedef _l_token _TyThis;
 public:
-  typedef t_TyTraits _TyTraits;
-  typedef typename _TyTraits::_TyChar _TyChar;
-  typedef _l_user_context< _TyTraits > _TyUserContext;
+  typedef t_TyTransportCtxt _TyTransportCtxt;
+  typedef t_TyUserObj _TyUserObj;
+  typedef t_TyTpValueTraits _TyTpValueTraits;
+  typedef typename _TyTransportCtxt::_TyChar _TyChar;
+  typedef _l_user_context< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyUserContext;
   typedef _l_data<> _TyData;
-  typedef _l_value< _TyTraits > _TyValue;
+	typedef _l_value< _TyChar, _TyTpValueTraits > _TyValue;
   typedef typename _TyValue::size_type size_type;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
@@ -167,8 +169,8 @@ namespace std
 {
 __LEXOBJ_USING_NAMESPACE
   // override std::swap so that it is efficient:
-  template< class t_TyTraits >
-  void swap(_l_token< t_TyTraits >& _rl, _l_token< t_TyTraits >& _rr)
+  template < class t_TyTransportCtxt, class t_TyUserObj, class t_TyTpValueTraits >
+  void swap(_l_token< t_TyTransportCtxt, t_TyUserObj, t_TyTpValueTraits >& _rl, _l_token< t_TyTransportCtxt, t_TyUserObj, t_TyTpValueTraits >& _rr)
   {
     _rl.swap(_rr);
   }

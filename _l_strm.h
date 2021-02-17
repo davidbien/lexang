@@ -25,12 +25,13 @@ public:
   typedef typename _TyTraits::_TyTransport _TyTransport;
   typedef typename _TyTransport::_TyChar _TyChar;
   typedef typename _TyTransport::_TyTransportCtxt _TyTransportCtxt;
+  typedef typename _TyTraits::_TyTpValueTraits _TyTpValueTraits;
   typedef typename _TyTraits::_TyUserObj _TyUserObj;
   using _TyPtrUserObj = typename _TyTraits::_TyPtrUserObj;
-  typedef _l_user_context< _TyTraits > _TyUserContext;
+  typedef _l_user_context< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyUserContext;
   typedef _l_data<> _TyData;
-  typedef _l_value< _TyTraits > _TyValue;
-  typedef _l_token< _TyTraits > _TyToken;
+	typedef _l_value< _TyChar, _TyTpValueTraits > _TyValue;
+  typedef _l_token< _TyTransportCtxt, _TyUserObj, _TyTpValueTraits > _TyToken;
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
   typedef _l_action_object_value_base< _TyTraits, false > _TyAxnObjValueBase;
 

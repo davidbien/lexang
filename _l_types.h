@@ -106,15 +106,17 @@ template < class t_TyChar > class _l_fixed_buf;
 template < class t_TyChar > class _l_backing_buf;
 
 // _l_value.h:
-template< class t_TyTraits > class _l_value;
+template< class t_TyChar, class t_TyTpValueTraits, size_t t_knValsSegSize = 16 >
+class _l_value;
 
 // _l_token.h:
-template < class t_TyTraits > class _l_token;
+template < class t_TyTransportCtxt, class t_TyUserObj, class t_TyTpValueTraits >
+class _l_token;
 
 // _l_stream.h:
 template < class t_TyChar >
 class _l_default_user_obj;
-template < class t_TyTraits >
+template < class t_TyTransportCtxt, class t_TyUserObj, class t_TyTpValueTraits >
 class _l_user_context;
 template < class t_TyChar >
 class _l_transport_base;

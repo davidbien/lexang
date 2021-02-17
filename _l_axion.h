@@ -167,8 +167,9 @@ struct _l_action_object_value_base
 	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
 public:
 	typedef t_TyTraits _TyTraits;
+	using typename _TyBase::_TyChar;
 	typedef _l_action_object_value_base _TyActionObjectBase;
-	typedef __LEXOBJ_NAMESPACE _l_value< _TyTraits > _TyValue;
+	typedef __LEXOBJ_NAMESPACE _l_value< _TyChar, typename _TyTraits::_TyTpValueTraits > _TyValue;
 	~_l_action_object_value_base() = default;
 	_l_action_object_value_base() = default;
 	_l_action_object_value_base( _l_action_object_value_base const & ) = default;
@@ -183,7 +184,8 @@ struct _l_action_object_value_base< t_TyTraits, false >
 	typedef _l_action_object_base< typename t_TyTraits::_TyChar, false > _TyBase;
 public:
 	typedef t_TyTraits _TyTraits;
-	typedef __LEXOBJ_NAMESPACE _l_value< _TyTraits > _TyValue;
+	using typename _TyBase::_TyChar;
+	typedef __LEXOBJ_NAMESPACE _l_value< _TyChar, typename _TyTraits::_TyTpValueTraits > _TyValue;
 	typedef _TyThis _TyActionObjectBase;
 
 	~_l_action_object_value_base() = default;

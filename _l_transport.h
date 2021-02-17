@@ -211,10 +211,9 @@ public:
                   t_TyValue & _rvalue, t_TyUserObj & _ruoUserObj,
                   unique_ptr< t_TyToken > & _rupToken )
   {
-    typedef typename t_TyToken::_TyTraits _TyTraits;
-    typedef _l_value< _TyTraits > _TyValue;
+    typedef typename t_TyToken::_TyValue _TyValue;
     static_assert( is_same_v< t_TyValue, _TyValue > );
-    typedef _l_user_context< _TyTraits > _TyUserContext;
+    typedef typename t_TyToken::_TyUserContext _TyUserContext;
     typedef typename _TyUserContext::_TyUserObj _TyUserObj;
     static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
@@ -512,10 +511,9 @@ public:
   void GetPToken( const _TyAxnObjBase* _paobCurToken, const vtyDataPosition _kdpEndToken,
                   typename t_TyValue & _rvalue, t_TyUserObj& _ruoUserObj, unique_ptr< t_TyToken >& _rupToken)
   {
-    typedef typename t_TyToken::_TyTraits _TyTraits;
-    typedef _l_value< _TyTraits > _TyValue;
+    typedef typename t_TyToken::_TyValue _TyValue;
     static_assert( is_same_v< t_TyValue, _TyValue > );
-    typedef _l_user_context< _TyTraits > _TyUserContext;
+    typedef typename t_TyToken::_TyUserContext _TyUserContext;
     typedef typename _TyUserContext::_TyUserObj _TyUserObj;
     static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= _PosTokenStart() );
@@ -1023,10 +1021,9 @@ public:
       },
       [_paobCurToken,_kdpEndToken,&_rvalue,&_ruoUserObj,&_rupToken]( auto & _transport )
       {
-        typedef typename t_TyToken::_TyTraits _TyTraits;
-        typedef _l_value< _TyTraits > _TyValue;
+        typedef typename t_TyToken::_TyValue _TyValue;
         static_assert( is_same_v< t_TyValue, _TyValue > );
-        typedef _l_user_context< _TyTraits > _TyUserContext;
+        typedef typename t_TyToken::_TyUserContext _TyUserContext;
         typedef typename _TyUserContext::_TyUserObj _TyUserObj;
         static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
         _TyUserContext ucxt( _ruoUserObj, _transport.CtxtEatCurrentToken( _kdpEndToken ) ); // move it right on in - this negates the need for a default constructor.
