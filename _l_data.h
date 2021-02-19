@@ -458,11 +458,11 @@ namespace std
 {
 __LEXOBJ_USING_NAMESPACE
   // override std::swap so that it is efficient:
-  void swap(_l_data_range& _rl, _l_data_range& _rr)
+  inline void swap(_l_data_range& _rl, _l_data_range& _rr)
   {
     _rl.swap(_rr);
   }
-  void swap(_l_data_typed_range& _rl, _l_data_typed_range& _rr)
+  inline void swap(_l_data_typed_range& _rl, _l_data_typed_range& _rr)
   {
     _rl.swap(_rr);
   }
