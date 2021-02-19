@@ -58,7 +58,7 @@ struct _l_state_proto
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
-  _TyTransition m_rgt[7]; // You can access the transitions.
+  _TyTransition m_rgt[7]; // You can access the transitions - i.e. it is ok to access them without using an accessor - 7 is just a random number - more or less.
 private:                            // Variable length structure - use accessors.
   _TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;             // The associated lookahead action id.
