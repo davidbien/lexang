@@ -18,6 +18,24 @@
 
 __REGEXP_BEGIN_NAMESPACE
 
+// EGeneratorFamilyDisposition:
+// We allow families of generators but we need to declare each part specially since only the state machine need be written for the specializations.
+enum EGeneratorFamilyDisposition
+{
+	egfdStandaloneGenerator, // This is a standalone generator - we will only have this generator with this character type.
+	egfdBaseGenerator, // This is the base generator of a family of generators each recognizing a different character type.
+	egfdSpecializedGenerator, // This is a "specialized" generator for which the "base" generator has already been declared (or will be declared - the order that different headers are generated doesn't matter).
+	egfdEGeneratorFamilyDispositionCount // This at the end always.
+};
+
+enum EGeneratorDFAOptions : uint32_t
+{
+	egdoDontTemplatizeStates = 0x00000001, 
+		// Don't templatize the states of the state machine. This only works (of course) if there are no action or trigger function pointers associated with the states.
+		// If action function pointers are necessary in the state machine then an error is thrown indicating that 
+	egdoGeneratorDFAOptionsCount // This at the end always.
+};
+
 // _l_gen_action_info: Describes a given action token id.
 template < class t_TyCharOut, class t_TyAllocator >
 struct _l_gen_action_info
@@ -38,32 +56,32 @@ struct _l_gen_dfa
 	typedef typename _TyDfa::_TyAllocator _TyAllocator;
 	typedef basic_string< t_TyCharOut, char_traits<t_TyCharOut>, _TyAllocator >	_TyString;
 
+	~_l_gen_dfa() = default;
+	_l_gen_dfa() = delete;
+	_l_gen_dfa( _l_gen_dfa const & ) = default;
+
 	_l_gen_dfa( _TyDfa & _rDfa,
 							_TyDfaCtxt & _rDfaCtxt,
 							const t_TyCharOut * _pcStartStateName,
+							uint32_t _grfGeneratorDFAOptions,
 							_TyAllocator const & _rA )
 		: m_rDfa( _rDfa ),
 			m_rDfaCtxt( _rDfaCtxt ),
+			m_grfGeneratorDFAOptions( _grfGeneratorDFAOptions ),
 			m_sStartStateName( _pcStartStateName, _rA )
 	{
 		m_rDfa._CreateRangeLookup();
 		m_rDfaCtxt.CreateAcceptPartLookup();
+		VerifyThrowSz( !FDontTemplatizeStates() || !m_rDfa.m_nTriggers, "Must have templatized states when triggers are present in the state machine. There are [%lu] triggers in the current DFA.", m_rDfa.m_nTriggers );
 	}
-
-	_TyDfa &			m_rDfa;
-	_TyDfaCtxt &	m_rDfaCtxt;
-	
-	_TyString			m_sStartStateName;	// Special name for start state.
-};
-
-// EGeneratorFamilyDisposition:
-// We allow families of generators but we need to declare each part specially since only the state machine need be written for the specializations.
-enum EGeneratorFamilyDisposition
-{
-	egfdStandaloneGenerator, // This is a standalone generator - we will only have this generator with this character type.
-	egfdBaseGenerator, // This is the base generator of a family of generators each recognizing a different character type.
-	egfdSpecializedGenerator, // This is a "specialized" generator for which the "base" generator has already been declared (or will be declared - the order that different headers are generated doesn't matter).
-	egfdEGeneratorFamilyDispositionCount // This at the end always.
+	bool FDontTemplatizeStates() const
+	{
+		return !!( ( 1ul << egdoDontTemplatizeStates ) & m_grfGeneratorDFAOptions );
+	}
+	_TyDfa & m_rDfa;
+	_TyDfaCtxt & m_rDfaCtxt;
+	_TyString m_sStartStateName;	// Special name for start state.
+	uint32_t m_grfGeneratorDFAOptions;
 };
 
 template < class t_TyDfa, class t_TyCharOut >
@@ -195,12 +213,22 @@ struct _l_generator
 		return egfdSpecializedGenerator == m_egfdFamilyDisp;
 	}
 
+enum EGeneratorDFAOptions : uint32_t
+{
+	egdoDontTemplatizeStates = 0x00000001, 
+		// Don't templatize the states of the state machine. This only works (of course) if there are no action or trigger function pointers associated with the states.
+		// If action function pointers are necessary in the state machine then an error is thrown indicating that 
+	egdoGeneratorDFAOptionsCount // This at the end always.
+};
+
+
 	void add_dfa(	_TyDfa & _rDfa,
 								_TyDfaCtxt & _rDfaCtxt,
-								const t_TyCharOut * _pcStartStateName )
+								const t_TyCharOut * _pcStartStateName,
+								uint32_t _grfGeneratorDFAOptions = 0 )
 	{
 		m_lDfaGen.push_back( _TyGenDfa( _rDfa, _rDfaCtxt, 
-																		_pcStartStateName, 
+																		_pcStartStateName, _grfGeneratorDFAOptions,
                                     m_mapActions.get_allocator() ) );
 		m_fLookaheads = m_fLookaheads || _rDfa.m_fHasLookaheads;
 		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers;
@@ -271,6 +299,7 @@ struct _l_generator
 					rvt.second.AssertValid();
 					if ( rvt.second.m_pSdpAction )
 					{
+						VerifyThrowSz( !m_pvtDfaCur->FDontTemplatizeStates(), "Must templatize states when any actions objects are present in the state machine as the callback member functions depend on the type of the lexical analyzer." );
 						//Assert( !( e_aatTrigger & rvt.second.m_eaatType ) ); // Should see only non-trigger actions here.
 						typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
 						_TyGenActionInfo gaiInfo;
@@ -451,7 +480,9 @@ struct _l_generator
 	void	_GenHeaderState(	ostream & _ros, _TyGraphNode * _pgn, 
 													int _nOuts, bool _fAccept )
 	{
-		_ros	<< "template < class t_TyTraits >\nextern ";
+		if ( !m_pvtDfaCur->FDontTemplatizeStates() )
+			_ros	<< "template < class t_TyTraits >\n";
+		_ros	<< "extern ";
 		bool fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState;
 		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
 		_TyRangeEl rgelTrigger; 
@@ -637,7 +668,9 @@ struct _l_generator
 		_TyRangeEl rgelTrigger; 
 		_GenStateType( _ros, _pgn, _nOutsOrig, _fAccept, fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState, tidTokenTrigger, rgelTrigger );
 		_ros << " _Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << ";\n";
-		_ros << "template < class t_TyTraits > inline\n";
+		if ( !m_pvtDfaCur->FDontTemplatizeStates() )
+			_ros << "template < class t_TyTraits > ";
+		_ros << "inline\n";
 		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << " ";
 		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
 		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
@@ -802,13 +835,15 @@ struct _l_generator
 				_ros << ", (" << m_sStateProtoTypedef << "*)( & ";
 				if ( m_pvtDfaCur->m_rDfaCtxt.m_pgnStart == lpi.PGNChild() )
 				{
-					_ros << m_pvtDfaCur->m_sStartStateName << "<t_TyTraits>";
+					_ros << m_pvtDfaCur->m_sStartStateName;
+					if ( !m_pvtDfaCur->FDontTemplatizeStates() )
+						_ros << "<t_TyTraits>";
 				}
 				else
 				{
-					_ros << m_sBaseStateName << "_" 
-							<< ( lpi.PGNChild()->RElConst() + m_stStart );
-				_ros << "<t_TyTraits>";
+					_ros << m_sBaseStateName << "_"  << ( lpi.PGNChild()->RElConst() + m_stStart );
+					if ( !m_pvtDfaCur->FDontTemplatizeStates() )
+						_ros << "<t_TyTraits>";
 				}
 				_ros << " ) }";
 
