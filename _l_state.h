@@ -58,12 +58,13 @@ struct _l_state_proto
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _TyTransition m_rgt[7]; // You can access the transitions - i.e. it is ok to access them without using an accessor - 7 is just a random number - more or less.
-private:                            // Variable length structure - use accessors.
+private: // Variable length structure - use accessors.
   _TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;             // The associated lookahead action id.
   vtyLookaheadVector m_rgValidLookahead[2]; // bit vector for valid associated lookahead actions.
-  _TyPMFnAccept m_rgpmfnTriggers[7];        // Array of pointers to trigger functions.
+  _TyPMFnAccept m_rgpmfnTriggers[7];        // Array of pointers to trigger functions - there can be more or less than 7 - random number.
 public:
   _TyPMFnAccept PMFnGetAction() const
   {
@@ -135,6 +136,7 @@ struct _l_state<t_TyChar, t_iTransitions, false, false, 0, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
@@ -153,6 +155,7 @@ struct _l_state<t_TyChar, t_iTransitions, false, false, 0, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
@@ -171,6 +174,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, false, 0, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
@@ -190,6 +194,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, false, 0, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
 };
@@ -209,6 +214,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
@@ -229,6 +235,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
@@ -249,6 +256,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_i
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
@@ -270,6 +278,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
@@ -291,6 +300,7 @@ struct _l_state<t_TyChar, 0, false, false, 0, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -308,6 +318,7 @@ struct _l_state<t_TyChar, 0, false, false, 0, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -325,6 +336,7 @@ struct _l_state<t_TyChar, 0, true, false, 0, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
@@ -343,6 +355,7 @@ struct _l_state<t_TyChar, 0, true, false, 0, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
@@ -361,6 +374,7 @@ struct _l_state<t_TyChar, 0, true, true, 0, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
@@ -380,6 +394,7 @@ struct _l_state<t_TyChar, 0, true, true, 0, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
 };
@@ -399,6 +414,7 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
   vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
@@ -419,6 +435,7 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0>
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
+  vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
   vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];

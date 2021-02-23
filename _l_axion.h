@@ -30,7 +30,7 @@ struct _l_action_object_base
 private:
 	typedef _l_action_object_base< t_TyChar, t_fInLexGen > _TyThis;
 public:
-	static const bool s_fInLexGen = t_fInLexGen;
+	static const bool s_fInLexGen = true;
 	typedef t_TyChar	_TyChar;
 
 	// We have a static set of trigger action disambiguating objects.
@@ -52,6 +52,13 @@ public:
 
 	// This will return the set of dependent triggers for this action object, recursively.
 	virtual void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const = 0;
+
+	// Returning true for this only annotates the accept state with the token id of the accepting actions
+	//	it won't generate an action object nor any calls (duh) to said non-existent action object.
+	virtual bool FIsTokenIdOnly()
+	{
+		return false; // Only _l_action_token_id returns true for this.
+	}
 
 // REVIEW:<dbien>: Since triggers are now unique the below stuff is kinda meaningless at this point - should cull it and will eventually.
 	// Indicates that these trigger actions are equivalent and, when ambiguity is found between both
@@ -209,7 +216,92 @@ protected:
 	_TyThis * m_paobNext{nullptr}; // The previous action object in the list.
 };
 
-// Some default action objects - useful for debugging and testing:
+// _l_action_token_id:
+// This is a "pseudo" action object in that it doesn't generate an action object in the lexical analyzer nor
+// 	a call to an action method, it merely annotates any accept state(s) with its token id.
+// As such we cannot obtain a token from an accept state annotated with this type of action.
+// (though I may look into that in the future - I have no need of such functionality now - but it could be nice
+//	when you didn't want the heavyweight _l_token system - as I don't want in the output validation work I am doing 
+//	now which this is a part of - hence I just need to recognize a token from a set of potential tokens, but
+//	I don't need to produce an actual _l_token containing an _l_value. )
+// This needn't be fully templatized by the traits but that's how the system is currently working and I don't want 
+//	to have to retemplatize everything again.
+template < class t_TyTraits, vtyTokenIdent t_ktidToken, bool t_fInLexGen >
+struct _l_action_token_id
+	: public _l_action_object_value_base< t_TyTraits, t_fInLexGen >
+{
+private:
+	typedef _l_action_token_id	_TyThis;
+	typedef _l_action_object_value_base< t_TyTraits, t_fInLexGen > _TyBase;
+public:
+	using _TyBase::s_fInLexGen;	
+	typedef true_type _TyFIsToken; // Must wrap each action with something defining this as true_type.
+	static constexpr vtyTokenIdent s_ktidToken = t_ktidToken;
+	using typename _TyBase::_TyValue;
+	using typename _TyBase::_TyActionObjectBase;
+
+	_l_action_token_id() = default;
+	_l_action_token_id( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
+	_l_action_token_id( _TyThis const & _r ) = default;
+	bool VFIsNull() const
+	{
+		return true;
+	}
+	// Return the unique token ID associated with this object.
+	static constexpr vtyTokenIdent GetTokenId()
+	{
+		return t_ktidToken;
+	}
+	constexpr vtyTokenIdent VGetTokenId() const
+	{
+		return t_ktidToken;
+	}
+	// Returning true for this only annotates the accept state with the token id of the accepting actions
+	//	it won't generate an action object nor any calls (duh) to said non-existent action object.
+	virtual bool FIsTokenIdOnly()
+	{
+		return true; // Only _l_action_token_id returns true for this.
+	}
+	void Clear()
+	{
+	}
+	void VGetDependentTriggerSet( std::vector< bool > & _rbv ) const
+	{
+	}
+	void GetAndClearValue( _TyValue & _rv )
+	{ // nothing to do.
+	}
+	// We keep these rendering routines intact but we don't expect this action to be rendered currently.
+  void RenderActionType(ostream & _ros, const char * _pcTraitsName) const
+  {
+    return StaticRenderActionType(_ros, _pcTraitsName);
+  }
+  void RenderActionType(stringstream & _ros, const char * _pcTraitsName) const
+  {
+    return StaticRenderActionType(_ros, _pcTraitsName);
+  }
+  template < class t_TyOStream >
+	static void StaticRenderActionType(t_TyOStream & _ros, const char * _pcTraitsName)
+	{
+		_ros << "_l_action_token_id< " << _pcTraitsName << ", " << s_ktidToken << ", false >";
+	}
+	string VStrTypeName( const char * _pcTraitsName ) const
+	{
+		return StaticStrTypeName( _pcTraitsName );
+	}
+	static string StaticStrTypeName( const char * _pcTraitsName )
+	{
+		string str;
+		PrintfStdStr( str, "_l_action_token_id< %s, %d, false >", _pcTraitsName, s_ktidToken );
+		return str;
+	}
+// No action method on this object:
+	// template < class t_TyAnalyzer >
+	// bool action( t_TyAnalyzer & _rA );
+};
 
 // _l_action_token:
 // This wrapper goes around a token action.
@@ -1509,6 +1601,12 @@ __REGEXP_USING_NAMESPACE
 
 // Specialize base class mapping for use with _sdpv<> since it depends on knowing the base class of the object.
 // Fails to link when attempting to use covariant return.
+template < class t_TyTraits, int t_kiToken, bool t_fInLexGen >
+struct __map_to_base_class< _l_action_token_id< t_TyTraits, t_kiToken, t_fInLexGen > >
+{
+	typedef _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
+};
+
 template < class t_TyActionObject >
 struct __map_to_base_class< _l_action_token< t_TyActionObject > >
 {

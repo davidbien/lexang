@@ -299,24 +299,29 @@ enum EGeneratorDFAOptions : uint32_t
 					rvt.second.AssertValid();
 					if ( rvt.second.m_pSdpAction )
 					{
-						VerifyThrowSz( !m_pvtDfaCur->FDontTemplatizeStates(), "Must templatize states when any actions objects are present in the state machine as the callback member functions depend on the type of the lexical analyzer." );
+						// We support non-templated states only when action object don't have an associated object, but just a token it.
+						VerifyThrowSz( !m_pvtDfaCur->FDontTemplatizeStates() || (*rvt.second.m_pSdpAction)->FIsTokenIdOnly(), 
+							"Must templatize states when any actions objects are present in the state machine as the callback member functions depend on the type of the lexical analyzer." );
 						//Assert( !( e_aatTrigger & rvt.second.m_eaatType ) ); // Should see only non-trigger actions here.
-						typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
-						_TyGenActionInfo gaiInfo;
-						if ( m_mapActionInfo.end() == citAxnInfo )
+						if ( !(*rvt.second.m_pSdpAction)->FIsTokenIdOnly() )
 						{
-							// Just use the action id - leave the comment empty.
-							PrintfStdStr( gaiInfo.m_strActionName, ( e_aatTrigger & rvt.second.m_eaatType ) ? "Trigger%d" : "Token%d", (*rvt.second.m_pSdpAction)->VGetTokenId() );
+							typename _TyMapActionInfo::const_iterator citAxnInfo = m_mapActionInfo.find( (*rvt.second.m_pSdpAction)->VGetTokenId() );
+							_TyGenActionInfo gaiInfo;
+							if ( m_mapActionInfo.end() == citAxnInfo )
+							{
+								// Just use the action id - leave the comment empty.
+								PrintfStdStr( gaiInfo.m_strActionName, ( e_aatTrigger & rvt.second.m_eaatType ) ? "Trigger%d" : "Token%d", (*rvt.second.m_pSdpAction)->VGetTokenId() );
+							}
+							else
+							{
+								gaiInfo = citAxnInfo->second;
+							}
+							Trace( "Adding action [%s].", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str() );
+							std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
+								typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
+							// Apparently we can have duplicate actions here as well...
+							//VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 						}
-						else
-						{
-							gaiInfo = citAxnInfo->second;
-						}
-						Trace( "Adding action [%s].", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str() );
-						std::pair< typename _TyMapActions::iterator, bool > pib = m_mapActions.insert( typename _TyMapActions::value_type( **rvt.second.m_pSdpAction,
-							typename _TyMapActions::mapped_type( gaiInfo, false ) ) );
-						// Apparently we can have duplicate actions here as well...
-						//VerifyThrowSz( pib.second, "(type,TokenId)[%s,%d] are not unique", (*rvt.second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), (*rvt.second.m_pSdpAction)->VGetTokenId() );
 					}
 					else
 						Trace( "No action object for action id [%u].", rvt.second.GetOriginalActionId() );
@@ -806,10 +811,16 @@ enum EGeneratorDFAOptions : uint32_t
 			{	
 				_ros << " 0";
 			}
+			_ros << ", ";
+			if ( !!pvtAction->second.m_pSdpAction )
+				_ros << (*pvtAction->second.m_pSdpAction)->VGetTokenId();
+			else
+				_ros << "0";
+
 		}
 		else
 		{
-			_ros << "0, 0";
+			_ros << "0, 0, vktidInvalidIdToken";
 		}
 
 		if ( _nOuts )
@@ -908,11 +919,15 @@ enum EGeneratorDFAOptions : uint32_t
 			_ros << ", ";
 			if ( pvtAction->second.m_pSdpAction )
 			{
-				_PrintActionMFnP( _ros, **( pvtAction->second.m_pSdpAction ) );
+				if ( !(*pvtAction->second.m_pSdpAction)->FIsTokenIdOnly() )
+					_PrintActionMFnP( _ros, **( pvtAction->second.m_pSdpAction ) );
+				else
+					_ros << "nullptr /* ActionToken" << (*pvtAction->second.m_pSdpAction)->VGetTokenId() << " */";
+					
 			}
 			else
 			{
-				_ros << "0 /* Action" << ( pvtAction->second.GetOriginalActionId() + m_aiStart ) << " */";
+				_ros << "nullptr /* Action" << ( pvtAction->second.GetOriginalActionId() + m_aiStart ) << " */";
 			}
 		}
 
