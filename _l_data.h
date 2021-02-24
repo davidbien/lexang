@@ -125,7 +125,7 @@ public:
   {
     return m_nType;
   }
-  vtyDataType id() const
+  vtyDataTriggerId id() const
   {
     return m_nIdTrigger;
   }
@@ -411,6 +411,23 @@ public:
       for ( size_type n = 0; n < knEls; ++n )
         _ToJsoValue( _rjv[n], _PSegArray()->ElGet( n ) );
     }
+  }
+  // t_TyFunctor gets called potentially multiple times with contiguous pieces of the segmented array holding the data.
+  template < class t_TyFunctor >
+  void Apply( t_TyFunction && _rrftor )
+  {
+    if ( FContainsSingleDataRange() )
+      std::forward< t_TyFunctor >( _rrftor )( &DataRangeGetSingle(), &DataRangeGetSingle() + 1 );
+    else
+      GetSegArrayDataRanges().ApplyContiguous( 0, GetSegArrayDataRanges().NElements(), std::forward< t_TyFunctor >( _rrftor ) );
+  }
+  template < class t_TyFunctor >
+  void Apply( t_TyFunction && _rrftor ) const
+  {
+    if ( FContainsSingleDataRange() )
+      std::forward< t_TyFunctor >( _rrftor )( &DataRangeGetSingle(), &DataRangeGetSingle() + 1 );
+    else
+      GetSegArrayDataRanges().ApplyContiguous( 0, GetSegArrayDataRanges().NElements(), std::forward< t_TyFunctor >( _rrftor ) );
   }
 protected:
   template < class t_TyCharOut >

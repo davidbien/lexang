@@ -186,6 +186,14 @@ public:
     Assert( holds_alternative<_TyRemoveRef>( m_var) ); // assert before we throw...
     return get< _TyRemoveRef >( m_var );
   }
+  _TyData & GetTypedData()
+  {
+    return GetVal<_TyData>();
+  }
+  const _TyData & GetTypedData() const
+  {
+    return GetVal<_TyData>();
+  }
   // These should work in many cases.
   template < class t_Ty >
   t_Ty & SetVal( t_Ty const & _rv )

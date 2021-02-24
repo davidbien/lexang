@@ -82,6 +82,12 @@ public:
     // yet another delegation...and add another parameter.
     m_ruoUserObj.KGetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rval );
   }
+  template < class t_TyStringView >
+  void KGetStringView( t_TyStringView & _rsvDest, _TyToken const & _rtok, _l_data_range const & _rdr ) const
+  {
+    // yet another delegation...and add another parameter.
+    m_ruoUserObj.KGetStringView( _rsvDest, *(_TyBase*)this, _rtok, _rdr );
+  }
   template < class t_TyStringView, class t_TyString >
   bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest,_TyToken const & _rtok, _TyValue const & _rval ) const
   {
@@ -177,6 +183,17 @@ public:
       }
     }, _rcxt.GetVariant() );
   }
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _l_data_range const & _rdr )
+    requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    return visit(_VisitHelpOverloadFCall {
+      [&_rsvDest,&_rtok,&_rdr]( auto & _rcxtTransport )
+      {
+        _rcxtTransport.KGetStringView( _rsvDest, _rcxtTransport, _rtok, _rdr );
+      }
+    }, _rcxt.GetVariant() );
+  }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const typename t_TyToken::_TyValue& _rval )
     requires ( TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
@@ -233,6 +250,14 @@ public:
     _rcxt.AssertValidDataRange( kdtr );
     VerifyThrowSz( kdtr.FContainsSingleDataRange(), "KGetStringView() is only valid for single data ranges." );
     _rcxt.GetStringView( _rsvDest, kdtr );
+  }
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _l_data_range const & _rdr )
+    requires ( ( sizeof( typename t_TyStringView::value_type ) == sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    Assert( _rsvDest.empty() );
+    _rcxt.AssertValidDataRange( _rdr );
+    _rcxt.GetStringView( _rsvDest, _rdr );
   }
   template < class t_TyStringView, class t_TyString, class t_TyToken, class t_TyTransportCtxt >
   static bool FGetStringViewOrString( t_TyStringView & _rsvDest, t_TyString & _rstrDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, const typename t_TyToken::_TyValue & _rval )

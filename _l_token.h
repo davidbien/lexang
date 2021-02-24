@@ -122,6 +122,11 @@ public:
     m_scx.KGetStringView( _rsvDest, *this, _rval );
   }
   template < class t_tyStringView >
+  void KGetStringView( t_tyStringView & _rsvDest, _l_data_range const & _rdr ) const
+  {
+    m_scx.KGetStringView( _rsvDest, *this, _rdr );
+  }
+  template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest ) const
   {
     m_scx.KGetStringView( _rsvDest, *this, GetValue() );
