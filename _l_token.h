@@ -55,6 +55,12 @@ public:
       m_paobCurToken( _paobCurToken )
   {
   }
+  _l_token( _TyUserObj & _ruoUserObj, const _TyAxnObjBase * _paobCurToken )
+    : m_scx( _ruoUserObj ),
+      m_paobCurToken( _paobCurToken )
+    {
+    }
+
   // We are copyable:
   _l_token( _l_token const & ) = default;
   _l_token & operator =( _l_token const & _r )
