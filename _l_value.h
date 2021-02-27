@@ -286,6 +286,12 @@ public:
   {
     return GetValueArray()[_nEl];
   }
+  // emplace an element at the end of the current array. Must already be an array.
+  template < class ... t_tysArgs >
+  _TyThis emplace_back( t_tysArgs ... _args )
+  {
+    GetValueArray().emplaceAtEnd( std::forward< t_TysArgs >( _args ) ... );
+  }
 
   template < class t_TyToken, class t_TyStringView >
   void KGetStringView( t_TyToken & _rtok, t_TyStringView & _rsv ) const
