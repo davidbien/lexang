@@ -252,12 +252,16 @@ public:
 #endif
     return SetVal( sv );
   }
-  
-  // This ensures we have an array of _l_values within and then sets the size to the passed size.
-  void SetSize( size_type _stNEls )
+  // If this isn't an array then make it an array.
+  void SetArray()
   {
     if ( !FIsArray() )
       m_var.template emplace<_TySegArrayValues>( s_knbySegArrayInit );
+  }
+  // This ensures we have an array of _l_values within and then sets the size to the passed size.
+  void SetSize( size_type _stNEls )
+  {
+    SetArray();
     get< _TySegArrayValues >( m_var ).SetSize( _stNEls );
   }
   // This fails with a throw if we don't contain an array.
@@ -288,9 +292,9 @@ public:
   }
   // emplace an element at the end of the current array. Must already be an array.
   template < class ... t_tysArgs >
-  _TyThis emplace_back( t_tysArgs ... _args )
+  _TyThis & emplace_back( t_tysArgs ... _args )
   {
-    GetValueArray().emplaceAtEnd( std::forward< t_TysArgs >( _args ) ... );
+    return GetValueArray().emplaceAtEnd( std::forward< t_TysArgs >( _args ) ... );
   }
 
   template < class t_TyToken, class t_TyStringView >
