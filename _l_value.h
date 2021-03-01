@@ -152,6 +152,10 @@ public:
   {
     return FHasTypedData() && GetVal<_TyData>().FIsNull();
   }
+  bool FIsBool() const
+  {
+    return FIsA< bool >();
+  }
 
   template < class t_Ty, class... t_tysArgs>
   t_Ty & emplaceArgs( t_tysArgs &&... _args )
