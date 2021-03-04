@@ -622,7 +622,66 @@ protected:
     return false;
   }
 public:
-
+  // This applies the functor to a string type - specifically - i.e. one of the six string and string view types.
+  // Application to any other type will cause a throw.
+  template < class t_TyFunctor >
+  void ApplyString( t_TyFunction && _rrftor )
+  {
+    Assert( FIsString() );
+    std::visit( _VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("monostate has no strings.");
+      },
+      [](bool)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
+      },
+      [](vtyDataPosition)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
+      },
+      [](_TySegArrayValues const &)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string from an array of _l_values.");
+      },
+      [](_TyData const &)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("ApplyString() only works on string types.");
+      },
+      [&_rtok,&_rsv]( auto _userDefinedType )
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("ApplyString() only works on string types - not any user defined types that have been grafted in.");
+      }
+      // We must spell out all the various string types instead of using auto since
+      //  we may have user defined types and we must reserve the use of auto for them.
+      // requires statements would get around this and I'll do that later probably.
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrChar const & _rstr)
+      {
+        access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
+      },
+      [this,&_rsv](_TyStrViewChar const & _rsv8)
+      {
+        access_fwd( _rrftor )( &_rsv8[0], &_rsv8[0] + _rsv8.length() );
+      },
+      [this,&_rsv](_TyStrChar16 const & _rstr)
+      {
+        access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
+      },
+      [this,&_rsv](_TyStrViewChar16 const & _rsv16)
+      {
+        access_fwd( _rrftor )( &_rsv16[0], &_rsv16[0] + _rsv16.length() );
+      },
+      [this,&_rsv](_TyStrChar32 const & _rstr)
+      {
+        access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
+      },
+      [this,&_rsv](_TyStrViewChar32 const & _rsv32)
+      {
+        access_fwd( _rrftor )( &_rsv32[0], &_rsv32[0] + _rsv32.length() );
+      }
+    }, m_var );}
+  }
   // Output the data to a JsoValue.
   template < class t_TyCharOut >
   void ToJsoValue( JsoValue< t_TyCharOut > & _rjv ) const
