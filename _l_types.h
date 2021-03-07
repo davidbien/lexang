@@ -29,6 +29,8 @@ template < class t_TyTraits, bool t_fInLexGen >
 struct _l_action_object_value_base;
 template < class t_TyActionObj >
 struct _l_action_token;
+template < class t_TyTraits, vtyTokenIdent t_ktidToken, bool t_fInLexGen >
+struct _l_action_token_id;
 template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >
 struct _l_action_print;
 template < class t_TyTraits, vtyTokenIdent t_kiTrigger, bool t_fInLexGen = true >

@@ -1039,9 +1039,10 @@ public:
 	{
 		VerifyThrowSz( !!m_pSdpAction, "Attempt to construct a trigger without a corresponding action object is not valid." );
 		#ifndef REGEXP_NO_TRIGGERS
+		bool fCreatedTrigger;
     try
     {
-      _rcbNfa.CreateTriggerNFA( **m_pSdpAction );
+      fCreatedTrigger = _rcbNfa.FCreateTriggerNFA( **m_pSdpAction );
     }
     catch (regexp_trigger_found_first_exception & _rexc)
     {
@@ -1057,8 +1058,9 @@ public:
       }
     }
 		
-		// If we have an action object then set into NFA:
-		_rcbNfa.SetAction( m_pSdpAction, e_atTrigger );
+		// If we have an action object then set into NFA - if we created the trigger and didn't ignore it.
+		if ( fCreatedTrigger )
+			_rcbNfa.SetAction( m_pSdpAction, e_atTrigger );
 		#else //!REGEXP_NO_TRIGGERS
 		_rcbNfa.CreateRangeNFA( _TyRange(0,0) );
 		#endif //!REGEXP_NO_TRIGGERS

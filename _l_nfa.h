@@ -41,6 +41,16 @@ public:
 	}
 };
 
+// ENFACreationOptions: Options for creation of the NFA from regular expression.
+// Used as bitmasks, as in ( 1 << encoIgnoreTriggers ).
+enum ENFACreationOptions : uint32_t
+{
+	encoIgnoreTriggers,
+		// Ignore any declared triggers.
+	encoNFACreationOptionsCount // This at the end always.
+};
+
+
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
 class _nfa 
 	:	public _fa_alloc_base< t_TyChar, t_TyAllocator >,
@@ -86,6 +96,7 @@ public:
 	typedef __DGRAPH_NAMESPACE dgraph< _TyState, _TyRange, false, t_TyAllocator > _TyGraph;
 	typedef typename _TyGraph::_TyGraphNode _TyGraphNode;
 	typedef typename _TyGraph::_TyGraphLink _TyGraphLink;
+	typedef uint32_t _TyGrfNFACreationOptions;
 
 	_TyGraph m_gNfa;
 
@@ -98,14 +109,15 @@ public:
 	// We cache the selection iterator to keep from allocating/deallocating all the time:
 	_TySelectIterConst	m_selit;
 
-	bool m_fHaveEmpty;	// Have we already added the empty set to the alphabet lookup.
+	bool m_fHaveEmpty{false};	// Have we already added the empty set to the alphabet lookup.
 
 	// Cache for already computed closure by state:
 	char * m_cpClosureCache;
 	// bit vector indicating which cache sets are computed.
 	_TySetStates m_ssClosureComputed;
 
-	int m_iActionCur;
+	int m_iActionCur{0};
+	_TyGrfNFACreationOptions m_grfNFACreationOptions{0};
 
 	typedef less< _TyState > _TyCompareStates;
 	typedef typename _Alloc_traits< typename map< _TyState, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TySetAcceptStatesAllocator;
@@ -136,7 +148,7 @@ public:
 	_nfa( _nfa const & ) = delete;
 	_nfa operator = ( _nfa const & ) = delete;
 
-	_nfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
+	_nfa( _TyGrfNFACreationOptions _grfNFACreationOptions = 0, t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		:	 _TyBase( _rAlloc ),
 			_TyCharAllocBase( _rAlloc ),
 			m_fHaveEmpty( false ),
@@ -151,13 +163,13 @@ public:
 			m_fHasLookaheads( false ),
 			m_nTriggers( 0 ),
 			m_fHasFreeActions( false ),
-			m_nUnsatisfiableTransitions( 0 )
+			m_nUnsatisfiableTransitions( 0 ),
+			m_grfNFACreationOptions( _grfNFACreationOptions )
 	{
 		m_pSetAcceptStates.template emplace< const _TyCompareStates &, const t_TyAllocator & >( _TyCompareStates(), get_allocator() );
 		// m_pSetAcceptStates.template emplace< const _TyCompareStates &, const t_TyAllocator & >
 		// 															( _TyCompareStates(), get_allocator() );
 	}
-
 	~_nfa()
 	{
 		DeallocClosureCache();
@@ -172,6 +184,10 @@ public:
 
 	t_TyAllocator get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
 
+	bool FIgnoreTriggers() const
+	{
+		return !!( m_grfNFACreationOptions & ( 1 << encoIgnoreTriggers ) );
+	}
 	void	AllocClosureCache()
 	{
 		_TySetStates	ssComputed( NStates(), get_allocator() );
@@ -664,13 +680,20 @@ protected:	// accessed by _nfa_context:
 		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
 	}
 
-	void CreateTriggerNFA( _TyNfaCtxt & _rctxt, _TyActionObjectBase const & _raob )
+	bool FCreateTriggerNFA( _TyNfaCtxt & _rctxt, _TyActionObjectBase const & _raob )
 	{
     Assert( !_rctxt.m_pgnStart ); // throw-safety.
     // If the current state is 0 then we are starting all productions with a trigger. This doesn't seem to make much sense and indeed the trigger fires regardless
     //  so I am going to throw an error if the current state is 0 when this trigger is encountered.
     if (!m_iCurState)
       throw regexp_trigger_found_first_exception();
+
+		if ( FIgnoreTriggers() )
+		{
+			// Just return an empty NFA:
+			CreateRangeNFA( _rctxt, _TyRange( 0, 0 ) );
+			return false;
+		}
 		
 		// Check if we have already added a trigger for this action object and if so use the trigger values added at that time,
 		//	otherwise add new ones.
@@ -688,6 +711,7 @@ protected:	// accessed by _nfa_context:
 		_NewAcceptingState(	_rctxt.m_pgnAltAccept, 
 												_TyRange( ms_kreTriggerStart + pibTrigger.first->second+1, ms_kreTriggerStart + pibTrigger.first->second+1 ), 
 												&_rctxt.m_pgnAccept );
+		return true;
 	}
 	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_type _nUnsatisfiable )
 	{
@@ -1296,11 +1320,11 @@ public:
 		//	where it is ).
 		RNfa().CreateLookaheadNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void CreateTriggerNFA( _TyActionObjectBase const & _raob )
+	bool FCreateTriggerNFA( _TyActionObjectBase const & _raob )
 	{
 		// We need to save the intermediate accept state ( otherwise we won't know
 		//	where it is ).
-		RNfa().CreateTriggerNFA( *this, _raob );
+		return RNfa().FCreateTriggerNFA( *this, _raob );
 	}
 	void CreateOrNFA( _TyBase & _rcb )
 	{

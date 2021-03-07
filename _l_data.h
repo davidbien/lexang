@@ -414,7 +414,7 @@ public:
   }
   // t_TyFunctor gets called potentially multiple times with contiguous pieces of the segmented array holding the data.
   template < class t_TyFunctor >
-  void Apply( t_TyFunction && _rrftor )
+  void Apply( t_TyFunctor && _rrftor )
   {
     if ( FContainsSingleDataRange() )
       std::forward< t_TyFunctor >( _rrftor )( &DataRangeGetSingle(), &DataRangeGetSingle() + 1 );
@@ -422,7 +422,7 @@ public:
       GetSegArrayDataRanges().ApplyContiguous( 0, GetSegArrayDataRanges().NElements(), std::forward< t_TyFunctor >( _rrftor ) );
   }
   template < class t_TyFunctor >
-  void Apply( t_TyFunction && _rrftor ) const
+  void Apply( t_TyFunctor  && _rrftor ) const
   {
     if ( FContainsSingleDataRange() )
       std::forward< t_TyFunctor >( _rrftor )( &DataRangeGetSingle(), &DataRangeGetSingle() + 1 );

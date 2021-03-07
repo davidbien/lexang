@@ -156,6 +156,12 @@ public:
   {
     return FIsA< bool >();
   }
+  bool FIsString() const
+  {
+    return  holds_alternative<_TyStrChar>( m_var ) || holds_alternative<_TyStrViewChar>( m_var ) ||
+            holds_alternative<_TyStrChar16>( m_var ) || holds_alternative<_TyStrViewChar16>( m_var ) ||
+            holds_alternative<_TyStrChar32>( m_var ) || holds_alternative<_TyStrViewChar32>( m_var );
+  }
 
   template < class t_Ty, class... t_tysArgs>
   t_Ty & emplaceArgs( t_tysArgs &&... _args )
@@ -295,12 +301,11 @@ public:
     return GetValueArray()[_nEl];
   }
   // emplace an element at the end of the current array. Must already be an array.
-  template < class ... t_tysArgs >
-  _TyThis & emplace_back( t_tysArgs ... _args )
+  template < class ... t_TysArgs >
+  _TyThis & emplace_back( t_TysArgs ... _args )
   {
     return GetValueArray().emplaceAtEnd( std::forward< t_TysArgs >( _args ) ... );
   }
-
   template < class t_TyToken, class t_TyStringView >
   void KGetStringView( t_TyToken & _rtok, t_TyStringView & _rsv ) const
   {
@@ -352,7 +357,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
-      [&_rtok,&_rsv]( auto _userDefinedType )
+      [&_rtok,&_rsv]( const auto & _userDefinedType )
       {
         _userDefinedType.KGetStringView( _rsv, _rtok );
       }
@@ -400,32 +405,32 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
-      [this,&_rtok,&_rsv](_TyData const &)
+      [this,&_rtok,&_rsv](_TyData &)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rtok.GetStringView( _rsv, *this );
       },
-      [this,&_rsv](_TyStrChar const & _rstr)
+      [this,&_rsv](_TyStrChar & _rstr)
       {
         _GetStringView( _rsv, _rstr );
       },
-      [this,&_rsv](_TyStrViewChar const & _rsv8)
+      [this,&_rsv](_TyStrViewChar & _rsv8)
       {
         _GetStringView( _rsv, _rsv8 );
       },
-      [this,&_rsv](_TyStrChar16 const & _rstr)
+      [this,&_rsv](_TyStrChar16 & _rstr)
       {
         _GetStringView( _rsv, _rstr );
       },
-      [this,&_rsv](_TyStrViewChar16 const & _rsv16)
+      [this,&_rsv](_TyStrViewChar16 & _rsv16)
       {
         _GetStringView( _rsv, _rsv16 );
       },
-      [this,&_rsv](_TyStrChar32 const & _rstr)
+      [this,&_rsv](_TyStrChar32 & _rstr)
       {
         _GetStringView( _rsv, _rstr );
       },
-      [this,&_rsv](_TyStrViewChar32 const & _rsv32)
+      [this,&_rsv](_TyStrViewChar32 & _rsv32)
       {
         _GetStringView( _rsv, _rsv32 );
       },
@@ -433,7 +438,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
-      [&_rtok,&_rsv]( auto _userDefinedType )
+      [&_rtok,&_rsv]( auto & _userDefinedType )
       {
         _userDefinedType.GetStringView( _rsv, _rtok );
       }
@@ -513,7 +518,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
-      [&_rtok,&_rstr]( auto _userDefinedType )
+      [&_rtok,&_rstr]( const auto & _userDefinedType )
       {
         _userDefinedType.GetString( _rstr, _rtok );
       }
@@ -592,7 +597,7 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
       },
-      [&_rtok,&_rsv,&_rstr]( auto _userDefinedType )
+      [&_rtok,&_rsv,&_rstr]( const auto & _userDefinedType )
       {
         return _userDefinedType.FGetStringViewOrString( _rsv, _rstr, _rtok );
       }
@@ -625,7 +630,7 @@ public:
   // This applies the functor to a string type - specifically - i.e. one of the six string and string view types.
   // Application to any other type will cause a throw.
   template < class t_TyFunctor >
-  void ApplyString( t_TyFunction && _rrftor )
+  void ApplyString( t_TyFunctor && _rrftor ) const // const version
   {
     Assert( FIsString() );
     std::visit( _VisitHelpOverloadFCall {
@@ -649,38 +654,96 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("ApplyString() only works on string types.");
       },
-      [&_rtok,&_rsv]( auto _userDefinedType )
+      []( const auto & _userDefinedType )
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("ApplyString() only works on string types - not any user defined types that have been grafted in.");
-      }
+      },
       // We must spell out all the various string types instead of using auto since
       //  we may have user defined types and we must reserve the use of auto for them.
       // requires statements would get around this and I'll do that later probably.
-      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrChar const & _rstr)
+      [_rrftor = FWD_CAPTURE(_rrftor)]( _TyStrChar const & _rstr )
       {
         access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
       },
-      [this,&_rsv](_TyStrViewChar const & _rsv8)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar const & _rsv8)
       {
         access_fwd( _rrftor )( &_rsv8[0], &_rsv8[0] + _rsv8.length() );
       },
-      [this,&_rsv](_TyStrChar16 const & _rstr)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrChar16 const & _rstr)
       {
         access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
       },
-      [this,&_rsv](_TyStrViewChar16 const & _rsv16)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar16 const & _rsv16)
       {
         access_fwd( _rrftor )( &_rsv16[0], &_rsv16[0] + _rsv16.length() );
       },
-      [this,&_rsv](_TyStrChar32 const & _rstr)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrChar32 const & _rstr)
       {
         access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
       },
-      [this,&_rsv](_TyStrViewChar32 const & _rsv32)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar32 const & _rsv32)
       {
         access_fwd( _rrftor )( &_rsv32[0], &_rsv32[0] + _rsv32.length() );
       }
-    }, m_var );}
+    }, m_var );
+  }
+  template < class t_TyFunctor >
+  void ApplyString( t_TyFunctor && _rrftor ) // non-const version
+  {
+    Assert( FIsString() );
+    std::visit( _VisitHelpOverloadFCall {
+      [](monostate) 
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("monostate has no strings.");
+      },
+      [](bool)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
+      },
+      [](vtyDataPosition)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
+      },
+      [](_TySegArrayValues &)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string from an array of _l_values.");
+      },
+      [](_TyData &)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("ApplyString() only works on string types.");
+      },
+      []( auto & _userDefinedType )
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("ApplyString() only works on string types - not any user defined types that have been grafted in.");
+      },
+      // We must spell out all the various string types instead of using auto since
+      //  we may have user defined types and we must reserve the use of auto for them.
+      // requires statements would get around this and I'll do that later probably.
+      [_rrftor = FWD_CAPTURE(_rrftor)]( _TyStrChar & _rstr )
+      {
+        access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
+      },
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar & _rsv8)
+      {
+        access_fwd( _rrftor )( &_rsv8[0], &_rsv8[0] + _rsv8.length() );
+      },
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrChar16 & _rstr)
+      {
+        access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
+      },
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar16 & _rsv16)
+      {
+        access_fwd( _rrftor )( &_rsv16[0], &_rsv16[0] + _rsv16.length() );
+      },
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrChar32 & _rstr)
+      {
+        access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
+      },
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar32 & _rsv32)
+      {
+        access_fwd( _rrftor )( &_rsv32[0], &_rsv32[0] + _rsv32.length() );
+      }
+    }, m_var );
   }
   // Output the data to a JsoValue.
   template < class t_TyCharOut >
@@ -736,7 +799,7 @@ public:
         for ( size_type nEl = 0; nEl < knEls; ++nEl )
           _rrg[nEl].ToJsoValue( _rjv.CreateOrGetEl( nEl ) );
       },
-      [&_rjv]( auto _userDefinedType )
+      [&_rjv]( const auto & _userDefinedType )
       {
         _userDefinedType.ToJsoValue( _rjv );
       }
@@ -751,34 +814,34 @@ public:
       [](monostate) {},
       [](bool _f) {},
       [](vtyDataPosition _dp) {},
-      [this,&_rtok](_TyData const & _rdt)
+      [this,&_rtok](_TyData & _rdt)
       {
         // Delegate to the token in this case:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
         basic_string_view< t_TyCharOut > sv;
         _rtok.GetStringView( sv, *this );
       },
-      [this](_TyStrChar const & _rstr)
+      [this](_TyStrChar & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrViewChar const & _rstr)
+      [this](_TyStrViewChar & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrChar16 const & _rstr)
+      [this](_TyStrChar16 & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrViewChar16 const & _rstr)
+      [this](_TyStrViewChar16 & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrChar32 const & _rstr)
+      [this](_TyStrChar32 & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrViewChar32 const & _rstr)
+      [this](_TyStrViewChar32 & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
@@ -788,7 +851,7 @@ public:
         for ( size_type nEl = 0; nEl < knEls; ++nEl )
           _rrg[nEl].template ProcessStrings< t_TyCharOut >( _rtok );
       },
-      [&_rtok]( auto _userDefinedType )
+      [&_rtok]( auto & _userDefinedType )
       {
         _userDefinedType.ProcessStrings( _rtok );
       }

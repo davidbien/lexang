@@ -147,7 +147,7 @@ public:
 	virtual void CreateLiteralAnyInSetNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
-	virtual void CreateTriggerNFA( _TyActionObjectBase const & _raob ) = 0;
+	virtual bool FCreateTriggerNFA( _TyActionObjectBase const & _raob ) = 0;
 	virtual void CreateOrNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateZeroOrMoreNFA() = 0;
 	virtual void CreateExcludesNFA( _TyThis & _rcb ) = 0;

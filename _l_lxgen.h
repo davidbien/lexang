@@ -28,9 +28,10 @@ enum EGeneratorFamilyDisposition
 	egfdEGeneratorFamilyDispositionCount // This at the end always.
 };
 
+// These to be used as ( 1 << egdoDontTemplatizeStates ).
 enum EGeneratorDFAOptions : uint32_t
 {
-	egdoDontTemplatizeStates = 0x00000001, 
+	egdoDontTemplatizeStates, 
 		// Don't templatize the states of the state machine. This only works (of course) if there are no action or trigger function pointers associated with the states.
 		// If action function pointers are necessary in the state machine then an error is thrown indicating that 
 	egdoGeneratorDFAOptionsCount // This at the end always.
