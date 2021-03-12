@@ -43,6 +43,10 @@ public:
       m_bufTokenData( std::move( _rrbufTokenData ) )
   {
   }
+  _l_transport_backed_ctxt( vtyDataPosition _posTokenStart )
+    : m_posTokenStart( _posTokenStart )
+  {
+  }
   ~_l_transport_backed_ctxt() = default;
   _l_transport_backed_ctxt() = default;
   _l_transport_backed_ctxt( _l_transport_backed_ctxt const & ) = default;
@@ -54,10 +58,29 @@ public:
      std::swap( m_posTokenStart, _r.m_posTokenStart );
      m_bufTokenData.swap( _r.m_bufTokenData );
   }
-
+  // A backed context can be constructed from any other context since the memory can be copied into the backing.
+  template < class t_TyTransportOther >
+  _l_transport_backed_ctxt( t_TyTransportOther const & _rOther )
+    requires( TAreSameSizeTypes_v< _TyChar, typename t_TyTransportOther::_TyChar > )
+    : m_bufTokenData( _rOther.GetTokenBuffer() ),
+      m_posTokenStart( _rOther.PosTokenStart() )  
+  {
+  }
+  // A backed context can be assigned to any other context since the memory can be copied into the backing.
+  template < class t_TyTransportOther >
+  _TyThis & operator = ( t_TyTransportOther const & _rOther )
+    requires( TAreSameSizeTypes_v< _TyChar, typename t_TyTransportOther::_TyChar > )
+  {
+    m_bufTokenData = _rOther.GetTokenBuffer(); // this throws potentially.
+    m_posTokenStart = _rOther.PosTokenStart(); // this can't throw.
+  }
   vtyDataPosition PosTokenStart() const
   {
     return m_posTokenStart;
+  }
+  size_t NLenToken() const
+  {
+    return m_bufTokenData.length();
   }
   void GetTokenDataRange( _l_data_range & _rdr ) const
   {
@@ -371,6 +394,10 @@ public:
   vtyDataPosition PosTokenStart() const
   {
     return m_posTokenStart;
+  }
+  size_t NLenToken() const
+  {
+    return m_bufTokenData.length();
   }
   void GetTokenDataRange( _l_data_range & _rdr ) const
   {
@@ -837,6 +864,15 @@ public:
       []( auto & _tcxt )
       {
         return _tcxt.PosTokenStart();
+      }
+    }, m_var );
+  }
+  size_t NLenToken() const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      []( auto & _tcxt )
+      {
+        return _tcxt.NLenToken();
       }
     }, m_var );
   }

@@ -148,6 +148,39 @@ public:
   {
     _TyBase::swap( _r );
   }
+  // We support copying a fixed buffer (for instance):
+  template < class t_TyBufOther >
+  _l_backing_buf( t_TyBufOther const & _rOther )
+    requires ( TAreSameSizeTypes_v< _TyChar, typename t_TyBufOther::_TyChar > )
+  {
+    Assert( FIsNull() );
+    if ( !_rOther.FIsNull() )
+    {
+      first = DBG_NEW _TyChar[ _rOther.second ];
+      second = _rOther.second;
+      memcpy( first, _rOther.first, second * sizeof( _TyChar ) );
+    }
+  }
+  // We support assignment to a fixed buffer (for instance):
+  template < class t_TyBufOther >
+  _TyThis & operator = ( t_TyBufOther const & _rOther )
+    requires ( TAreSameSizeTypes_v< _TyChar, typename t_TyBufOther::_TyChar > )
+  {
+    _l_backing_buf copy( _rOther );
+    swap( copy );
+    return *this;
+  }
+  void Clear()
+  {
+    AssertValid();
+    if ( first )
+    {
+      _TyChar * pc = first;
+      first = nullptr;
+      second = 0;
+      ::delete [] pc;
+    }
+  }
   bool FIsNull()
   {
     AssertValid();
@@ -178,6 +211,14 @@ public:
   vtyDataPosition length() const
   {
     return second;
+  }
+  // Set the contents and length of the buffer.
+  void SetBuffer( const _TyChar * _pcBuf, size_t _nchLen )
+  {
+    Clear();
+    first = DBG_NEW _TyChar[ _nchLen ];
+    second = _nchLen;
+    memcpy( first, _pcBuf, second * sizeof( _TyChar ) );
   }
   template < class t_TyStringView >
   void GetStringView( t_TyStringView & _rsvDest, vtyDataPosition _posBegin, vtyDataPosition _posEnd ) const

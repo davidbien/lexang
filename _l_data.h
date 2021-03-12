@@ -429,6 +429,23 @@ public:
     else
       GetSegArrayDataRanges().ApplyContiguous( 0, GetSegArrayDataRanges().NElements(), std::forward< t_TyFunctor >( _rrftor ) );
   }
+  // For internal use - _rprpptrDP.first is modified upon return to reflect consumption of data.
+  typedef pair< vtyDataPosition **, vtyDataPosition ** > _TyPrPtrDataPosition;
+  void _GetPositionPtrs( bool & _rfIsSorted, _TyPrPtrDataPosition & _rprpptrDP )
+  {
+    if ( FIsNull() )
+      return;
+    if ( FContainsSingleDataRange() )
+    {
+      _l_data_typed_range & rdr = DataRangeGetSingle();
+      if ( _rfIsSorted )
+        _rfIsSorted = *_rprpptrDP.first[-1] <= rdr.m_posBegin;
+      if ( _rprpptrDP.first < _rprpptrDP.second )
+        ++_rprpptrDP.first = &rdr.m_posBegin;
+      if ( _rprpptrDP.first < _rprpptrDP.second )
+        ++_rprpptrDP.first = &rdr.m_posEnd;
+    }
+  }
 protected:
   template < class t_TyCharOut >
   static void _ToJsoValue( JsoValue< t_TyCharOut > & _rjv, _l_data_typed_range const & _rdtr )

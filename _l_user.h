@@ -62,7 +62,15 @@ public:
     Assert( &m_ruoUserObj == &_r.m_ruoUserObj );
     _TyBase::swap( _r );
   }
-
+  // casting utilities:
+  t_TyTransportCtxt & GetTransportCtxt()
+  {
+    return *this;
+  }
+  const t_TyTransportCtxt & GetTransportCtxt() const
+  {
+    return *this;
+  }
   // Generic initialization of transport context.
   template < class ... t_TysArgs >
   void InitTransportCtxt( t_TysArgs && ... _args )

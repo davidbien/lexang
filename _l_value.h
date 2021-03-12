@@ -124,7 +124,11 @@ public:
   {
     m_var.swap( _r.m_var );
   }
-
+  template < class t_TyContainerNew, class t_TyValueOther >
+  _l_value( t_TyContainerNew & _rNewContainer, t_TyValueOther const & _rOther )
+  {
+    _CopyFrom( _rNewContainer, _rOther );
+  }
   bool FIsNull() const
   {
     return holds_alternative<monostate>( m_var );
@@ -223,6 +227,7 @@ public:
     else
       return m_var.template emplace<_TyRemoveRef>(std::move(_rrv));
   }
+  // REVIEW:<dbien>: The below is clunky - rework it at some point.
   // Provide converting SetVal's for the same-sized character types.
   _TyStrChar & SetVal( _TyStrChar8 const & _r )
   {
@@ -263,10 +268,12 @@ public:
     return SetVal( sv );
   }
   // If this isn't an array then make it an array.
-  void SetArray()
+  _TySegArrayValues & SetArray()
   {
     if ( !FIsArray() )
-      m_var.template emplace<_TySegArrayValues>( s_knbySegArrayInit );
+      return m_var.template emplace<_TySegArrayValues>( s_knbySegArrayInit );
+    else
+      return GetValueArray();
   }
   // This ensures we have an array of _l_values within and then sets the size to the passed size.
   void SetSize( size_type _stNEls )
@@ -857,8 +864,145 @@ public:
       }
     }, m_var );
   }
-
+  // Count the number of positions in the aggregate object. A single _l_data_range has 2 positions.
+  size_t CountDataPositions() const
+  {
+    size_t nPositions = 0;
+    std::visit(_VisitHelpOverloadFCall {
+      []( const auto &  ) { },
+      [&nPositions]( vtyDataPosition _dp )
+      {
+        ++nPositions;
+      },
+      [&nPositions]( _TyData const & _rdt )
+      {
+        nPositions += _rdt.NPositions() * 2; // each position is a (beg,end) pair.
+      },
+      [&nPositions](_TySegArrayValues & _rrg)
+      {
+        _rrg.ApplyContiguous( 0, _rrg.NElements(), 
+          [&nPositions]( _TyThis const * _pvalBegin, _TyThis const * _pvalEnd )
+          {
+            for ( _TyThis const * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
+              nPositions += pvalCur->CountDataPositions();
+          }
+        );
+      },
+    }, m_var );
+  }
+  // return a sorted array of pointers to all positions within the aggregate value.
+  // The caller should allocate CountDataPositions()+1 so we can use the first element for the algorithm.
+  typedef pair< vtyDataPosition **, vtyDataPosition ** > _TyPrPtrDataPosition;
+  void GetSortedPositionPtrs( _TyPrPtrDataPosition & _rprpptrDP )
+  {
+    Assert( ( _rprpptrDP.second - _rprpptrDP.first ) == CountDataPositions()+1 ); // This assumes that the caller wants a pointer to all the positions.
+    bool fIsSorted = true; // whether things are currently sorted - they mostly will be since the aggregate is formed from sequential data.
+    vtyDataPosition ** ppdpFirst = _rprpptrDP.first; // squirrel away first here.
+    vtyDataPosition posBeginNull = 0;
+    *_rprpptrDP.first++ = &posBeginNull; // For the algorhtm we don't need to test for the beginning of the array while testing for fIsSorted.
+    _GetPositionPtrs( fIsSorted, _rprpptrDP );
+    Assert( _rprpptrDP.first == _rprpptrDP.second ); // Should have filled it up.
+    _rprpptrDP.first = ppdpFirst; // restore.
+    if ( !fIsSorted )
+    {
+      std::sort( _rprpptrDP.first+1, _rprpptrDP.second,
+        []( vtyDataPosition * _pdpLeft, vtyDataPosition * _pdpRight ) 
+        {
+          return *_pdpLeft < *_pdpRight;
+        }
+      );
+    }
+  }
 protected:
+// recurses.
+  template < class t_TyContainerNew, class t_TyValueOther >
+  void _CopyFrom( t_TyContainerNew & _rNewContainer, t_TyValueOther const & _rOther )
+  {
+    Assert( FIsNull() );
+    // We must enumerate all held types to single out any user added types:
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate) { },
+      [this]( bool _f )
+      {
+        SetVal( _f );
+      },
+      [this]( vtyDataPosition _dp )
+      {
+        SetVal( _dp );
+      },
+      [this]( _TyData const & _rdt )
+      {
+        SetVal( _rdt );
+      },
+      [this](_TyStrChar const & _rstr)
+      {
+        SetVal( _rstr );
+      },
+      [this](_TyStrViewChar const & _rsv8)
+      {
+        SetVal( _rsv8 );
+      },
+      [this](_TyStrChar16 const & _rstr)
+      {
+        SetVal( _rstr );
+      },
+      [this](_TyStrViewChar16 const & _rsv16)
+      {
+        SetVal( _rsv16 );
+      },
+      [this](_TyStrChar32 const & _rstr)
+      {
+        SetVal( _rstr );
+      },
+      [this](_TyStrViewChar32 const & _rsv32)
+      {
+        SetVal( _rsv32 );
+      },
+      [this,&_rNewContainer]( typename t_TyValueOther::_TySegArrayValues const & _rsaOther )
+      {
+        _TySegArrayValues & rsaThis = SetArray();
+        _rsaOther.ApplyContiguous( 0, _rsaOther.NElements(), 
+          [&rsaThis,&_rNewContainer]( t_TyValueOther const * _pvalBegin, t_TyValueOther const * const _pvalEnd )
+          {
+            for ( t_TyValueOther const * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
+              rsaThis.emplaceAtEnd( _rNewContainer, *pvalCur );
+          }
+        );
+      },
+      [this,&_rNewContainer]( const auto & _userDefinedTypeOther )
+      {
+        // The container must set the type here after translating it appropriately if necessary.
+        _rNewContainer.TranslateUserType( _userDefinedTypeOther, *this );
+      }
+    }, _rOther.m_var );
+  }
+  void _GetPositionPtrs( bool & _rfIsSorted, _TyPrPtrDataPosition & _rprpptrDP )
+  {
+    std::visit(_VisitHelpOverloadFCall {
+      []( auto &  ) { },
+      [&_rfIsSorted,&_rprpptrDP]( vtyDataPosition & _rdp )
+      {
+        if ( _rfIsSorted )
+          _rfIsSorted = _rdp >= *_rprpptrDP.first[-1];
+        if ( _rprpptrDP.first < _rprpptrDP.second )
+          *_rprpptrDP.first++ = &_rdp;
+      },
+      [&_rfIsSorted,&_rprpptrDP]( _TyData & _rdt )
+      {
+        _rdt._GetPositionPtrs( _rfIsSorted, _rprpptrDP ); // not for public consumption because it is optimized to work with this method.
+      },
+      [&_rfIsSorted,&_rprpptrDP]( _TySegArrayValues & _rrg )
+      {
+        _rrg.ApplyContiguous( 0, _rrg.NElements(), 
+          [&_rfIsSorted,&_rprpptrDP]( _TyThis const * _pvalBegin, _TyThis const * _pvalEnd )
+          {
+            for ( _TyThis const * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
+              pvalCur->_GetPositionPtrs( _rfIsSorted, _rprpptrDP );
+          }
+        );
+      },
+    }, m_var );
+  }
   template < class t_TyCharConvertTo, class t_TyCharConvertFrom  >
   static void _ConvertStringValue( const basic_string< t_TyCharConvertFrom > & _rstr ) 
     requires ( sizeof( t_TyCharConvertFrom ) == sizeof( t_TyCharConvertTo ) )
