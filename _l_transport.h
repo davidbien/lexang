@@ -74,6 +74,17 @@ public:
     m_bufTokenData = _rOther.GetTokenBuffer(); // this throws potentially.
     m_posTokenStart = _rOther.PosTokenStart(); // this can't throw.
   }
+  void AssertValid() const
+  {
+#if ASSERTSENABLED
+    Assert( ( m_posTokenStart == (numeric_limits< vtyDataPosition >::max)() ) == m_bufTokenData.FIsNull() );
+#endif //ASSERTSENABLED    
+  }
+  bool FIsNull() const
+  {
+    AssertValid();
+    return ( m_posTokenStart == (numeric_limits< vtyDataPosition >::max)() );
+  }
   vtyDataPosition PosTokenStart() const
   {
     return m_posTokenStart;

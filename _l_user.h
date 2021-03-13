@@ -62,6 +62,17 @@ public:
     Assert( &m_ruoUserObj == &_r.m_ruoUserObj );
     _TyBase::swap( _r );
   }
+  void AssertValid() const
+  {
+#if ASSERTSENABLED
+    _TyBase::AssertValid();
+#endif //ASSERTSENABLED    
+  }
+  bool FIsNull()
+  {
+    AssertValid();
+    return _TyBase::FIsNull();
+  }
   // casting utilities:
   t_TyTransportCtxt & GetTransportCtxt()
   {

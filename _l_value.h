@@ -125,9 +125,14 @@ public:
     m_var.swap( _r.m_var );
   }
   template < class t_TyContainerNew, class t_TyValueOther >
-  _l_value( t_TyContainerNew & _rNewContainer, t_TyValueOther const & _rOther )
+  _l_value( t_TyContainerNew & _rNewContainer, t_TyValueOther const & _rOther, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
   {
-    _CopyFrom( _rNewContainer, _rOther );
+    _CopyFrom( _rNewContainer, _rOther, _ptccCopyCtxt );
+  }
+  template < class t_TyContainerNew, class t_TyValueOther >
+  _l_value( t_TyContainerNew & _rNewContainer, t_TyValueOther && _rrOther, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
+  {
+    _MoveFrom( _rNewContainer, std::move( _rrOther ), _ptccCopyCtxt );
   }
   bool FIsNull() const
   {
@@ -137,7 +142,6 @@ public:
   {
     m_var.template emplace<monostate>();
   }
-
   template < class t_Ty >
   bool FIsA() const
   {
@@ -916,7 +920,7 @@ public:
 protected:
 // recurses.
   template < class t_TyContainerNew, class t_TyValueOther >
-  void _CopyFrom( t_TyContainerNew & _rNewContainer, t_TyValueOther const & _rOther )
+  void _CopyFrom( t_TyContainerNew & _rNewContainer, t_TyValueOther const & _rOther, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt )
   {
     Assert( FIsNull() );
     // We must enumerate all held types to single out any user added types:
@@ -958,23 +962,104 @@ protected:
       {
         SetVal( _rsv32 );
       },
-      [this,&_rNewContainer]( typename t_TyValueOther::_TySegArrayValues const & _rsaOther )
+      [this,&_rNewContainer,_ptccCopyCtxt]( typename t_TyValueOther::_TySegArrayValues const & _rsaOther )
       {
+        _TyThis * plvalContainerOld;
+        if ( _ptccCopyCtxt )
+        {
+          plvalContainerOld = _ptccCopyCtxt->m_plvalContainerCur;
+          _ptccCopyCtxt->m_plvalContainerCur = this;
+        }
         _TySegArrayValues & rsaThis = SetArray();
         _rsaOther.ApplyContiguous( 0, _rsaOther.NElements(), 
           [&rsaThis,&_rNewContainer]( t_TyValueOther const * _pvalBegin, t_TyValueOther const * const _pvalEnd )
           {
             for ( t_TyValueOther const * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
-              rsaThis.emplaceAtEnd( _rNewContainer, *pvalCur );
+              rsaThis.emplaceAtEnd( _rNewContainer, *pvalCur, _ptccCopyCtxt );
           }
         );
+        if ( _ptccCopyCtxt )
+          _ptccCopyCtxt->m_plvalContainerCur = plvalContainerOld;
       },
-      [this,&_rNewContainer]( const auto & _userDefinedTypeOther )
+      [this,&_rNewContainer,_ptccCopyCtxt]( const auto & _userDefinedTypeOther )
       {
         // The container must set the type here after translating it appropriately if necessary.
-        _rNewContainer.TranslateUserType( _userDefinedTypeOther, *this );
+        _rNewContainer.TranslateUserType( _ptccCopyCtxt, _userDefinedTypeOther, *this );
       }
     }, _rOther.m_var );
+  }
+  template < class t_TyContainerNew, class t_TyValueOther >
+  void _MoveFrom( t_TyContainerNew & _rNewContainer, t_TyValueOther && _rrOther, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt )
+  {
+    Assert( FIsNull() );
+    // We must enumerate all held types to single out any user added types:
+    std::visit(_VisitHelpOverloadFCall {
+      [](monostate) { },
+      [this]( bool _f )
+      {
+        SetVal( _f );
+      },
+      [this]( vtyDataPosition _dp )
+      {
+        SetVal( _dp );
+      },
+      [this]( _TyData & _rdt )
+      {
+        emplaceVal( std::move( _rdt ) );
+      },
+      [this](_TyStrChar & _rstr)
+      {
+        emplaceVal( std::move( _rstr ) );
+      },
+      [this](_TyStrViewChar & _rsv)
+      {
+        emplaceVal( _rsv );
+      },
+      [this](_TyStrChar16 & _rstr)
+      {
+        emplaceVal( std::move( _rstr ) );
+      },
+      [this](_TyStrViewChar16 & _rsv)
+      {
+        emplaceVal( _rsv );
+      },
+      [this](_TyStrChar32 & _rstr)
+      {
+        emplaceVal( std::move( _rstr ) );
+      },
+      [this](_TyStrViewChar32 & _rsv)
+      {
+        emplaceVal( _rsv );
+      },
+      [this,&_rNewContainer,_ptccCopyCtxt]( typename t_TyValueOther::_TySegArrayValues & _rsaOther )
+      {
+        _TyThis * plvalContainerOld;
+        if ( _ptccCopyCtxt )
+        {
+          plvalContainerOld = _ptccCopyCtxt->m_plvalContainerCur;
+          _ptccCopyCtxt->m_plvalContainerCur = this;
+        }
+        // We can't move the segarray of values - even if it is the same type than our internal segarray - since
+        //  we are changing containers - and so we must let the container translate any user defined objects.
+        // If the container doesn't matter and we aren't changing types then just use the move constructor.
+        // We move each resultant _l_value<> object encountered in the aggregate.
+        _TySegArrayValues & rsaThis = SetArray();
+        _rsaOther.ApplyContiguous( 0, _rsaOther.NElements(), 
+          [&rsaThis,&_rNewContainer]( t_TyValueOther * _pvalBegin, t_TyValueOther * const _pvalEnd )
+          {
+            for ( t_TyValueOther * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
+              rsaThis.emplaceAtEnd( _rNewContainer, std::move( *pvalCur ), _ptccCopyCtxt );
+          }
+        );
+        if ( _ptccCopyCtxt )
+          _ptccCopyCtxt->m_plvalContainerCur = plvalContainerOld;
+      },
+      [this,&_rNewContainer,_ptccCopyCtxt]( auto & _userDefinedTypeOther )
+      {
+        // The container must set the type here after translating it appropriately if necessary.
+        _rNewContainer.TranslateUserType( _ptccCopyCtxt, std::move( _userDefinedTypeOther ), *this );
+      }
+    }, _rrOther.m_var );
   }
   void _GetPositionPtrs( bool & _rfIsSorted, _TyPrPtrDataPosition & _rprpptrDP )
   {

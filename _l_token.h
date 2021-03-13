@@ -16,6 +16,10 @@
 // The user of the token of course must understand the structure and meaning the aggregate value in m_value. The user can convert
 //  those values to strings, etc. according to how the lexicographical analyzer is being used. In fact that is what use of the token
 //  involves: perusing values and reacting to them. They can be converted to a given representation that is useful, etc.
+// I used to store a pointer to the action object for the token returned from the lexcial analyzer but this doesn't allow synthesis
+//  of tokens via encoding transformation (for instance) and other pseudo tokens. If the action object pointer is required then
+//  a switch-statement lookup from tokenid could be implemented but really there isn't a great reason (that I can think of) for
+//  the action object pointer to be present in the token since it was only ever used to get the token id.
 
 #include "_l_ns.h"
 #include "_l_types.h"
@@ -42,23 +46,22 @@ public:
   typedef _l_action_object_base< _TyChar, false > _TyAxnObjBase;
 
   _l_token() = delete;
-  // We could make this protected, etc, but I don't worry that it will be accidetally called.
   _l_token( _TyUserContext && _rrucxt, _TyValue && _rrvalue, const _TyAxnObjBase * _paobCurToken )
     : m_scx( std::move( _rrucxt ) ),
       m_value( std::move( _rrvalue ) ),
-      m_paobCurToken( _paobCurToken )
+      m_tidAccept( _paobCurToken->VGetTokenId() )
   {
   }
   // Create a null token with an empty value object and no backing.
   // This is for placeholder tokens, etc.
   _l_token( _TyUserContext && _rrucxt, const _TyAxnObjBase * _paobCurToken )
     : m_scx( std::move( _rrucxt ) ),
-      m_paobCurToken( _paobCurToken )
+      m_tidAccept( _paobCurToken->VGetTokenId() )
   {
   }
   _l_token( _TyUserObj & _ruoUserObj, const _TyAxnObjBase * _paobCurToken )
     : m_scx( _ruoUserObj ),
-      m_paobCurToken( _paobCurToken )
+      m_tidAccept( _paobCurToken->VGetTokenId() )
   {
   }
   // We are copyable:
@@ -74,7 +77,7 @@ public:
     : m_scx( std::move( _rr.m_scx ) )
   {
     m_value.swap( _rr.m_value );
-    std::swap( m_paobCurToken, _rr.m_paobCurToken );
+    std::swap( m_tidAccept, _rr.m_tidAccept );
   }
   _l_token & operator =( _l_token && _rr )
   {
@@ -86,25 +89,37 @@ public:
   {
     m_scx.swap( _r.m_scx );
     m_value.swap( _r.m_value );
-    std::swap( m_paobCurToken, _r.m_paobCurToken );
+    std::swap( m_tidAccept, _r.m_tidAccept );
   }
   // Support conversion from other token types. We must take the user object from the container to which we are copying.
   // Rely on container to translate the token to the new character type.
   template < class t_TyContainerNew, class t_TyToken >
-  _l_token( t_TyContainerNew & _rNewContainer, t_TyToken const & _rtokCopy, _TyAxnObjBase * _paobCurToken )
+  _l_token( t_TyContainerNew & _rNewContainer, t_TyToken const & _rtokCopy, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
     : m_scx( _rNewContainer.GetUserObj(), _rtokCopy.GetTransportCtxt().PosTokenStart() ),
-      m_value( _rNewContainer, _rtokCopy.m_value ), // any namespace references/declarations need resolving in the new container.
-      m_paobCurToken( _paobCurToken )
+      m_value( _rNewContainer, _rtokCopy.m_value, _ptccCopyCtxt ), // any namespace references/declarations need resolving in the new container.
+      m_tidAccept( _rtokCopy.m_tidAccept )
   {
     _ConvertDataPositions( _rtokCopy );
   }
   template < class t_TyContainerNew, class t_TyToken >
-  _l_token( t_TyContainerNew & _rNewContainer, t_TyToken && _rrtokCopy, _TyAxnObjBase * _paobCurToken )
+  _l_token( t_TyContainerNew & _rNewContainer, t_TyToken && _rrtokCopy, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
     : m_scx( _rNewContainer.GetUserObj(), _rrtokCopy.GetTransportCtxt().PosTokenStart() ),
-      m_value( _rNewContainer, std::move( _rrtokCopy.m_value ) ), // any namespace references/declarations need resolving in the new container.
-      m_paobCurToken( _paobCurToken )
+      m_value( _rNewContainer, std::move( _rrtokCopy.m_value ), _ptccCopyCtxt ), // any namespace references/declarations need resolving in the new container.
+      m_tidAccept( _rrtokCopy.m_tidAccept )
   {
     _ConvertDataPositions( _rrtokCopy );
+  }
+  void AssertValid() const
+  {
+#if ASSERTSENABLED
+    Assert( ( vktidInvalidIdToken == m_tidAccept ) == m_value.FIsNull() );
+    Assert( ( vktidInvalidIdToken == m_tidAccept ) == m_scx.FIsNull() );
+#endif //ASSERTSENABLED
+  }
+  bool FIsNull() const
+  {
+    AssertValid();
+    return vktidInvalidIdToken == m_tidAccept;
   }
   _TyValue & GetValue()
   {
@@ -138,13 +153,9 @@ public:
   {
     return m_scx.GetTransportCtxt();
   }
-  const _TyAxnObjBase * PAxnObjGet() const
-  {
-    return m_paobCurToken;
-  }
   vtyTokenIdent GetTokenId() const
   {
-    return !m_paobCurToken ? vktidInvalidIdToken : m_paobCurToken->VGetTokenId();
+    return m_tidAccept;
   }
   _TyValue & operator [] ( size_type _nEl )
   {
@@ -290,7 +301,7 @@ protected:
   }
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.
-  const _TyAxnObjBase * m_paobCurToken{nullptr}; // Pointer to the action object for this token - from which the token id is obtainable, etc.
+  vtyTokenIdent m_tidAccept{vktidInvalidIdToken}; // token id.
 };
 
 __LEXOBJ_END_NAMESPACE
