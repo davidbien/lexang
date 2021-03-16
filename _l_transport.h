@@ -50,9 +50,18 @@ public:
   ~_l_transport_backed_ctxt() = default;
   _l_transport_backed_ctxt() = default;
   _l_transport_backed_ctxt( _l_transport_backed_ctxt const & ) = default;
-  _l_transport_backed_ctxt( _l_transport_backed_ctxt && ) = default;
   _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt const & ) = default;
-  _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt && ) = default;
+  _l_transport_backed_ctxt( _l_transport_backed_ctxt && _rr )
+    : m_bufTokenData( std::move( _rr.m_bufTokenData ) )
+  {
+    std::swap( m_posTokenStart, _rr.m_posTokenStart );
+  }
+  _l_transport_backed_ctxt & operator =( _l_transport_backed_ctxt && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
   void swap( _TyThis & _r )
   {
      std::swap( m_posTokenStart, _r.m_posTokenStart );
@@ -394,13 +403,33 @@ public:
   }
   _l_transport_fixedmem_ctxt() = default;
   _l_transport_fixedmem_ctxt( _l_transport_fixedmem_ctxt const & ) = default;
-  _l_transport_fixedmem_ctxt( _l_transport_fixedmem_ctxt && ) = default;
   _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt const & ) = default;
-  _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt && ) = default;
+  _l_transport_fixedmem_ctxt( _l_transport_fixedmem_ctxt && _rr )
+    : m_bufTokenData( std::move( _rr.m_bufTokenData ) )
+  {
+    std::swap( m_posTokenStart, _rr.m_posTokenStart );
+  }
+  _l_transport_fixedmem_ctxt & operator =( _l_transport_fixedmem_ctxt && _rr )
+  {
+    _TyThis acquire( std::move( _rr ) );
+    swap( acquire );
+    return *this;
+  }
   void swap( _TyThis & _r )
   {
      std::swap( m_posTokenStart, _r.m_posTokenStart );
      m_bufTokenData.swap( _r.m_bufTokenData );
+  }
+  void AssertValid() const
+  {
+#if ASSERTSENABLED
+    Assert( ( m_posTokenStart == (numeric_limits< vtyDataPosition >::max)() ) == m_bufTokenData.FIsNull() );
+#endif //ASSERTSENABLED    
+  }
+  bool FIsNull() const
+  {
+    AssertValid();
+    return ( m_posTokenStart == (numeric_limits< vtyDataPosition >::max)() );
   }
   vtyDataPosition PosTokenStart() const
   {
@@ -861,6 +890,17 @@ public:
   {
     m_var.swap( _r.m_var );
   }
+  void AssertValid() const
+  {
+#if ASSERTSENABLED
+    std::visit(_VisitHelpOverloadFCall {
+      []( const auto & _tcxt )
+      {
+        _tcxt.AssertValid();
+      }
+    }, m_var );
+#endif //ASSERTSENABLED    
+  }
   _TyVariant & GetVariant()
   {
     return m_var;
@@ -869,10 +909,19 @@ public:
   {
     return m_var;
   }
+  bool FIsNull() const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      []( const auto & _tcxt )
+      {
+        return _tcxt.FIsNull();
+      }
+    }, m_var );
+  }
   vtyDataPosition PosTokenStart() const
   {
     return std::visit(_VisitHelpOverloadFCall {
-      []( auto & _tcxt )
+      []( const auto & _tcxt )
       {
         return _tcxt.PosTokenStart();
       }
@@ -881,7 +930,7 @@ public:
   size_t NLenToken() const
   {
     return std::visit(_VisitHelpOverloadFCall {
-      []( auto & _tcxt )
+      []( const auto & _tcxt )
       {
         return _tcxt.NLenToken();
       }
@@ -890,7 +939,7 @@ public:
   void GetTokenDataRange( _l_data_range & _rdr ) const
   {
     std::visit(_VisitHelpOverloadFCall {
-      [&_rdr]( auto & _tcxt )
+      [&_rdr]( const auto & _tcxt )
       {
         _tcxt.GetTokenDataRange( _rdr );
       }
@@ -901,7 +950,7 @@ public:
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
     std::visit(_VisitHelpOverloadFCall {
-      [&_rsv,&_rdtr]( auto & _tcxt )
+      [&_rsv,&_rdtr]( const auto & _tcxt )
       {
         _tcxt.GetStringView( _rsv, _rdtr );
       }
@@ -910,7 +959,7 @@ public:
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
     std::visit(_VisitHelpOverloadFCall {
-      [&_rdt]( auto & _tcxt )
+      [&_rdt]( const auto & _tcxt )
       {
         _tcxt.AssertValidDataRange( _rdt );
       }

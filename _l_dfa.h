@@ -1165,9 +1165,9 @@ public:
 				m_partAccept.erase( rvtSTP.second.first );
 				const_cast< _TySetStates& >( vtCopy.first.RObject() ).
 						swap( rvtSTP.second.second.RObject() );
-#ifndef NDEBUG
+#if ASSERTSENABLED
 				pair< typename _TyPartAcceptStates::iterator, bool > pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 				m_partAccept.insert( vtCopy );
 				Assert( pib.second );
 			}

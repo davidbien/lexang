@@ -466,9 +466,9 @@ protected:
 		if ( itCur == m_partition.end() )
 			return;	// already optmimal ( but not a very complex DFA ).
 
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		size_t dbg_nLinksFirst = size_t(-1);
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 
 		do
 		{

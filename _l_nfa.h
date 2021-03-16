@@ -589,9 +589,9 @@ protected:	// accessed by _nfa_context:
 		aa.m_eaatType = e_aatAntiAccepting;
 		_TySetAcceptVT	vtAcceptState( _rctxt2.m_pgnAccept->RElConst(), aa );
 
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair<_TySetAcceptIT,bool> pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_pSetAcceptStates->insert( vtAcceptState );
 		Assert( pib.second );
 	}
@@ -728,9 +728,9 @@ protected:	// accessed by _nfa_context:
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		aa.m_eaatType = e_aatTrigger;
 		_TySetAcceptVT	vtAcceptState( _st, aa );
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair< _TySetAcceptIT, bool > pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_pSetAcceptStates->insert( vtAcceptState );
 		Assert( pib.second );
 	}
@@ -742,9 +742,9 @@ protected:	// accessed by _nfa_context:
 		m_fHasFreeActions = true;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		_TySetAcceptVT	vtAcceptState( _st, aa );
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair< _TySetAcceptIT, bool > pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_pSetAcceptStates->insert( vtAcceptState );
 		Assert( pib.second );
 	}

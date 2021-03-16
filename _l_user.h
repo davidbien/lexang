@@ -68,7 +68,7 @@ public:
     _TyBase::AssertValid();
 #endif //ASSERTSENABLED    
   }
-  bool FIsNull()
+  bool FIsNull() const
   {
     AssertValid();
     return _TyBase::FIsNull();

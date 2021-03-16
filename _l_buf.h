@@ -41,7 +41,7 @@ public:
   {
     _TyBase::swap( _r );
   }
-  bool FIsNull()
+  bool FIsNull() const
   {
     AssertValid();
     return !first;
@@ -181,7 +181,7 @@ public:
       ::delete [] pc;
     }
   }
-  bool FIsNull()
+  bool FIsNull() const
   {
     AssertValid();
     return !first;
