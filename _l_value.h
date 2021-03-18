@@ -25,9 +25,9 @@ struct _l_value_get_string_type
   typedef basic_string< t_TyChar > type;
 };
 template < >
-struct _l_value_get_string_type< char8_t >
+struct _l_value_get_string_type< char >
 {
-  typedef basic_string< char > type;
+  typedef basic_string< char8_t > type;
 };
 template < >
 struct _l_value_get_string_type< wchar_t >
@@ -44,9 +44,9 @@ struct _l_value_get_string_view_type
   typedef basic_string_view< t_TyChar > type;
 };
 template < >
-struct _l_value_get_string_view_type< char8_t >
+struct _l_value_get_string_view_type< char >
 {
-  typedef basic_string_view< char > type;
+  typedef basic_string_view< char8_t > type;
 };
 template < >
 struct _l_value_get_string_view_type< wchar_t >
@@ -101,7 +101,7 @@ public:
   // Use monostate to allow an "empty" value here.
   // First define the "base" variant which doesn't include any user defined types.
   typedef variant<  monostate, _TySegArrayValues, _TyData, vtyDataPosition, bool, 
-                    _TyStrChar, _TyStrViewChar,
+                    _TyStrChar8, _TyStrViewChar8,
                     _TyStrChar16, _TyStrViewChar16,
                     _TyStrChar32, _TyStrViewChar32 > _TyVariantBase;
   // Now define our full variant type by concatenating on any user defined types.
@@ -166,7 +166,7 @@ public:
   }
   bool FIsString() const
   {
-    return  holds_alternative<_TyStrChar>( m_var ) || holds_alternative<_TyStrViewChar>( m_var ) ||
+    return  holds_alternative<_TyStrChar8>( m_var ) || holds_alternative<_TyStrViewChar8>( m_var ) ||
             holds_alternative<_TyStrChar16>( m_var ) || holds_alternative<_TyStrViewChar16>( m_var ) ||
             holds_alternative<_TyStrChar32>( m_var ) || holds_alternative<_TyStrViewChar32>( m_var );
   }
@@ -233,9 +233,9 @@ public:
   }
   // REVIEW:<dbien>: The below is clunky - rework it at some point.
   // Provide converting SetVal's for the same-sized character types.
-  _TyStrChar & SetVal( _TyStrChar8 const & _r )
+  _TyStrChar8 & SetVal( _TyStrChar const & _r )
   {
-    _TyStrChar str( (const char*)&_r[0], _r.length() );
+    _TyStrChar8 str( (const char8_t*)&_r[0], _r.length() );
     return SetVal( std::move( str ) );
   }
 #ifdef BIEN_WCHAR_16BIT
@@ -252,9 +252,9 @@ public:
 #endif
     return SetVal( std::move( str ) );
   }
-  _TyStrViewChar & SetVal( _TyStrViewChar8 const & _r )
+  _TyStrViewChar8 & SetVal( _TyStrViewChar const & _r )
   {
-    _TyStrViewChar sv( (const char*)&_r[0], _r.length() );
+    _TyStrViewChar8 sv( (const char8_t*)&_r[0], _r.length() );
     return SetVal( std::move( sv ) );
   }
 #ifdef BIEN_WCHAR_16BIT
@@ -340,11 +340,11 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rtok.KGetStringView( _rsv, *this );
       },
-      [this,&_rsv](_TyStrChar const & _rstr)
+      [this,&_rsv](_TyStrChar8 const & _rstr)
       {
         _KGetStringView( _rsv, _rstr );
       },
-      [this,&_rsv](_TyStrViewChar const & _rsv8)
+      [this,&_rsv](_TyStrViewChar8 const & _rsv8)
       {
         _KGetStringView( _rsv, _rsv8 );
       },
@@ -421,11 +421,11 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rtok.GetStringView( _rsv, *this );
       },
-      [this,&_rsv](_TyStrChar & _rstr)
+      [this,&_rsv](_TyStrChar8 & _rstr)
       {
         _GetStringView( _rsv, _rstr );
       },
-      [this,&_rsv](_TyStrViewChar & _rsv8)
+      [this,&_rsv](_TyStrViewChar8 & _rsv8)
       {
         _GetStringView( _rsv, _rsv8 );
       },
@@ -501,11 +501,11 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
         _rtok.GetString( _rstr, *this );
       },
-      [&_rstr](_TyStrChar const & _rstr8)
+      [&_rstr](_TyStrChar8 const & _rstr8)
       {
         _GetString( _rstr, _rstr8 );
       },
-      [&_rstr](_TyStrViewChar const & _rsv8)
+      [&_rstr](_TyStrViewChar8 const & _rsv8)
       {
         _GetString( _rstr, _rsv8 );
       },
@@ -580,11 +580,11 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
         return _rtok.FGetStringViewOrString( _rsv, _rstr, *this );
       },
-      [&_rsv,&_rstr](_TyStrChar const & _rstr8)
+      [&_rsv,&_rstr](_TyStrChar8 const & _rstr8)
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rstr8 );
       },
-      [&_rsv,&_rstr](_TyStrViewChar const & _rsv8)
+      [&_rsv,&_rstr](_TyStrViewChar8 const & _rsv8)
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rsv8 );
       },
@@ -635,6 +635,7 @@ protected:
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
     ConvertString( _rstrDest, _rsrc ); // that was easy.
+    _rsvDest = t_TyStrViewDest( (const t_TyStringViewDest::value_type*)&_rstrDest[0], _rstrDest.length() );
     return false;
   }
 public:
@@ -672,11 +673,11 @@ public:
       // We must spell out all the various string types instead of using auto since
       //  we may have user defined types and we must reserve the use of auto for them.
       // requires statements would get around this and I'll do that later probably.
-      [_rrftor = FWD_CAPTURE(_rrftor)]( _TyStrChar const & _rstr )
+      [_rrftor = FWD_CAPTURE(_rrftor)]( _TyStrChar8 const & _rstr )
       {
         access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
       },
-      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar const & _rsv8)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar8 const & _rsv8)
       {
         access_fwd( _rrftor )( &_rsv8[0], &_rsv8[0] + _rsv8.length() );
       },
@@ -730,11 +731,11 @@ public:
       // We must spell out all the various string types instead of using auto since
       //  we may have user defined types and we must reserve the use of auto for them.
       // requires statements would get around this and I'll do that later probably.
-      [_rrftor = FWD_CAPTURE(_rrftor)]( _TyStrChar & _rstr )
+      [_rrftor = FWD_CAPTURE(_rrftor)]( _TyStrChar8 & _rstr )
       {
         access_fwd( _rrftor )( &_rstr[0], &_rstr[0] + _rstr.length() );
       },
-      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar & _rsv8)
+      [_rrftor = FWD_CAPTURE(_rrftor)](_TyStrViewChar8 & _rsv8)
       {
         access_fwd( _rrftor )( &_rsv8[0], &_rsv8[0] + _rsv8.length() );
       },
@@ -779,11 +780,11 @@ public:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
         _rdt.ToJsoValue( _rjv );
       },
-      [&_rjv](_TyStrChar const & _rstr)
+      [&_rjv](_TyStrChar8 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
       },
-      [&_rjv](_TyStrViewChar const & _rstr)
+      [&_rjv](_TyStrViewChar8 const & _rstr)
       {
         _rjv.SetStringValue( _rstr );
       },
@@ -832,11 +833,11 @@ public:
         basic_string_view< t_TyCharOut > sv;
         _rtok.GetStringView( sv, *this );
       },
-      [this](_TyStrChar & _rstr)
+      [this](_TyStrChar8 & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
-      [this](_TyStrViewChar & _rstr)
+      [this](_TyStrViewChar8 & _rstr)
       {
         _ConvertStringValue< t_TyCharOut >( _rstr );
       },
@@ -938,11 +939,11 @@ protected:
       {
         SetVal( _rdt );
       },
-      [this](_TyStrChar const & _rstr)
+      [this](_TyStrChar8 const & _rstr)
       {
         SetVal( _rstr );
       },
-      [this](_TyStrViewChar const & _rsv8)
+      [this](_TyStrViewChar8 const & _rsv8)
       {
         SetVal( _rsv8 );
       },
@@ -1007,11 +1008,11 @@ protected:
       {
         emplaceVal( std::move( _rdt ) );
       },
-      [this](_TyStrChar & _rstr)
+      [this](_TyStrChar8 & _rstr)
       {
         emplaceVal( std::move( _rstr ) );
       },
-      [this](_TyStrViewChar & _rsv)
+      [this](_TyStrViewChar8 & _rsv)
       {
         emplaceVal( _rsv );
       },

@@ -64,6 +64,11 @@ public:
       m_tidAccept( _paobCurToken->VGetTokenId() )
   {
   }
+  _l_token( _TyUserObj & _ruoUserObj, vtyTokenIdent _tidAccept )
+    : m_scx( _ruoUserObj ),
+      m_tidAccept( _tidAccept )
+  {
+  }
   // We are copyable:
   _l_token( _l_token const & ) = default;
   _l_token & operator =( _l_token const & _r )

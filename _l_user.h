@@ -177,6 +177,7 @@ public:
     t_TyString strConverted;
     GetString( strConverted, _rcxt, _rtok, _rval );
     _rstrDest = std::move( strConverted );
+    _rsvDest = t_TyStringView( ( const typename t_TyStringView::value_type *)&_rstrDest[0], _rstrDest.length() );
     return false;
   }
 // var transport:
@@ -291,6 +292,7 @@ public:
     if ( !kdtr.FContainsSingleDataRange() )
     {
       GetString( _rstrDest, _rcxt, _rtok, _rval );
+      _rsvDest = t_TyStringView( ( const typename t_TyStringView::value_type *)&_rstrDest[0], _rstrDest.length() );
       return false;
     }
     else
