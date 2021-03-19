@@ -117,11 +117,17 @@ public:
     return m_bufTokenData;
   }
   template < class t_TyStrView >
+  void GetStringView(  t_TyStrView & _rsv, _l_data_range const & _rdr ) const
+    requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
+  {
+    _AssertValidRange( _rdr.begin(), _rdr.end() );
+    GetTokenBuffer().GetStringView( _rsv, _rdr.begin() - PosTokenStart(), _rdr.end() - PosTokenStart() );
+  }
+  template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
-    _AssertValidRange( _rdtr.begin(), _rdtr.end() );
-    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - PosTokenStart(), _rdtr.end() - PosTokenStart() );
+    return GetStringView( _rsv, _rdtr.GetRangeBase() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -449,11 +455,17 @@ public:
     return m_bufTokenData;
   }
   template < class t_TyStrView >
+  void GetStringView(  t_TyStrView & _rsv, _l_data_range const & _rdr ) const
+    requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
+  {
+    _AssertValidRange( _rdr.begin(), _rdr.end() );
+    GetTokenBuffer().GetStringView( _rsv, _rdr.begin() - PosTokenStart(), _rdr.end() - PosTokenStart() );
+  }
+  template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
-    _AssertValidRange( _rdtr.begin(), _rdtr.end() );
-    GetTokenBuffer().GetStringView( _rsv, _rdtr.begin() - PosTokenStart(), _rdtr.end() - PosTokenStart() );
+    return GetStringView( _rsv, _rdtr.GetRangeBase() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {
@@ -946,15 +958,21 @@ public:
     }, m_var );
   }
   template < class t_TyStrView >
-  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
+  void GetStringView(  t_TyStrView & _rsv, _l_data_range const & _rdr ) const
     requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
   {
     std::visit(_VisitHelpOverloadFCall {
-      [&_rsv,&_rdtr]( const auto & _tcxt )
+      [&_rsv,&_rdr]( const auto & _tcxt )
       {
-        _tcxt.GetStringView( _rsv, _rdtr );
+        _tcxt.GetStringView( _rsv, _rdr );
       }
     }, m_var );
+  }
+  template < class t_TyStrView >
+  void GetStringView(  t_TyStrView & _rsv, _l_data_typed_range const & _rdtr ) const
+    requires( sizeof( typename t_TyStrView::value_type ) == sizeof( _TyChar ) )
+  {
+    return GetStringView( _rsv, _rdtr.GetRangeBase() );
   }
   void AssertValidDataRange( _TyData const & _rdt ) const
   {

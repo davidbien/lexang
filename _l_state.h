@@ -50,11 +50,11 @@ struct _l_state_proto
 
 // Common members, all instantiations of _l_state<> have these.
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState; // For debugging, not used by the lexang.
+  vTyStateNumber m_nState; // For debugging, not used by the lexang.
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -76,6 +76,10 @@ public:
     typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
     return *(vtyActionIdent *)((char *)this + m_usOffsetAccept +
                                (offsetof(_TyStateAccept1Trans, m_aiLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
+  }
+  bool FIsAntiAcceptingState() const
+  {
+    return kucAntiAccepting == m_flAccept;
   }
   vtyLookaheadVector *PBeginValidLookahead() const
   {
@@ -128,11 +132,11 @@ struct _l_state<t_TyChar, t_iTransitions, false, false, 0, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -147,11 +151,11 @@ struct _l_state<t_TyChar, t_iTransitions, false, false, 0, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -166,11 +170,11 @@ struct _l_state<t_TyChar, t_iTransitions, true, false, 0, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -186,11 +190,11 @@ struct _l_state<t_TyChar, t_iTransitions, true, false, 0, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -206,11 +210,11 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -227,11 +231,11 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -248,11 +252,11 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_i
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -270,11 +274,11 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -292,11 +296,11 @@ struct _l_state<t_TyChar, 0, false, false, 0, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -310,11 +314,11 @@ struct _l_state<t_TyChar, 0, false, false, 0, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -328,11 +332,11 @@ struct _l_state<t_TyChar, 0, true, false, 0, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -347,11 +351,11 @@ struct _l_state<t_TyChar, 0, true, false, 0, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -366,11 +370,11 @@ struct _l_state<t_TyChar, 0, true, true, 0, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -386,11 +390,11 @@ struct _l_state<t_TyChar, 0, true, true, 0, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -406,11 +410,11 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;
@@ -427,11 +431,11 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0>
   typedef _l_an_mostbase<t_TyChar> _TyAnalyzer;
 
 #ifdef LXOBJ_STATENUMBERS
-  _TyStateNumber m_nState;
+  vTyStateNumber m_nState;
 #endif //LXOBJ_STATENUMBERS
-  _TyNTransitions m_nt;
-  _TyNTriggers m_nTriggers;
-  _TyStateFlags m_flAccept;
+  vTyNTransitions m_nt;
+  vTyNTriggers m_nTriggers;
+  vTyStateFlags m_flAccept;
   _l_state_proto<t_TyChar> *m_pspTrigger; // Transition on trigger.
   unsigned short m_usOffsetAccept;
   unsigned short m_usOffsetTriggers;

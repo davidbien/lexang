@@ -101,16 +101,16 @@ public:
   template < class t_TyContainerNew, class t_TyToken >
   _l_token( t_TyContainerNew & _rNewContainer, t_TyToken const & _rtokCopy, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
     : m_scx( _rNewContainer.GetUserObj(), _rtokCopy.GetTransportCtxt().PosTokenStart() ),
-      m_value( _rNewContainer, _rtokCopy.m_value, _ptccCopyCtxt ), // any namespace references/declarations need resolving in the new container.
-      m_tidAccept( _rtokCopy.m_tidAccept )
+      m_value( _rNewContainer, _rtokCopy.GetValue(), _ptccCopyCtxt ), // any namespace references/declarations need resolving in the new container.
+      m_tidAccept( _rtokCopy.GetTokenId() )
   {
     _ConvertDataPositions( _rtokCopy );
   }
   template < class t_TyContainerNew, class t_TyToken >
   _l_token( t_TyContainerNew & _rNewContainer, t_TyToken && _rrtokCopy, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
     : m_scx( _rNewContainer.GetUserObj(), _rrtokCopy.GetTransportCtxt().PosTokenStart() ),
-      m_value( _rNewContainer, std::move( _rrtokCopy.m_value ), _ptccCopyCtxt ), // any namespace references/declarations need resolving in the new container.
-      m_tidAccept( _rrtokCopy.m_tidAccept )
+      m_value( _rNewContainer, std::move( _rrtokCopy.GetValue() ), _ptccCopyCtxt ), // any namespace references/declarations need resolving in the new container.
+      m_tidAccept( _rrtokCopy.GetTokenId() )
   {
     _ConvertDataPositions( _rrtokCopy );
   }
@@ -260,10 +260,10 @@ protected:
     prpptrDP.second = prpptrDP.first + (nDataPositions-1); // skip the last allocated position for now - GetSortedPositionPtrs() uses the extra position at the front.
     m_value.GetSortedPositionPtrs( prpptrDP );
     ++prpptrDP.first; // The first was for the algorithm.
-    Assert( prpptrDP.second[-1] >= _rtokCopy.GetTransportCtxt().PosTokenStart() );
+    Assert( *(prpptrDP.second[-1]) >= _rtokCopy.GetTransportCtxt().PosTokenStart() );
     // Now if the last position in the token is beyond the last data position then add it to the end.
     vtyDataPosition posLast = _rtokCopy.GetTransportCtxt().PosTokenStart() + _rtokCopy.GetTransportCtxt().NLenToken();
-    if ( posLast > prpptrDP.second[-1] )
+    if ( posLast > *(prpptrDP.second[-1]) )
       *prpptrDP.second++ = &posLast;
     // We copy the entire token from the beginning as the user may want to access different parts than those referenced by data positions.
     size_t nchCopy = _rtokCopy.GetTransportCtxt().NLenToken();
@@ -290,19 +290,19 @@ protected:
     for ( vtyDataPosition ** ppdpCur = prpptrDP.first; prpptrDP.second != ppdpCur; ++ppdpCur )
     {
       // Convert the data between posCur and *ppdpCur:
-      if ( posCur != *ppdpCur )
+      if ( posCur != **ppdpCur )
       {
-        Assert( posCur > *ppdpCur );
+        Assert( posCur > **ppdpCur );
         _TyChar * pchBufBefore = pchBufCur;
-        const _TyCharCopy * pchCopyNext = PCConvertString( pchCopyCur, *ppdpCur - posCur, pchBufCur, ( pchBufEnd - pchBufCur ) );
+        const _TyCharCopy * pchCopyNext = PCConvertString( pchCopyCur, **ppdpCur - posCur, pchBufCur, ( pchBufEnd - pchBufCur ) );
         VerifyThrowSz( !!pchCopyNext, "Error found during conversion of encodings." );
         offchCur += ( pchBufCur - pchBufBefore ) - ( pchCopyNext - pchCopyCur );
-        posCur = *ppdpCur;
+        posCur = **ppdpCur;
       }
-      *ppdpCur += offchCur;
+      **ppdpCur += offchCur;
     }
     // All positions converted in-place and prpptrDP.second[-1] is at the end of the converted buffer.
-    GetTransportCtxt().GetTokenBuffer().SetBuffer( pchBufBeg, prpptrDP.second[-1] );
+    GetTransportCtxt().GetTokenBuffer().SetBuffer( pchBufBeg, *(prpptrDP.second[-1]) );
   }
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.

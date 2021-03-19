@@ -142,6 +142,14 @@ public:
   {
     m_var.template emplace<monostate>();
   }
+  _TyVariant & GetVariant()
+  {
+    return m_var;
+  }
+  const _TyVariant & GetVariant() const
+  {
+    return m_var;
+  }
   template < class t_Ty >
   bool FIsA() const
   {
@@ -973,7 +981,7 @@ protected:
         }
         _TySegArrayValues & rsaThis = SetArray();
         _rsaOther.ApplyContiguous( 0, _rsaOther.NElements(), 
-          [&rsaThis,&_rNewContainer]( t_TyValueOther const * _pvalBegin, t_TyValueOther const * const _pvalEnd )
+          [&rsaThis,&_rNewContainer,_ptccCopyCtxt]( t_TyValueOther const * _pvalBegin, t_TyValueOther const * const _pvalEnd )
           {
             for ( t_TyValueOther const * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
               rsaThis.emplaceAtEnd( _rNewContainer, *pvalCur, _ptccCopyCtxt );
@@ -987,7 +995,7 @@ protected:
         // The container must set the type here after translating it appropriately if necessary.
         _rNewContainer.TranslateUserType( _ptccCopyCtxt, _userDefinedTypeOther, *this );
       }
-    }, _rOther.m_var );
+    }, _rOther.GetVariant() );
   }
   template < class t_TyContainerNew, class t_TyValueOther >
   void _MoveFrom( t_TyContainerNew & _rNewContainer, t_TyValueOther && _rrOther, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt )
@@ -1060,7 +1068,7 @@ protected:
         // The container must set the type here after translating it appropriately if necessary.
         _rNewContainer.TranslateUserType( _ptccCopyCtxt, std::move( _userDefinedTypeOther ), *this );
       }
-    }, _rrOther.m_var );
+    }, _rrOther.GetVariant() );
   }
   void _GetPositionPtrs( bool & _rfIsSorted, _TyPrPtrDataPosition & _rprpptrDP )
   {
@@ -1080,9 +1088,9 @@ protected:
       [&_rfIsSorted,&_rprpptrDP]( _TySegArrayValues & _rrg )
       {
         _rrg.ApplyContiguous( 0, _rrg.NElements(), 
-          [&_rfIsSorted,&_rprpptrDP]( _TyThis const * _pvalBegin, _TyThis const * _pvalEnd )
+          [&_rfIsSorted,&_rprpptrDP]( _TyThis * _pvalBegin, _TyThis * _pvalEnd )
           {
-            for ( _TyThis const * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
+            for ( _TyThis * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
               pvalCur->_GetPositionPtrs( _rfIsSorted, _rprpptrDP );
           }
         );

@@ -59,11 +59,11 @@ __REGEXP_END_NAMESPACE
 __LEXOBJ_BEGIN_NAMESPACE
 
 #ifdef LXOBJ_STATENUMBERS
-typedef unsigned short _TyStateNumber;  // Type for state number.
+typedef unsigned short vTyStateNumber;  // Type for state number.
 #endif                                  // LXOBJ_STATENUMBERS
-typedef unsigned short _TyNTransitions; // Type for number of transitions ( could make unsigned short ).
-typedef unsigned short _TyNTriggers;
-typedef signed char _TyStateFlags; // Type for state flags.
+typedef unsigned short vTyNTransitions; // Type for number of transitions ( could make unsigned short ).
+typedef unsigned short vTyNTriggers;
+typedef signed char vTyStateFlags; // Type for state flags.
 
 const unsigned char kucAccept = 1;          // Normal accept state.
 const unsigned char kucLookahead = 2;       // Lookahead state.
@@ -74,8 +74,8 @@ const unsigned char kucLookaheadAccept = 3; // Lookahead accept state.
 const unsigned char kucLookaheadAcceptAndAccept = 4;
 // Similar to above.
 const unsigned char kucLookaheadAcceptAndLookahead = 5;
-// Anti-accepting state: If this state is reached there will be no out transition (this is enforced during generation).
-// The pattern received is specifically anti-accepting and lexical analysis should stop.
+// An anti-accepting state. This may be a transient state if there is additional input - i.e. you may be able
+//  to transition to an accepting state after previously encountering an anti-accepting state.
 const unsigned char kucAntiAccepting = 6;
 
 // _l_state.h:

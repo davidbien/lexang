@@ -439,11 +439,11 @@ public:
     {
       _l_data_typed_range & rdr = DataRangeGetSingle();
       if ( _rfIsSorted )
-        _rfIsSorted = *_rprpptrDP.first[-1] <= rdr.m_posBegin;
+        _rfIsSorted = *(_rprpptrDP.first[-1]) <= rdr.m_posBegin;
       if ( _rprpptrDP.first < _rprpptrDP.second )
-        ++_rprpptrDP.first = &rdr.m_posBegin;
+        *_rprpptrDP.first++ = &rdr.m_posBegin;
       if ( _rprpptrDP.first < _rprpptrDP.second )
-        ++_rprpptrDP.first = &rdr.m_posEnd;
+        *_rprpptrDP.first++ = &rdr.m_posEnd;
     }
   }
 protected:
