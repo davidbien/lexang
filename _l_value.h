@@ -902,6 +902,7 @@ public:
         );
       },
     }, m_var );
+    return nPositions;
   }
   // return a sorted array of pointers to all positions within the aggregate value.
   // The caller should allocate CountDataPositions()+1 so we can use the first element for the algorithm.
