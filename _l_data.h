@@ -445,6 +445,28 @@ public:
       if ( _rprpptrDP.first < _rprpptrDP.second )
         *_rprpptrDP.first++ = &rdr.m_posEnd;
     }
+    else
+    {
+      GetSegArrayDataRanges().ApplyContiguous( 0, GetSegArrayDataRanges().NElements(), 
+        [&_rfIsSorted,&_rprpptrDP]( _l_data_typed_range * _pdtrBegin, _l_data_typed_range * _pdtrEnd )
+        {
+          for ( _l_data_typed_range * pdtrCur = _pdtrBegin; _pdtrEnd != pdtrCur; ++pdtrCur )
+          {
+            _l_data_typed_range & rdr = *pdtrCur;
+            if ( !rdr.FIsNull() )
+            {
+              if ( _rfIsSorted )
+                _rfIsSorted = *(_rprpptrDP.first[-1]) <= rdr.m_posBegin;
+              if ( _rprpptrDP.first < _rprpptrDP.second )
+                *_rprpptrDP.first++ = &rdr.m_posBegin;
+              if ( _rprpptrDP.first < _rprpptrDP.second )
+                *_rprpptrDP.first++ = &rdr.m_posEnd;
+            }
+          }
+        }
+      );
+
+    }
   }
 protected:
   template < class t_TyCharOut >

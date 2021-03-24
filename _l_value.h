@@ -58,6 +58,8 @@ struct _l_value_get_string_view_type< wchar_t >
 #endif //!BIEN_WCHAR_16BIT
 };
 
+typedef int64_t vtySignedLvalueInt;
+
 template< class t_TyChar, class t_TyTpValueTraits, size_t t_knValsSegSize >
 class _l_value
 {
@@ -100,7 +102,9 @@ public:
   // Our big old variant.
   // Use monostate to allow an "empty" value here.
   // First define the "base" variant which doesn't include any user defined types.
-  typedef variant<  monostate, _TySegArrayValues, _TyData, vtyDataPosition, bool, 
+  // We'd like to keep the number of items in this less than 16 since that causes the internal impl of the variant to change after that point.
+  // If you look at the impl it seems that it is best to put the most use variant values first.
+  typedef variant<  monostate, _TySegArrayValues, _TyData, vtyDataPosition, bool, vtySignedLvalueInt, 
                     _TyStrChar8, _TyStrViewChar8,
                     _TyStrChar16, _TyStrViewChar16,
                     _TyStrChar32, _TyStrViewChar32 > _TyVariantBase;
@@ -343,6 +347,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
+      [](vtySignedLvalueInt)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
+      },
       [this,&_rtok,&_rsv](_TyData const &)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
@@ -424,6 +432,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
+      [](vtySignedLvalueInt)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
+      },
       [this,&_rtok,&_rsv](_TyData &)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
@@ -504,6 +516,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
+      [](vtySignedLvalueInt)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
+      },
       [this,&_rtok,&_rstr](_TyData const &)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
@@ -582,6 +598,10 @@ public:
       [](vtyDataPosition)
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
+      },
+      [](vtySignedLvalueInt)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
       },
       [this,&_rtok,&_rsv,&_rstr](_TyData const & _rdt)
       {
@@ -666,6 +686,10 @@ public:
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
       },
+      [](vtySignedLvalueInt)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
+      },
       [](_TySegArrayValues const &)
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string from an array of _l_values.");
@@ -723,6 +747,10 @@ public:
       [](vtyDataPosition)
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
+      },
+      [](vtySignedLvalueInt)
+      {
+        THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
       },
       [](_TySegArrayValues &)
       {
@@ -783,6 +811,10 @@ public:
       {
         _rjv.SetValue( _dp );
       },
+      [&_rjv](vtySignedLvalueInt _i)
+      {
+        _rjv.SetValue( _i );
+      },
       [&_rjv](_TyData const & _rdt)
       {
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
@@ -834,6 +866,7 @@ public:
       [](monostate) {},
       [](bool _f) {},
       [](vtyDataPosition _dp) {},
+      [](vtySignedLvalueInt _i) {},
       [this,&_rtok](_TyData & _rdt)
       {
         // Delegate to the token in this case:
@@ -891,7 +924,7 @@ public:
       {
         nPositions += _rdt.NPositions() * 2; // each position is a (beg,end) pair.
       },
-      [&nPositions](_TySegArrayValues & _rrg)
+      [&nPositions](_TySegArrayValues const & _rrg)
       {
         _rrg.ApplyContiguous( 0, _rrg.NElements(), 
           [&nPositions]( _TyThis const * _pvalBegin, _TyThis const * _pvalEnd )
@@ -915,7 +948,8 @@ public:
     vtyDataPosition posBeginNull = 0;
     *_rprpptrDP.first++ = &posBeginNull; // For the algorhtm we don't need to test for the beginning of the array while testing for fIsSorted.
     _GetPositionPtrs( fIsSorted, _rprpptrDP );
-    Assert( _rprpptrDP.first == _rprpptrDP.second ); // Should have filled it up.
+    // Assert( _rprpptrDP.first == _rprpptrDP.second ); // Should have filled it up - actually no if there are null positions.
+    _rprpptrDP.second = _rprpptrDP.first; // account for the potential of null positions within the set of positions.
     _rprpptrDP.first = ppdpFirst; // restore.
     if ( !fIsSorted )
     {
@@ -943,6 +977,10 @@ protected:
       [this]( vtyDataPosition _dp )
       {
         SetVal( _dp );
+      },
+      [this]( vtySignedLvalueInt _i )
+      {
+        SetVal( _i );
       },
       [this]( _TyData const & _rdt )
       {
@@ -1012,6 +1050,10 @@ protected:
       [this]( vtyDataPosition _dp )
       {
         SetVal( _dp );
+      },
+      [this]( vtySignedLvalueInt _i )
+      {
+        SetVal( _i );
       },
       [this]( _TyData & _rdt )
       {

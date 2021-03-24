@@ -242,7 +242,7 @@ protected:
     // Sort the pointers to the positions by the ordinal position value.
     // Then convert the encoding piecewise, updating the positions as we go with the current offest at each according to the encoding translation.
     size_t nDataPositions = m_value.CountDataPositions();
-    if ( !nDataPositions ) // add one for the last position.
+    if ( !nDataPositions )
       return; // nada para hacer.
     nDataPositions += 2; // This gives us an extra position at the beginning and the end for algorithmic purposes.
     size_t nbySizeRgPtrPos = nDataPositions * sizeof ( vtyDataPosition * );
@@ -292,7 +292,7 @@ protected:
       // Convert the data between posCur and *ppdpCur:
       if ( posCur != **ppdpCur )
       {
-        Assert( posCur > **ppdpCur );
+        Assert( **ppdpCur > posCur );
         _TyChar * pchBufBefore = pchBufCur;
         const _TyCharCopy * pchCopyNext = PCConvertString( pchCopyCur, **ppdpCur - posCur, pchBufCur, ( pchBufEnd - pchBufCur ) );
         VerifyThrowSz( !!pchCopyNext, "Error found during conversion of encodings." );
