@@ -82,6 +82,7 @@ public:
   {
     m_bufTokenData = _rOther.GetTokenBuffer(); // this throws potentially.
     m_posTokenStart = _rOther.PosTokenStart(); // this can't throw.
+    return *this;
   }
   void AssertValid() const
   {

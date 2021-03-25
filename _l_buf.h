@@ -156,9 +156,9 @@ public:
     Assert( FIsNull() );
     if ( !_rOther.FIsNull() )
     {
-      first = DBG_NEW _TyChar[ _rOther.second ];
-      second = _rOther.second;
-      memcpy( first, _rOther.first, second * sizeof( _TyChar ) );
+      first = DBG_NEW _TyChar[ _rOther.length() ];
+      second = _rOther.length();
+      memcpy( first, _rOther.begin(), second * sizeof( _TyChar ) );
     }
   }
   // We support assignment to a fixed buffer (for instance):
