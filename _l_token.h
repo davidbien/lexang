@@ -298,11 +298,12 @@ protected:
         VerifyThrowSz( !!pchCopyNext, "Error found during conversion of encodings." );
         offchCur += ( pchBufCur - pchBufBefore ) - ( pchCopyNext - pchCopyCur );
         posCur = **ppdpCur;
+        pchCopyCur = pchCopyNext;
       }
       **ppdpCur += offchCur;
     }
     // All positions converted in-place and prpptrDP.second[-1] is at the end of the converted buffer.
-    GetTransportCtxt().GetTokenBuffer().SetBuffer( pchBufBeg, *(prpptrDP.second[-1]) );
+    GetTransportCtxt().GetTokenBuffer().SetBuffer( pchBufBeg, *(prpptrDP.second[-1]) - _rtokCopy.GetTransportCtxt().PosTokenStart() );
   }
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.
