@@ -1,6 +1,6 @@
 #pragma once
 
-//          Copyright David Lawrence Bien 1997 - 2020.
+//          Copyright David Lawrence Bien 1997 - 2021.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt).
@@ -15,7 +15,15 @@
 #include <variant>
 #include "_util.h"
 #include "_namdexc.h"
+
+// About 4% faster on the unit tests in retail using the LogArray impl. Not scientific but significant.
+//#define _L_VALUE_USE_SEGARRAY
+
+#ifdef _L_VALUE_USE_SEGARRAY
 #include "segarray.h"
+#else //!_L_VALUE_USE_SEGARRAY
+#include "_logarray.h"
+#endif //!_L_VALUE_USE_SEGARRAY
 
 __LEXOBJ_BEGIN_NAMESPACE
 
@@ -68,6 +76,7 @@ public:
   typedef t_TyChar _TyChar;
   typedef t_TyTpValueTraits _TyTpValueTraits;
   typedef _l_data<> _TyData;
+#ifdef _L_VALUE_USE_SEGARRAY
   static constexpr size_t s_knValsSegSize = t_knValsSegSize;
 #ifdef _MSC_VER
    // vc has a problem with asking for the size of an incomplete type here.
@@ -77,6 +86,11 @@ public:
 #endif
   typedef SegArray< _TyThis, std::true_type > _TySegArrayValues;
   typedef typename _TySegArrayValues::_tySizeType size_type;
+#else // !_L_VALUE_USE_SEGARRAY
+  // Use the LogArray<> instead as it is more stingy on memory.
+  typedef LogArray< _TyThis, 2, 4 > _TySegArrayValues;
+  typedef size_t size_type;
+#endif // !_L_VALUE_USE_SEGARRAY
   // These are the possible values of a action object.
   // We add all three types of STL strings to the variant - at least under linux - char, char16_t and char32_t.
   // Specifying them in this manner should allow for no code changes under Windows even though wchar_t is char16_t under Windows.
@@ -287,7 +301,11 @@ public:
   _TySegArrayValues & SetArray()
   {
     if ( !FIsArray() )
+#ifdef _L_VALUE_USE_SEGARRAY
       return m_var.template emplace<_TySegArrayValues>( s_knbySegArrayInit );
+#else //!_L_VALUE_USE_SEGARRAY
+      return m_var.template emplace<_TySegArrayValues>();
+#endif //!_L_VALUE_USE_SEGARRAY
     else
       return GetValueArray();
   }
@@ -1169,11 +1187,13 @@ protected:
   _TyVariant m_var;
 };
 
+#ifdef _L_VALUE_USE_SEGARRAY
 #ifdef WIN32
 template< class t_TyChar, class t_TyTpValueTraits, size_t t_knValsSegSize >
 inline const size_t
 _l_value< t_TyChar, t_TyTpValueTraits, t_knValsSegSize >::s_knbySegArrayInit = _l_value::s_knValsSegSize * sizeof(_l_value);
 #endif //WIN32
+#endif //_L_VALUE_USE_SEGARRAY
 
 __LEXOBJ_END_NAMESPACE
 

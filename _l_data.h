@@ -17,7 +17,12 @@
 #include <stdint.h>
 #include "_assert.h"
 #include "segarray.h"
+#include "_logarray.h"
 #include "_l_inc.h"
+
+// Seems to be just the slightest bit faster using the SegArray here. (1.5% or so but reproduced mutliple times)
+// It's not really statistically significant and should be tested more.
+#define _L_DATA_USE_SEGARRAY
 
 __LEXOBJ_BEGIN_NAMESPACE
 
@@ -142,10 +147,14 @@ class _l_data
 {
   typedef _l_data _TyThis;
 public:
+#ifdef _L_DATA_USE_SEGARRAY
   typedef SegArray< _l_data_typed_range, std::false_type, vtyDataPosition > _TySegArray;
   typedef _TySegArray::_tySizeType size_type;
   static constexpr size_t s_knSegArrayInit = s_knbySegSize;
-  static_assert( sizeof( _TySegArray ) == sizeof( _TySegArray ) ); // No reason for this not to be the case.
+#else //!_L_DATA_USE_SEGARRAY
+  typedef LogArray< _l_data_typed_range, 2, 3 > _TySegArray;
+  typedef size_t size_type;
+#endif //!_L_DATA_USE_SEGARRAY
 
   union
   {
@@ -381,12 +390,21 @@ public:
     else
     if ( FContainsSingleDataRange() )
     {
+#ifdef _L_DATA_USE_SEGARRAY
       _TySegArray saNew( s_knSegArrayInit );
       saNew.Overwrite( 0, &m_dtrData, 1 );
+#else //!_L_DATA_USE_SEGARRAY
+      _TySegArray saNew;
+      saNew.emplaceAtEnd( m_dtrData );
+#endif //!_L_DATA_USE_SEGARRAY
       new ( m_rgbySegArray ) _TySegArray( std::move( saNew ) );
       AssertValid();
     }
+#ifdef _L_DATA_USE_SEGARRAY
     _PSegArray()->Overwrite( _PSegArray()->NElements(), &_rdtr, 1 );
+#else //!_L_DATA_USE_SEGARRAY
+    _PSegArray()->emplaceAtEnd( _rdtr );
+#endif //!_L_DATA_USE_SEGARRAY
     AssertValid();
   }
   _TySegArray & GetSegArrayDataRanges()
