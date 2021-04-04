@@ -117,7 +117,7 @@ public:
   // Use monostate to allow an "empty" value here.
   // First define the "base" variant which doesn't include any user defined types.
   // We'd like to keep the number of items in this less than 16 since that causes the internal impl of the variant to change after that point.
-  // If you look at the impl it seems that it is best to put the most use variant values first.
+  // If you look at the impl it seems that it is best to put the most used variant values first.
   typedef variant<  monostate, _TySegArrayValues, _TyData, vtyDataPosition, bool, vtySignedLvalueInt, 
                     _TyStrChar8, _TyStrViewChar8,
                     _TyStrChar16, _TyStrViewChar16,

@@ -21,8 +21,9 @@
 #include "_l_inc.h"
 
 // Seems to be just the slightest bit faster using the SegArray here. (1.5% or so but reproduced mutliple times)
-// It's not really statistically significant and should be tested more.
-#define _L_DATA_USE_SEGARRAY
+// It's not really statistically significant and should be tested more. And in fact I just saw a counterindication
+//  so since LogArray should use less memory I am going to use that.
+//#define _L_DATA_USE_SEGARRAY
 
 __LEXOBJ_BEGIN_NAMESPACE
 
