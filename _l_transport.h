@@ -68,19 +68,19 @@ public:
      m_bufTokenData.swap( _r.m_bufTokenData );
   }
   // A backed context can be constructed from any other context since the memory can be copied into the backing.
-  template < class t_TyTransportOther >
-  _l_transport_backed_ctxt( t_TyTransportOther const & _rOther )
-    requires( TAreSameSizeTypes_v< _TyChar, typename t_TyTransportOther::_TyChar > )
-    : m_bufTokenData( _rOther.GetTokenBuffer() ),
+  template < class t_TyTransportCtxtOther >
+  _l_transport_backed_ctxt( t_TyTransportCtxtOther const & _rOther )
+    requires( TAreSameSizeTypes_v< _TyChar, typename t_TyTransportCtxtOther::_TyChar > )
+    : m_bufTokenData( _rOther.PCBufferBegin(), _rOther.NLenToken() ),
       m_posTokenStart( _rOther.PosTokenStart() )  
   {
   }
   // A backed context can be assigned to any other context since the memory can be copied into the backing.
-  template < class t_TyTransportOther >
-  _TyThis & operator = ( t_TyTransportOther const & _rOther )
-    requires( TAreSameSizeTypes_v< _TyChar, typename t_TyTransportOther::_TyChar > )
+  template < class t_TyTransportCtxtOther >
+  _TyThis & operator = ( t_TyTransportCtxtOther const & _rOther )
+    requires( TAreSameSizeTypes_v< _TyChar, typename t_TyTransportCtxtOther::_TyChar > )
   {
-    m_bufTokenData = _rOther.GetTokenBuffer(); // this throws potentially.
+    m_bufTokenData.SetBuffer( _rOther.PCBufferBegin(), _rOther.NLenToken() );
     m_posTokenStart = _rOther.PosTokenStart(); // this can't throw.
     return *this;
   }
@@ -116,6 +116,10 @@ public:
   _TyBuffer & GetTokenBuffer()
   {
     return m_bufTokenData;
+  }
+  const _TyChar * PCBufferBegin() const
+  {
+    return GetTokenBuffer().begin();
   }
   template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_range const & _rdr ) const
@@ -454,6 +458,10 @@ public:
   _TyBuffer const & GetTokenBuffer() const
   {
     return m_bufTokenData;
+  }
+  const _TyChar * PCBufferBegin() const
+  {
+    return GetTokenBuffer().begin();
   }
   template < class t_TyStrView >
   void GetStringView(  t_TyStrView & _rsv, _l_data_range const & _rdr ) const
@@ -937,6 +945,15 @@ public:
       []( const auto & _tcxt )
       {
         return _tcxt.PosTokenStart();
+      }
+    }, m_var );
+  }
+  const _TyChar * PCBufferBegin() const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      []( const auto & _tcxt )
+      {
+        return _tcxt.PCBufferBegin();
       }
     }, m_var );
   }

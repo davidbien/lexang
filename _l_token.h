@@ -284,7 +284,7 @@ protected:
     _TyChar * pchBufCur = pchBufBeg;
     _TyChar * const pchBufEnd = pchBufBeg + nchAllowBuf;
     typedef t_TyTokenCopy::_TyChar _TyCharCopy;
-    const _TyCharCopy * pchCopyCur = _rtokCopy.GetTransportCtxt().GetTokenBuffer().begin();
+    const _TyCharCopy * pchCopyCur = _rtokCopy.GetTransportCtxt().PCBufferBegin();
     vtyDataPosition posCur = _rtokCopy.GetTransportCtxt().PosTokenStart();
     ssize_t offchCur = 0; // Offset to current position due to encoding transformation.
     for ( vtyDataPosition ** ppdpCur = prpptrDP.first; prpptrDP.second != ppdpCur; ++ppdpCur )
