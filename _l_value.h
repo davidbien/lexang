@@ -126,6 +126,7 @@ public:
   typedef typename concatenator_pack< _TyVariantBase, _TyTpValueTraits > ::type _TyVariant;
 
   _l_value() = default;
+  // Note that, while we allow copying, the user values in _TyTpValueTraits may not.
   _l_value(_l_value const & ) = default;
   _l_value & operator =( _l_value const & ) = default;
   _l_value( _l_value && _rr )
@@ -151,6 +152,17 @@ public:
   _l_value( t_TyContainerNew & _rNewContainer, t_TyValueOther && _rrOther, typename t_TyContainerNew::_TyTokenCopyContext * _ptccCopyCtxt = nullptr )
   {
     _MoveFrom( _rNewContainer, std::move( _rrOther ), _ptccCopyCtxt );
+  }
+  // Construct contained variant with type:
+  template < class t_TyContained >
+  _l_value( const t_TyContained & _rt )
+    : m_var( _rt )
+  {
+  }
+  template < class t_TyContained >
+  _l_value( t_TyContained && _rrt )
+    : m_var( std::move( _rrt ) )
+  {
   }
   bool FIsNull() const
   {
@@ -346,6 +358,68 @@ public:
   _TyThis & emplace_back( t_TysArgs ... _args )
   {
     return GetValueArray().emplaceAtEnd( std::forward< t_TysArgs >( _args ) ... );
+  }
+  // This returns a copy of the current value, however it will throw if the current value contains a user value type.
+  // Yes, this could likely be flavored on is_copy_constructible<> on the user defined types but I have slated that as a 
+  //  "future enhancement".
+  _l_value GetCopyNonUserObj() const
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) -> _l_value
+      {
+        return _l_value();
+      },
+      [](bool _f) -> _l_value
+      {
+        return _l_value( _f );
+      },
+      [](vtyDataPosition _pos) -> _l_value
+      {
+        return _l_value( _pos );
+      },
+      [](vtySignedLvalueInt _si) -> _l_value
+      {
+        return _l_value( _si );
+      },
+      [](_TyData const & _dt) -> _l_value
+      {
+        return _l_value( _dt );
+      },
+      [](_TyStrChar8 const & _rstr) -> _l_value
+      {
+        return _l_value( _rstr );
+      },
+      [](_TyStrViewChar8 const & _rsv8) -> _l_value
+      {
+        return _l_value( _rsv8 );
+      },
+      [](_TyStrChar16 const & _rstr) -> _l_value
+      {
+        return _l_value( _rstr );
+      },
+      [](_TyStrViewChar16 const & _rsv16) -> _l_value
+      {
+        return _l_value( _rsv16 );
+      },
+      [](_TyStrChar32 const & _rstr) -> _l_value
+      {
+        return _l_value( _rstr );
+      },
+      [](_TyStrViewChar32 const & _rsv32) -> _l_value
+      {
+        return _l_value( _rsv32 );
+      },
+      [](_TySegArrayValues const & _rsa) -> _l_value
+      {
+        VerifyThrowSz( false, "GetCopyNonUserObj() is for specifically copying non-user-defined object types.");
+        return _l_value();
+      },
+      []( const auto & _userDefinedType ) -> _l_value
+      {
+        VerifyThrowSz( false, "GetCopyNonUserObj() is for specifically copying non-user-defined object types.");
+        return _l_value();
+      }
+    }, m_var );
   }
   template < class t_TyToken, class t_TyStringView >
   void KGetStringView( t_TyToken & _rtok, t_TyStringView & _rsv ) const
@@ -1115,7 +1189,7 @@ protected:
         // We move each resultant _l_value<> object encountered in the aggregate.
         _TySegArrayValues & rsaThis = SetArray();
         _rsaOther.ApplyContiguous( 0, _rsaOther.NElements(), 
-          [&rsaThis,&_rNewContainer]( t_TyValueOther * _pvalBegin, t_TyValueOther * const _pvalEnd )
+          [&rsaThis,&_rNewContainer,_ptccCopyCtxt]( t_TyValueOther * _pvalBegin, t_TyValueOther * const _pvalEnd )
           {
             for ( t_TyValueOther * pvalCur = _pvalBegin; _pvalEnd != pvalCur; ++pvalCur )
               rsaThis.emplaceAtEnd( _rNewContainer, std::move( *pvalCur ), _ptccCopyCtxt );
