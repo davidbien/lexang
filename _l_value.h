@@ -359,10 +359,10 @@ public:
   {
     return GetValueArray().emplaceAtEnd( std::forward< t_TysArgs >( _args ) ... );
   }
-  // This returns a copy of the current value, however it will throw if the current value contains a user value type.
-  // Yes, this could likely be flavored on is_copy_constructible<> on the user defined types but I have slated that as a 
-  //  "future enhancement".
-  _l_value GetCopyNonUserObj() const
+  // This returns a copy of the current value, however it will throw if the current value contains a non-copyable user value type.
+  // Non-throwing version:
+  _l_value GetCopy() const
+    requires( is_copy_constructible_v< _TyVariant > )
   {
     return std::visit(_VisitHelpOverloadFCall {
       [](monostate) -> _l_value
@@ -411,12 +411,71 @@ public:
       },
       [](_TySegArrayValues const & _rsa) -> _l_value
       {
-        VerifyThrowSz( false, "GetCopyNonUserObj() is for specifically copying non-user-defined object types.");
+        return _l_value( _rsa );
+      },
+      []( const auto & _userDefinedType ) -> _l_value
+      {
+        return _l_value( _userDefinedType );
+      }
+    }, m_var );
+  }
+  // Throwing version:.
+  _l_value GetCopy() const
+    requires( !is_copy_constructible_v< _TyVariant > )
+  {
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) -> _l_value
+      {
+        return _l_value();
+      },
+      [](bool _f) -> _l_value
+      {
+        return _l_value( _f );
+      },
+      [](vtyDataPosition _pos) -> _l_value
+      {
+        return _l_value( _pos );
+      },
+      [](vtySignedLvalueInt _si) -> _l_value
+      {
+        return _l_value( _si );
+      },
+      [](_TyData const & _dt) -> _l_value
+      {
+        return _l_value( _dt );
+      },
+      [](_TyStrChar8 const & _rstr) -> _l_value
+      {
+        return _l_value( _rstr );
+      },
+      [](_TyStrViewChar8 const & _rsv8) -> _l_value
+      {
+        return _l_value( _rsv8 );
+      },
+      [](_TyStrChar16 const & _rstr) -> _l_value
+      {
+        return _l_value( _rstr );
+      },
+      [](_TyStrViewChar16 const & _rsv16) -> _l_value
+      {
+        return _l_value( _rsv16 );
+      },
+      [](_TyStrChar32 const & _rstr) -> _l_value
+      {
+        return _l_value( _rstr );
+      },
+      [](_TyStrViewChar32 const & _rsv32) -> _l_value
+      {
+        return _l_value( _rsv32 );
+      },
+      [](_TySegArrayValues const & _rsa) -> _l_value
+      {
+        VerifyThrowSz( false, "GetCopy() throwing due to user-defined types not being copyable.");
         return _l_value();
       },
       []( const auto & _userDefinedType ) -> _l_value
       {
-        VerifyThrowSz( false, "GetCopyNonUserObj() is for specifically copying non-user-defined object types.");
+        VerifyThrowSz( false, "GetCopy() throwing due to user-defined types not being copyable.");
         return _l_value();
       }
     }, m_var );
@@ -743,7 +802,7 @@ protected:
     static_assert( sizeof( typename t_TyStringViewDest::value_type ) == sizeof( typename t_TyStringDest::value_type ) );
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
-    _rsvDest = t_TyStrViewDest( (const t_TyStringViewDest::value_type*)&_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStrViewDest( (const typename t_TyStringViewDest::value_type*)&_rsrc[0], _rsrc.length() );
     return true;
   }
   // Converting version for string or view source - we must convert the existing value into the passed string.
@@ -755,7 +814,7 @@ protected:
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
     ConvertString( _rstrDest, _rsrc ); // that was easy.
-    _rsvDest = t_TyStrViewDest( (const t_TyStringViewDest::value_type*)&_rstrDest[0], _rstrDest.length() );
+    _rsvDest = t_TyStrViewDest( (const typename t_TyStringViewDest::value_type*)&_rstrDest[0], _rstrDest.length() );
     return false;
   }
 public:

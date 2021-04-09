@@ -22,7 +22,7 @@ template < class t_TyTransportCtxt, class t_TyUserObj, class t_TyTpValueTraits >
 class _l_user_context : public t_TyTransportCtxt
 {
   typedef _l_user_context _TyThis;
-  typedef typename t_TyTransportCtxt _TyBase;
+  typedef t_TyTransportCtxt _TyBase;
 public:
   typedef t_TyTransportCtxt _TyTransportCtxt;
   typedef t_TyUserObj _TyUserObj;
@@ -317,7 +317,7 @@ public:
     t_TyString strBacking( nCharsRemaining, 0 ); // Return the type the caller asked for.
     if ( kdtr.FContainsSingleDataRange() )
     {
-      memcpy( &strBacking[0], _rcxt.GetTokenBuffer().begin() + kdtr.begin() - _rcxt.PosTokenStart(), nCharsRemaining * sizeof( _TyChar ) );
+      memcpy( &strBacking[0], _rcxt.GetTokenBuffer().begin() + kdtr.DataRangeGetSingle().begin() - _rcxt.PosTokenStart(), nCharsRemaining * sizeof( _TyChar ) );
       nCharsRemaining = 0;
     }
     else

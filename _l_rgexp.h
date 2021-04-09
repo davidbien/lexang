@@ -10,6 +10,7 @@
 
 #include <list>
 #include <sstream>
+#include <locale>
 
 // _L_REGEXP_DEFAULTCHAR:
 // This used for some function default arguments.
@@ -28,7 +29,23 @@ private:
 	typedef _regexp_base< t_TyChar >	_TyThis;
 public:
 	typedef t_TyChar	_TyChar;
+#ifdef  _LIBCPP_VERSION
+#ifdef __linux__
+#ifdef BIEN_WCHAR_16BIT
+#error Expected 32bit character type for linux.
+#endif
+	// Under linux libc++ we need to substitute wchar_t for char32_t for the osstream.
+  typedef std::conditional_t< is_same_v< _TyChar, char32_t >, wchar_t, _TyChar > _TyCharOstream;
+	typedef basic_ostream< _TyCharOstream, char_traits<_TyCharOstream> > _TyOstream;
+#else
+	typedef _TyChar _TyCharOstream;
 	typedef basic_ostream< t_TyChar, char_traits<t_TyChar> > _TyOstream;
+#endif 
+#else
+	typedef _TyChar _TyCharOstream;
+	typedef basic_ostream< t_TyChar, char_traits<t_TyChar> > _TyOstream;
+#endif
+
 	typedef _nfa_context_base< t_TyChar >		_TyCtxtBase;
 	typedef typename _TyCtxtBase::_TyRange	_TyRange;
 	
@@ -36,16 +53,16 @@ public:
 	_regexp_base() = default;
 	virtual ~_regexp_base() = default;
 
-	virtual void	ConstructNFA( _TyCtxtBase & _rNfa, size_t _stLevel = 0 ) const = 0;
+	virtual void ConstructNFA( _TyCtxtBase & _rNfa, size_t _stLevel = 0 ) const = 0;
 
-	virtual bool	FIsLiteral() const _BIEN_NOTHROW		{ return false; }
-	virtual bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; }
+	virtual bool FIsLiteral() const _BIEN_NOTHROW		{ return false; }
+	virtual bool FMatchesEmpty() const _BIEN_NOTHROW	{ return false; }
 
 	// Allocation - this is overridden by the element receiving
 	//	the final regular expression
-	virtual void	Clone( _TyThis * _prbCopier, _TyThis ** _pprbStorage ) const = 0;
+	virtual void Clone( _TyThis * _prbCopier, _TyThis ** _pprbStorage ) const = 0;
 
-	virtual void	Dump( _TyOstream & _ros ) const = 0;
+	virtual void Dump( _TyOstream & _ros ) const = 0;
 
 	// no assignment supported.
 
@@ -111,8 +128,9 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 
 	_regexp_empty()
 	{
@@ -121,21 +139,21 @@ public:
 	{
 	}  
 
-	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		// We call a helper function that knows how to construct an empty NFA:
 		_rNfaCtxt.CreateEmptyNFA();
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW { return true; }
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return true; }
+	bool FIsLiteral() const  _BIEN_NOTHROW override { return true; }
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return true; }
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		char rgc[4] = {'{', '0', '}', '\0'}; // clang didn't like this as a string: warning: illegal character encoding in string literal _ros << "{<D8>}";
 		_ros << rgc;
@@ -158,8 +176,9 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 
 	t_TyChar	m_c;
 
@@ -172,19 +191,19 @@ public:
 	{
 	}  
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		_rNfaCtxt.CreateLiteralNFA( m_c );
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return true; }
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "\'" << m_c << "\'";
 	}
@@ -207,10 +226,10 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
-	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	_TyString	m_s;
 
@@ -224,22 +243,22 @@ public:
   {
   }
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		_rNfaCtxt.CreateStringNFA( m_s.c_str() );
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return m_s.empty(); }
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return true; }
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return m_s.empty(); }
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
-		_ros << "\"" << m_s << "\"";
+		_ros << "\"" << reinterpret_cast< const _TyCharOstream * >( &m_s[0] ) << "\"";
 	}
 };
 
@@ -267,9 +286,10 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
-	typedef typename _TyBase::_TyRange _TyRange;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
+	using typename _TyBase::_TyRange;
 
 	_TyRange	m_r;
 
@@ -282,19 +302,19 @@ public:
   {
   }
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		_rNfaCtxt.CreateRangeNFA( m_r );
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return true; }
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "['" << m_r.first << "'-'" << m_r.second << "']";
 	}
@@ -318,10 +338,10 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
-	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	_TyString	m_s;
 
@@ -336,20 +356,20 @@ public:
   {
   }
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		_rNfaCtxt.CreateLiteralNotInSetNFA( m_s.c_str() );
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; } // assuming false here... the fact is that if it does matches empty then it only matches nothing...
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return true; }
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return false; } // assuming false here... the fact is that if it does matches empty then it only matches nothing...
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "[^" << m_s << "]";
 	}
@@ -381,10 +401,10 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
-	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	_TyString	m_s;
 
@@ -399,22 +419,22 @@ public:
   {
   }
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		_rNfaCtxt.CreateLiteralNotInSetNFANoSurrogates( m_s.c_str() );
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; } // assuming false here... the fact is that if it does matches empty then it only matches nothing...
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return true; }
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return false; } // assuming false here... the fact is that if it does matches empty then it only matches nothing...
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
-		_ros << "[^" << m_s << "]";
+		_ros << "[^" << reinterpret_cast< const _TyCharOstream * >( &m_s[0] ) << "]";
 	}
 };
 template < class t_TyChar >
@@ -441,10 +461,10 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
-	typedef typename _TyBase::_TyOstream _TyOstream;
 	
 	_TyString	m_s;
 
@@ -459,23 +479,23 @@ public:
   {
   }
 
-	void	ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rNfaCtxt, size_t _stLevel = 0 ) const override
 	{
 		_rNfaCtxt.CreateLiteralAnyInSetNFA( m_s.c_str() );
 	}
 
-	bool	FIsLiteral() const _BIEN_NOTHROW		{ return true; }
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	{ return false; }
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return true; }
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return false; }
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		// Note that this could look pretty ugly in the output...
-		_ros << "[" << m_s << "]";
+		_ros << "[" << reinterpret_cast< const _TyCharOstream * >( &m_s[0] ) << "]";
 	}
 };
 
@@ -502,9 +522,9 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -523,12 +543,12 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{ 
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const override
 	{
 		// Create a new context to pass to expression two:
 		// Nfa1 is used to create and destroy Nfa2:
@@ -543,12 +563,12 @@ public:
 		_rcbNfa1.CreateFollowsNFA( *pcbNfa2 );
 	}
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) *\n ( " << m_re2 << " )";
 	}
@@ -570,9 +590,9 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -591,12 +611,12 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{ 
 		return m_re1.FMatchesEmpty() || m_re2.FMatchesEmpty();
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const override
 	{
 		// Create a new context to pass to expression two:
 		// Nfa1 is used to create and destroy Nfa2:
@@ -611,12 +631,12 @@ public:
 		_rcbNfa1.CreateOrNFA( *pcbNfa2 );
 	}
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) |\n ( " << m_re2 << " )";
 	}
@@ -638,9 +658,9 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef t_TyRegExp	_TyRegExp;
 
 	t_TyRegExp	m_re;
@@ -655,23 +675,23 @@ public:
 	{
 	}
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override
 	{ 
 		return true;
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const override
 	{
 		m_re.ConstructNFA( _rcbNfa, _stLevel+2 );
 		_rcbNfa.CreateZeroOrMoreNFA();
 	}
 
- 	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+ 	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "~( " << m_re << " )";
 	}
@@ -710,8 +730,9 @@ private:
 protected:
 	using _TyBase::_CloneHelper;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -731,13 +752,13 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{
     // REVIEW: <dbien>: Is this correct ?
 		return m_re1.FMatchesEmpty() && !m_re2.FMatchesEmpty();
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const override
 	{
 		// Create a new context to pass to expression two:
 		// Nfa1 is used to create and destroy Nfa2:
@@ -752,12 +773,12 @@ public:
 		_rcbNfa1.CreateExcludesNFA( *pcbNfa2 );
 	}
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) -\n ( " << m_re2 << " )";
 	}
@@ -779,8 +800,9 @@ private:
 	typedef _regexp_base< typename t_TyRegExp1::_TyChar > _TyBase;
 	typedef _regexp_completes< t_TyRegExp1, t_TyRegExp2 > _TyThis;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -800,12 +822,12 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const override
 	{
 		// Create a new context to pass to expression two:
 		// Nfa1 is used to create and destroy Nfa2:
@@ -820,12 +842,12 @@ public:
 		_rcbNfa1.CreateCompletesNFA( *pcbNfa2 );
 	}
 
-	virtual void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	virtual void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) +\n ( " << m_re2 << " )";
 	}
@@ -845,8 +867,9 @@ private:
 	typedef _regexp_base< typename t_TyRegExp1::_TyChar >											_TyBase;
 	typedef _regexp_lookahead< t_TyRegExp1, t_TyRegExp2 >	_TyThis;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef t_TyRegExp1	_TyRegExp1;
 	typedef t_TyRegExp2	_TyRegExp2;
 
@@ -866,12 +889,12 @@ public:
   {
   }
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{ 
 		return m_re1.FMatchesEmpty() && m_re2.FMatchesEmpty();
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa1, size_t _stLevel = 0 ) const override
 	{
 		// Create a new context to pass to expression two:
 		// Nfa1 is used to create and destroy Nfa2:
@@ -894,12 +917,12 @@ public:
 		}
 	}
 
-	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) /\n ( " << m_re2 << " )";
 	}
@@ -926,9 +949,9 @@ private:
 	typedef _regexp_action< t_TyChar, t_TyAllocator >	_TyThis;
 	typedef _alloc_base< char, t_TyAllocator >				_TyAllocBase;
 public:
-
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
 
@@ -954,12 +977,12 @@ public:
 		}
 	}
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{ 
 		return true;
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const override
 	{
 		_rcbNfa.CreateEmptyNFA();
 		
@@ -967,12 +990,12 @@ public:
 		_rcbNfa.SetAction( m_pSdpAction, e_atFreeAction );
 	}
 
-	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "action";
 	}
@@ -1001,9 +1024,9 @@ public:
 
 	using _TyAllocBase::get_allocator;
 
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyRange _TyRange;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
 
@@ -1029,13 +1052,13 @@ public:
 		}
 	}
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{
 		// triggers have to match an input trigger so that don't match empty.
 		return false;
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const override
 	{
 		VerifyThrowSz( !!m_pSdpAction, "Attempt to construct a trigger without a corresponding action object is not valid." );
 		#ifndef REGEXP_NO_TRIGGERS
@@ -1066,12 +1089,12 @@ public:
 		#endif //!REGEXP_NO_TRIGGERS
 	}
 
-	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "trigger";
 	}
@@ -1097,8 +1120,9 @@ private:
 	typedef _regexp_base< t_TyChar >					_TyBase;
 	typedef _regexp_unsatisfiable< t_TyChar >	_TyThis;
 public:
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	
 	size_t m_nUnsatisfiable;
 
@@ -1113,23 +1137,23 @@ public:
 	{
 	}
 
-	bool	FMatchesEmpty() const _BIEN_NOTHROW	
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	
 	{
 		// not really sure what to return here - these get removed from the graph.
 		return false;
 	}
 
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa, size_t _stLevel = 0 ) const override
 	{
 		_rcbNfa.CreateUnsatisfiableNFA( m_nUnsatisfiable );
 	}
 
-	void	Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
-	void	Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "unsatisfiable(" << m_nUnsatisfiable << ")";
 	}
@@ -1154,10 +1178,11 @@ private:
 	typedef _regexp_final< t_TyChar, t_TyAllocator >	_TyThis;
 	typedef _alloc_base< char, t_TyAllocator >				_TyAllocBase;
 public:
+	typedef t_TyChar _TyChar;
 	using _TyAllocBase::get_allocator;
-
-	typedef typename _TyBase::_TyCtxtBase _TyCtxtBase;
-	typedef typename _TyBase::_TyOstream _TyOstream;
+	using typename _TyBase::_TyCtxtBase;
+	using typename _TyBase::_TyOstream;
+	using typename _TyBase::_TyCharOstream;
 	typedef _l_action_object_base< t_TyChar, true >	_TyActionObjectBase;
 	typedef _sdp_vbase< _TyActionObjectBase >				_TySdpActionBase;
 
@@ -1225,15 +1250,15 @@ public:
   //  a) All sub-rules of the added rule are copied.
   //  b) Any changes made to the added rule ( i.e. setting an action into it,
   //      or adding a sub-rule to it ) are not reflected here.
-	void	AddRule( _TyThis const & _r )
+	void AddRule( _TyThis const & _r )
 	{
 		m_lAlternatives.push_back( _r );
 	}
 
 	// Construct an NFA from this rule into the passed context.
   // NOTE: <_stLevelDONTPASS> should be left defaulted.
-	void	ConstructNFA( _TyCtxtBase & _rcbNfa, 
-                       size_t _stLevelDONTPASS = 0 ) const
+	void ConstructNFA( _TyCtxtBase & _rcbNfa, 
+                       size_t _stLevelDONTPASS = 0 ) const override
 	{
 		m_pbre->ConstructNFA( _rcbNfa, 
       _stLevelDONTPASS ? _stLevelDONTPASS : _stLevelDONTPASS + 1 );
@@ -1253,10 +1278,10 @@ public:
 		}
 	}
 
-	bool FIsLiteral() const _BIEN_NOTHROW		{ return m_pbre->FIsLiteral(); }
-	bool FMatchesEmpty() const _BIEN_NOTHROW	{ return m_pbre->FMatchesEmpty(); }
+	bool FIsLiteral() const _BIEN_NOTHROW override		{ return m_pbre->FIsLiteral(); }
+	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return m_pbre->FMatchesEmpty(); }
 
-	virtual void Dump( _TyOstream & _ros ) const
+	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "Final : " << *m_pbre;
 	}
@@ -1264,7 +1289,7 @@ public:
 protected:
 
   // Clone this rule. 
-	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const
+	void Clone( _TyBase * _prbCopier, _TyBase ** _pprbStorage ) const override
 	{
 		// We will clone this - since we know ( cuz were in this method ) that
 		//	this final is not at the top level - use the partial copy:
@@ -1272,7 +1297,7 @@ protected:
 	}
 
 // Allocation virtuals:
-	char * _CPAllocate( size_t _st )
+	char * _CPAllocate( size_t _st ) override
 	{
 		m_stFinalSize = _st;
 		char *	cpAllocated;

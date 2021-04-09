@@ -12,6 +12,7 @@
 #include <initializer_list>
 #include <set>
 #include <iostream>
+#include <sstream>
 #include <tuple>
 #include <vector>
 #include "_aloctrt.h"
@@ -1077,12 +1078,12 @@ public:
 	static constexpr vtyTokenIdent s_kiActionStoreData = _TyActionStoreData::GetTokenId();
 	using typename _TyBase::_TyActionObjectBase;
 
-	class _l_trigger_string_typed_beginpoint() = default;
-	class _l_trigger_string_typed_beginpoint( _TyActionObjectBase * _paobNext )
+	_l_trigger_string_typed_beginpoint() = default;
+	_l_trigger_string_typed_beginpoint( _TyActionObjectBase * _paobNext )
 		: _TyBase( _paobNext )
 	{
 	}
-	class _l_trigger_string_typed_beginpoint( _TyThis const & _r ) = default;
+	_l_trigger_string_typed_beginpoint( _TyThis const & _r ) = default;
 	using _TyBase::VFIsNull;
 	using _TyBase::FIsNull;
 	using _TyBase::GetTokenId;
@@ -1184,12 +1185,12 @@ public:
 	static constexpr vtyTokenIdent s_kiActionStoreData = _TyActionStoreData::GetTokenId();
 	using typename _TyBase::_TyActionObjectBase;
 
-	class _l_trigger_string_typed_endpoint() = default;
-	class _l_trigger_string_typed_endpoint( _TyActionObjectBase * _paobNext )
+	_l_trigger_string_typed_endpoint() = default;
+	_l_trigger_string_typed_endpoint( _TyActionObjectBase * _paobNext )
 		: _TyBase( _paobNext )
 	{
 	}
-	class _l_trigger_string_typed_endpoint( _TyThis const & _r ) = default;
+	_l_trigger_string_typed_endpoint( _TyThis const & _r ) = default;
 	using _TyBase::VFIsNull;
 	using _TyBase::FIsNull;
 	using _TyBase::GetTokenId;

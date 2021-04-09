@@ -597,7 +597,7 @@ public:
   // This also consumes the data in the m_bufCurrentToken from [m_posTokenStart,_kdpEndToken).
   template < class t_TyToken, class t_TyValue, class t_TyUserObj >
   void GetPToken( const _TyAxnObjBase* _paobCurToken, const vtyDataPosition _kdpEndToken,
-                  typename t_TyValue & _rvalue, t_TyUserObj& _ruoUserObj, unique_ptr< t_TyToken >& _rupToken)
+                  t_TyValue & _rvalue, t_TyUserObj& _ruoUserObj, unique_ptr< t_TyToken >& _rupToken)
   {
     typedef typename t_TyToken::_TyValue _TyValue;
     static_assert( is_same_v< t_TyValue, _TyValue > );
