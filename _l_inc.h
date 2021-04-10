@@ -37,6 +37,7 @@
 #include "_l_dfacr.h"
 #include "_l_dfopt.h"
 #include "_l_lxgen.h"
+#include "_l_data.h"
 
 #endif //__L_INC_H
 

@@ -62,7 +62,9 @@ public:
 	//	the final regular expression
 	virtual void Clone( _TyThis * _prbCopier, _TyThis ** _pprbStorage ) const = 0;
 
+#ifdef __RGEXP_DUMP
 	virtual void Dump( _TyOstream & _ros ) const = 0;
+#endif //__RGEXP_DUMP
 
 	// no assignment supported.
 
@@ -153,11 +155,13 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		char rgc[4] = {'{', '0', '}', '\0'}; // clang didn't like this as a string: warning: illegal character encoding in string literal _ros << "{<D8>}";
 		_ros << rgc;
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyChar >
@@ -203,10 +207,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "\'" << m_c << "\'";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyChar >
@@ -256,10 +262,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "\"" << reinterpret_cast< const _TyCharOstream * >( &m_s[0] ) << "\"";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyChar >
@@ -314,10 +322,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "['" << m_r.first << "'-'" << m_r.second << "']";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyChar >
@@ -369,10 +379,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "[^" << m_s << "]";
 	}
+#endif //__RGEXP_DUMP
 };
 template < class t_TyChar >
 __INLINE _regexp_litnotset< t_TyChar >
@@ -432,10 +444,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "[^" << reinterpret_cast< const _TyCharOstream * >( &m_s[0] ) << "]";
 	}
+#endif //__RGEXP_DUMP
 };
 template < class t_TyChar >
 __INLINE _regexp_litnotset_no_surrogates< t_TyChar >
@@ -492,11 +506,13 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		// Note that this could look pretty ugly in the output...
 		_ros << "[" << reinterpret_cast< const _TyCharOstream * >( &m_s[0] ) << "]";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyChar >
@@ -568,10 +584,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) *\n ( " << m_re2 << " )";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
@@ -636,10 +654,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) |\n ( " << m_re2 << " )";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
@@ -691,10 +711,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "~( " << m_re << " )";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyRegExp >
@@ -778,10 +800,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) -\n ( " << m_re2 << " )";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
@@ -847,10 +871,12 @@ public:
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) +\n ( " << m_re2 << " )";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
@@ -922,10 +948,12 @@ public:
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "( " << m_re1 << " ) /\n ( " << m_re2 << " )";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyRegExp1, class t_TyRegExp2 >
@@ -995,10 +1023,12 @@ public:
 		_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "action";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyActionObject, class t_TyAllocator >
@@ -1094,10 +1124,12 @@ public:
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "trigger";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyActionObject, class t_TyAllocator >
@@ -1153,10 +1185,12 @@ public:
 		_TyBase::_CloneHelper( this, _prbCopier, _pprbStorage );
 	}
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "unsatisfiable(" << m_nUnsatisfiable << ")";
 	}
+#endif //__RGEXP_DUMP
 };
 
 template < class t_TyChar >
@@ -1281,10 +1315,12 @@ public:
 	bool FIsLiteral() const _BIEN_NOTHROW override		{ return m_pbre->FIsLiteral(); }
 	bool FMatchesEmpty() const _BIEN_NOTHROW override	{ return m_pbre->FMatchesEmpty(); }
 
+#ifdef __RGEXP_DUMP
 	void Dump( _TyOstream & _ros ) const override
 	{
 		_ros << "Final : " << *m_pbre;
 	}
+#endif //__RGEXP_DUMP
 
 protected:
 

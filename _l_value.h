@@ -547,7 +547,7 @@ protected:
   static void _KGetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
     requires ( sizeof( typename t_TyStrViewDest::value_type) == sizeof( typename t_TySource::value_type ) )
   {
-    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type*)*&_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type*)&_rsrc[0], _rsrc.length() );
   }
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStrViewDest, class t_TySource >
@@ -632,7 +632,7 @@ protected:
   static void _GetStringView( t_TyStrViewDest & _rsvDest, t_TySource const & _rsrc )
     requires ( sizeof( typename t_TyStrViewDest::value_type) == sizeof( typename t_TySource::value_type ) )
   {
-    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type)*&_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStrViewDest( (typename t_TyStrViewDest::value_type)&_rsrc[0], _rsrc.length() );
   }
   // Converting version for string or view source - we must convert the existing value to the desired view's type and then return a view on the new value.
   template < class t_TyStrViewDest, class t_TySource >

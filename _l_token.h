@@ -283,7 +283,7 @@ protected:
     // Now move through the token buffer, converting pieces as we need to due to positional references and variable length characters:
     _TyChar * pchBufCur = pchBufBeg;
     _TyChar * const pchBufEnd = pchBufBeg + nchAllowBuf;
-    typedef t_TyTokenCopy::_TyChar _TyCharCopy;
+    typedef typename t_TyTokenCopy::_TyChar _TyCharCopy;
     const _TyCharCopy * pchCopyCur = _rtokCopy.GetTransportCtxt().PCBufferBegin();
     vtyDataPosition posCur = _rtokCopy.GetTransportCtxt().PosTokenStart();
     ssize_t offchCur = 0; // Offset to current position due to encoding transformation.

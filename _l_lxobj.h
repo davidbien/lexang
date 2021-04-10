@@ -434,7 +434,7 @@ public:
         "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
         "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
     }//EB
-#endif LEXOBJ_STRICT
+#endif //LEXOBJ_STRICT
     _InitGetToken( _pspStart );
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
     _NextChar();
@@ -474,7 +474,7 @@ public:
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
-#endif LEXOBJ_STRICT
+#endif //LEXOBJ_STRICT
             _rpuToken.swap( upToken );
             return true;
           }
@@ -489,7 +489,7 @@ public:
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
-#endif LEXOBJ_STRICT
+#endif //LEXOBJ_STRICT
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found.
           }
         }
@@ -501,7 +501,7 @@ public:
 #ifdef LEXOBJ_STRICT
           vtyTokenIdent tidNonNull;
           VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
-#endif LEXOBJ_STRICT
+#endif //LEXOBJ_STRICT
           GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
           // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
         }
@@ -559,7 +559,7 @@ public:
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
-#endif LEXOBJ_STRICT
+#endif //LEXOBJ_STRICT
             if ( !_callback( upToken ) )
               return true; // The caller is done with getting tokens for now.
             // else continue to get tokens.
@@ -572,7 +572,7 @@ public:
 #ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
-#endif LEXOBJ_STRICT
+#endif //LEXOBJ_STRICT
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh..
             // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
           }
