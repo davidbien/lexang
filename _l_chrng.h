@@ -134,6 +134,10 @@ public:
 		}
 		return _ros;
 	}
+	void DumpToString( string & _rstr ) const
+	{
+		PrintfStdStr( _rstr, "[%lu-%lu]", first, second );
+	}
 
 	template < class t_TyJsonValueLife >
 	void ToJSONStream( t_TyJsonValueLife & _jvl  ) const

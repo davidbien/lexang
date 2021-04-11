@@ -1074,6 +1074,20 @@ protected:	// accessed by _nfa_context:
 		endLink.Reset();
 	}
 
+	// Produce a small dump of the alphabet to a string so we can see wtf is up with the stdlib++'s set impl...
+	void _DumpAlphabetToString( std::string & _rstr )
+	{
+		for ( typename _TyAlphabet::const_iterator citCur = m_setAlphabet.begin(); m_setAlphabet.end() != citCur;  )
+		{
+			_TyRange const & rrng = *citCur;
+			string strRng;
+			rrng.DumpToString( strRng );
+			_rstr += strRng;
+			if ( ++citCur != m_setAlphabet.end() )
+				_rstr += ",";
+		}
+	}
+
 	void _UpdateAlphabet( _TyRange const & _rArg )
 	{
 		// Special case empty:
@@ -1091,9 +1105,19 @@ protected:	// accessed by _nfa_context:
 		{
 			Assert( rUpdate.first <= rUpdate.second );
 			// Increase granularity and extent of alphabet set if required:
-			std::pair< typename _TyAlphabet::iterator, typename _TyAlphabet::iterator > pritER = m_setAlphabet.equal_range( rUpdate );
+			// m_setAlphabet can only contain disjoint ranges and that allows the comparator to work correctly.
+			// To *correctly* find the matching elements of the set we should search the endpoints with two ranges:
+			std::pair< typename _TyAlphabet::iterator, typename _TyAlphabet::iterator > pritER = 
+				{ m_setAlphabet.lower_bound( _TyRange( rUpdate.first, rUpdate.first ) ), m_setAlphabet.upper_bound( _TyRange( rUpdate.second, rUpdate.second ) ) };
+			__DEBUG_STMT( size_t dbg_nRange = distance( pritER.first, pritER.second ) );
 
-			// Move from the low to the high, inserting records in the spaces:
+			// Move from the low to the high, inserting records in the spaces.
+			// I was hacking this more or less and it worked in MSVC and it broke in STDLIBC++ under clang.
+			// Now we will do it more correctly: Add our additions to an array and then insert those after we are done iterating the current set.
+			typedef vector< typename _TyAlphabet::iterator > _TyRgIter;
+			_TyRgIter rgItRemove; // First we will remove all the removals.
+			typedef vector< _TyRange > _TyRgRange;
+			_TyRgRange rgInsert; // Then we will insert all the insertions.
 			_TyRangeEl cLow = rUpdate.first;
 			for( ; pritER.first != pritER.second; )
 			{
@@ -1102,8 +1126,9 @@ protected:	// accessed by _nfa_context:
 				const typename _TyAlphabet::value_type & rvt = *pritER.first;
 				if ( cLow < rvt.first )
 				{
-					m_setAlphabet.insert( pritER.first, _TyRange( cLow, rvt.first-1 ) );
+					rgInsert.push_back( _TyRange( cLow, rvt.first-1 ) );
 					cLow = rvt.first;
+					// ++pritER.first; - note this change breaks things - maybe I knew what I was doing some twenty years ago.
 				}
 				else
 				{
@@ -1111,29 +1136,33 @@ protected:	// accessed by _nfa_context:
 					// If the low splits the current range then need to split
 					if ( cLow > rvt.first )
 					{
-						swap( const_cast< _TyRange& >( rvt ).second, cLow );
-						const_cast< _TyRange& >( rvt ).second--;
+						// We will remove the current object and replace it with two or three objects depending:
+						rgItRemove.push_back( pritER.first );
+						++pritER.first;
+						const _TyRange & rrngInserted = rgInsert.emplace_back( rvt.first, cLow - 1 );
+						cLow = rvt.second;
 						if ( cLow > rUpdate.second )
 						{
 							// Then we have split one range into three:
-							m_setAlphabet.insert( ++pritER.first, _TyRange( rvt.second+1, rUpdate.second ) );
-							m_setAlphabet.insert( pritER.first, _TyRange( rUpdate.second+1, cLow ) );
+							rgInsert.push_back( _TyRange( rrngInserted.second+1, rUpdate.second ) );
+							rgInsert.push_back( _TyRange( rUpdate.second+1, cLow ) );
 							Assert( pritER.first == pritER.second );
 						}
 						else
-						{
-							m_setAlphabet.insert( ++pritER.first, _TyRange( rvt.second+1, cLow++ ) );
-						}
+							rgInsert.push_back( _TyRange( rrngInserted.second+1, cLow++ ) );
 					}
 					else
 					{
-						assert( cLow == rvt.first );
+						Assert( cLow == rvt.first );
 						if ( rUpdate.second < rvt.second )
 						{
-							swap( const_cast< _TyRange& >( rvt ).second, rUpdate.second );
-							cLow = rvt.second+1;
+							// splitting the last intersection of rUpdate:
+							rgItRemove.push_back( pritER.first );
 							++pritER.first;
-							assert( pritER.first == pritER.second );
+							Assert( pritER.first == pritER.second );
+							rgInsert.push_back( _TyRange( rvt.first, rUpdate.second ) );
+							cLow = rUpdate.second+1;
+							rUpdate.second = rvt.second;
 						}
 						else
 						{
@@ -1145,12 +1174,29 @@ protected:	// accessed by _nfa_context:
 			}
 
 			if ( cLow <= rUpdate.second )
+				rgInsert.push_back( _TyRange( cLow, rUpdate.second ) );
+			
+			// Now remove all removals and insert all insertions:
+			for ( typename _TyRgIter::const_iterator citRemovals = rgItRemove.begin(); rgItRemove.end() != citRemovals; ++citRemovals )
 			{
-				m_setAlphabet.insert( pritER.first, _TyRange( cLow, rUpdate.second ) );
+				Assert( m_setAlphabet.end() != m_setAlphabet.find( **citRemovals ) );
+				m_setAlphabet.erase( *citRemovals );
+			}
+			for ( typename _TyRgRange::const_iterator citInsertions = rgInsert.begin(); rgInsert.end() != citInsertions; ++citInsertions )
+			{
+				bool fInserted = m_setAlphabet.insert( *citInsertions ).second;
+				Assert( fInserted );
+				VerifyThrow( fInserted );
 			}
 		}
+#if 0 /* TRACESENABLED */
+		static size_t nRep = 0;
+		Trace( "m_setAlphabet.size()[%lu] after [%lu] reps.", m_setAlphabet.size(), nRep++ );
+		string strAlphabet;
+		_DumpAlphabetToString( strAlphabet );
+		Trace( "Alphabet:{%s}", strAlphabet.c_str() );
+#endif // TRACESENABLED
 	}
-
 };
 
 template < class t_TyChar, class t_TyAllocator = allocator< char > >

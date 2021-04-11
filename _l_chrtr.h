@@ -72,9 +72,9 @@ struct _l_char_type_map< char8_t >
   static constexpr char8_t ms_kcMax = 0xFF;
 
   // Provide a large set of triggers and unsatisifiable transitions:
-  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
-  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
-  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000ull;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1ull ) ) / 2ull; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1ull;
   static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
 
   static constexpr char8_t ms_kcSurrogateFirst = 0;
@@ -96,9 +96,9 @@ struct _l_char_type_map< char16_t >
   static constexpr char16_t ms_kcMax = 0xFFFF;
 
   // Provide a large set of triggers and unsatisifiable transitions:
-  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
-  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
-  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000ull;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1ull ) ) / 2ull; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1ull;
   static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
 
   static constexpr char16_t ms_kcSurrogateFirst = 0;
@@ -120,9 +120,9 @@ struct _l_char_type_map< char32_t >
   static constexpr char32_t ms_kcMax = 0x10FFFF;
 
   // Provide a large set of triggers and unsatisifiable transitions:
-  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
-  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
-  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000ull;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1ull ) ) / 2ull; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1ull;
   static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
 
   static constexpr char32_t ms_kcSurrogateFirst = 0xd800;
