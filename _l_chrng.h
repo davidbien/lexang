@@ -67,6 +67,11 @@ public:
 	{
 		return second < _r.first;
 	}
+	// This is for containers which can have overlapping char ranges.
+	bool CanonicalLess( _TyThis const & _r ) const _BIEN_NOTHROW
+	{
+		return static_cast< _TyBase const & >( *this ) < _r;
+	}
 
 	bool	intersects( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
@@ -169,12 +174,22 @@ public:
 	}
 };
 
-template < class _TyNfaCharRange >
+template < class t_TyNfaCharRange >
 struct _fa_char_range_intersect
 {
-	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
+	bool operator ()( t_TyNfaCharRange const & _rL, t_TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
 	{
 		return _rL.intersects( _rR );
+	}
+};
+
+// Calls _TyNfaCharRange::CanonicalLess().
+template < class t_TyNfaCharRange >
+struct _fa_char_range_canonical_less
+{
+	bool operator ()( t_TyNfaCharRange const & _rL, t_TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
+	{
+		return _rL.CanonicalLess( _rR );
 	}
 };
 

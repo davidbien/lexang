@@ -93,10 +93,9 @@ public:
 	// Char range lookup stuff:
 	_sdpn< _TyRange, t_TyAllocator > m_rgrngLookup;
 
-	// Compressed character range map - we allow multiple entries that compare equal -
-	//	we check before inserting a new entry that it is not present in the equal range:
+	// Compressed character range map - use _TyRange::CanonicalLess() since we may have overlapping ranges.
   typedef typename _Alloc_traits< typename multimap< _TyRange, _TyAlphaIndex >::value_type, t_TyAllocator >::allocator_type _TySetCompCharRangeAllocator;
-  typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, _TySetCompCharRangeAllocator > _TySetCompCharRange;
+  typedef map< _TyRange, _TyAlphaIndex, _fa_char_range_canonical_less< _TyRange >, _TySetCompCharRangeAllocator > _TySetCompCharRange;
   typedef typename _Alloc_traits< typename deque< typename _TySetCompCharRange::iterator >::value_type, t_TyAllocator >::allocator_type _TyDequeCCRIndexAllocator;
   typedef deque< typename _TySetCompCharRange::iterator, _TyDequeCCRIndexAllocator > _TyDequeCCRIndex;
 	
@@ -302,23 +301,16 @@ public:
 					if ( r != m_rgrngLookup[(size_t)pgl->RElConst() ] )
 					{
 						// Then a unique range - see if we already have it:
-						pair< typename _TySetCompCharRange::iterator, typename _TySetCompCharRange::iterator >
-							pit = m_pSetCompCharRange->equal_range( r );
-						typename _TySetCompCharRange::iterator itFound;
-						if ( ( itFound = find_if( pit.first, pit.second, 
-                  [=,&kr = as_const(r)](auto _el) 
-                  { 
-                    static_assert(is_const_v<remove_reference_t<decltype(kr)>>);
-                    return kr == _el.first; 
-                  } )
-              ) == pit.second )
+						typename _TySetCompCharRange::iterator itFound = m_pSetCompCharRange->find( r );
+						if ( m_pSetCompCharRange->end() == itFound )
 						{
 							// Then a new range:
 							typename _TySetCompCharRange::value_type	vt( r, (_TyAlphaIndex)m_pCCRIndex->size() );
-							itFound = m_pSetCompCharRange->insert( vt );
+							pair< typename _TySetCompCharRange::iterator, bool > pib = m_pSetCompCharRange->insert( vt );
+							Assert( pib.second );
+							itFound = pib.first;
 							m_pCCRIndex->push_back( itFound );
 						}
-
 						pgl->RElNonConst() = -( itFound->second + 1 );
 					}
 				}
