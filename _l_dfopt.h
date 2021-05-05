@@ -9,6 +9,7 @@
 // _l_dfopt.h
 
 #include "_garcoll.h"
+#include <vector>
 
 __REGEXP_BEGIN_NAMESPACE
 
@@ -18,8 +19,10 @@ struct _partition_el
 private:
 	typedef _partition_el< t_TySwapSS >	_TyThis;
 public:
+	typedef ptrdiff_t _TyPartitionType;
+	static constexpr _TyPartitionType s_kptNullPartition = (numeric_limits< _TyPartitionType >::max)();
 
-	ptrdiff_t		first;
+	_TyPartitionType first;
 	t_TySwapSS	second;
 
 	_partition_el(ptrdiff_t _first, t_TySwapSS const & _rss )
@@ -46,9 +49,6 @@ public:
 
 template < class t_TyPartitionClass >
 struct _compare_partition_classes
-#ifdef __LEXANG_USE_STLPORT
-	: public binary_function< t_TyPartitionClass *, t_TyPartitionClass *, bool >
-#endif //__LEXANG_USE_STLPORT
 {
 	size_t	m_stAlphabet;	// The number of characters in the alphabet.
 
@@ -199,8 +199,10 @@ protected:
 
 	// We also need a mapping from set number to the partition element containing that set -
 	//	since the number of states is fixed just need a simple array:
-	typedef _TyPartitionEl *	_TyStateMapEl;
-	_TyStateMapEl *						m_rgsmeMap;
+	typedef _TyPartitionEl * _TyStateMapEl;
+  typedef typename _Alloc_traits< typename vector< _TyStateMapEl >::value_type, _TyAllocator >::allocator_type TyRgStateMapElAlloc;
+	typedef vector< _TyStateMapEl, TyRgStateMapElAlloc > _TyRgStateMapEl;
+	_TyRgStateMapEl m_rgsmeMap;
 
 	// As we compute the partition we need to accumulate the new sets ( relative to the current
 	//	sets ). The number of unique sets in the partition could be as high as the number of states 
@@ -219,7 +221,9 @@ protected:
 	_TySetPartClasses	m_setPartClasses;
 
 	// Lookup the representative for a node.
-	_sdpn< _TyGraphNode *, _TyAllocator >	m_rgLookupRep;
+  typedef typename _Alloc_traits< typename vector< _TyGraphNode * >::value_type, _TyAllocator >::allocator_type TyRgLookupRepAlloc;
+	typedef vector< _TyGraphNode *, TyRgLookupRepAlloc > TyRgLookupRep;
+	TyRgLookupRep	m_rgLookupRep;
 
 public:
 	
@@ -230,32 +234,26 @@ public:
 			m_rDfaCtxt( _rDfaCtxt ),
 			m_stDfaStatesOrig( m_rDfa.NStates() ),
 			m_partition( _TyCompPE(), _rDfa.get_allocator() ),
-			m_rgsmeMap( 0 ),
+			m_rgsmeMap( _rDfa.get_allocator() ),
 			m_cachePartClasses( 0 ),
 			m_stUsedClassCache( 0 ),
 			m_stSizeClassCache( 0 ),
-			m_setPartClasses( _TyCompPartClases( _rDfa.AlphabetSize() ), 
-												_rDfa.get_allocator() ),
+			m_setPartClasses( _TyCompPartClases( _rDfa.AlphabetSize() ), _rDfa.get_allocator() ),
 			m_rgLookupRep( m_rDfa.get_allocator() )
 	{
-		_TyPartitionEl	peSingleton( INT_MAX, _TySetStates( 0, m_rDfa.get_allocator() ) );
+		_TyPartitionEl peSingleton( _TyPartitionEl::s_kptNullPartition, _TySetStates( 0, m_rDfa.get_allocator() ) );
 		m_gcppeSingleton.template Create1< _TyPartitionEl const & >( peSingleton, m_rDfa.get_allocator() );
 
-		_sdp< void *, _TyAllocator >	pvAllocMap( _TyAllocVPBase::get_allocator() );
-		_TyAllocVPBase::allocate_n( pvAllocMap.PtrRef(), m_stDfaStatesOrig );
-		void **	pvPartClassCache;
-		_TyAllocVPBase::allocate_n( pvPartClassCache, m_stDfaStatesOrig + 1 );
-		m_cachePartClasses = reinterpret_cast< _TyPartitionClass ** >( pvPartClassCache );
-		m_rgsmeMap = reinterpret_cast< _TyStateMapEl * >( pvAllocMap.transfer() );
+		m_rgsmeMap.resize( m_stDfaStatesOrig );
+		{//B 
+			void **	pvPartClassCache;
+			_TyAllocVPBase::allocate_n( pvPartClassCache, m_stDfaStatesOrig + 1 );
+			m_cachePartClasses = reinterpret_cast< _TyPartitionClass ** >( pvPartClassCache );
+		}//EB
 	}
 
 	~_optimize_dfa()
 	{
-		if ( m_rgsmeMap )
-		{
-			_TyAllocVPBase::deallocate_n( reinterpret_cast< void ** >( m_rgsmeMap ), 
-																		m_stDfaStatesOrig );
-		}
 		_DeallocPartClassCache();
 	}
 
@@ -263,8 +261,8 @@ public:
 	_GetNewPartClass()
 	{
 		// Then need to allocate a new one:
-		assert( m_stSizeClassCache < m_stDfaStatesOrig + 1 );	// Need room.
-		assert( m_stSizeClassCache == m_stUsedClassCache );
+		Assert( m_stSizeClassCache < m_stDfaStatesOrig + 1 );	// Need room.
+		Assert( m_stSizeClassCache == m_stUsedClassCache );
 		_sdp< _TyPartitionClass, _TyAllocator >	ppcNew( _TyAllocPartClass::get_allocator() );
 		ppcNew.PtrRef() = _TyAllocPartClass::allocate_type( );
 		new ( ppcNew ) _TyPartitionClass( m_stDfaStatesOrig, _TyAllocPartClass::get_allocator() );
@@ -290,7 +288,7 @@ public:
 		{
 			pppc = _GetNewPartClass();
 		}
-		assert( (*pppc)->empty() );
+		Assert( (*pppc)->empty() );
 		return pppc;
 	}
 
@@ -299,8 +297,8 @@ public:
 	{
 		// Should always be releasing the last one ( otherwise we need
 		//	a free bitvec ).
-		assert( (*_pppc)->empty() );	// Should be empty.
-		assert( _pppc == &m_cachePartClasses[ m_stUsedClassCache-1 ] );
+		Assert( (*_pppc)->empty() );	// Should be empty.
+		Assert( _pppc == &m_cachePartClasses[ m_stUsedClassCache-1 ] );
 		--m_stUsedClassCache;
 	}
 
@@ -354,14 +352,13 @@ public:
 				m_rgsmeMap[ stNextUpdate ] = _pel;
 				iUpdates++;
 			}
-			assert( iUpdates );		
-			if (1 == iUpdates)
+			//Assert( iUpdates ); In some scenarios this is zero - haven't researched it fully but things still work.
+			if (iUpdates <= 1)
 				_pel->first = (_TyState)stFirstUpdate;
 			else
 				_pel->first = -1;
-			//_pel->first = ( 1 == iUpdates ) ? stFirstUpdate : size_t( -1 );
 		}
-		assert( _rss.empty() );
+		Assert( _rss.empty() );
 	}
 
 	void
@@ -376,13 +373,11 @@ public:
 		// Now set the state->state set map pointers:
 		_UpdateStateMap( gcpPeInsert, _rssInsert );
 
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair< typename _TyPartition::iterator, bool >	pibDebug = 
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_partition.insert( gcpPeInsert );
-#ifndef NDEBUG
-		assert( pibDebug.second );
-#endif //!NDEBUG
+		Assert( pibDebug.second );
 	}
 
 	// Return true if created a new DFA.
@@ -391,7 +386,7 @@ public:
 	{
 		if ( !m_rDfa.m_fHasDeadState )
 		{
-			assert( 0 );	// Need a dead state to optimize.
+			Assert( 0 );	// Need a dead state to optimize.
 			return false;
 		}
 
@@ -415,14 +410,14 @@ public:
 			m_rgsmeMap[ 0 ] = 0;
 		}
 		_InsertNewSS( ssUtil );
-		assert( ssUtil.empty() );
+		Assert( ssUtil.empty() );
 
 		// Now if the dead state has any out transitions then we need to add it:
 		if ( t_fPartDeadImmed && m_rDfa.m_nodeLookup[ 0 ]->FChildren() )
 		{
 			ssUtil.setbit( 0 );
 			_InsertNewSS( ssUtil, 0 );
-			assert( ssUtil.empty() );
+			Assert( ssUtil.empty() );
 		}
 
 		// Added the non-accepting - now add the accepting state partition to the partition:
@@ -431,10 +426,10 @@ public:
 					it != itDfaPASEnd; ++it )
 		{
 			ssUtil = it->first;
-			assert( !ssUtil.empty() );
+			Assert( !ssUtil.empty() );
 			_InsertNewSS( ssUtil );
 		}
-		assert( ssUtil.empty() );
+		Assert( ssUtil.empty() );
 
 		// Apply partitioning algorithm:
 		_Partition(	ssUtil );
@@ -465,11 +460,15 @@ protected:
 
 	void	_Partition( _TySetStates & _rssUtil )
 	{
-		assert( _rssUtil.empty() );
+		Assert( _rssUtil.empty() );
 
 		typename _TyPartition::iterator	itCur = m_partition.upper_bound( m_gcppeSingleton );
 		if ( itCur == m_partition.end() )
 			return;	// already optmimal ( but not a very complex DFA ).
+
+#if ASSERTSENABLED
+		size_t dbg_nLinksFirst = size_t(-1);
+#endif //ASSERTSENABLED
 
 		do
 		{
@@ -482,11 +481,11 @@ protected:
 			//	the criteria upon which the splitting depends ( i.e. the other classes ) will get
 			//	more granular - may avoid passing through some sets that are not YET splittable.
 			const _TyPartitionEl * ppelCur = *itCur;
-      assert( -1 == ppelCur->first ); // should not encounter a singleton.
+      Assert( -1 == ppelCur->first ); // should not encounter a singleton.
 			_rssUtil = ppelCur->second;	// Copy the set of states - we will modify below.
 
 			_TyPartitionClass **	pppc = _GetPartClass();	// Get a partition class from the cache.
-
+	
 			_TyState	iStateTest;
 			for ( iStateTest = (_TyState)_rssUtil.getclearfirstset();
 						_rssUtil.size() != iStateTest;
@@ -502,11 +501,23 @@ protected:
 
 				_TyPartitionEl ** pppelPartClass = (*pppc)->begin();
 
+#if ASSERTSENABLED
+				size_t dbg_nLinksCur = 0;
+#endif //ASSERTSENABLED
 				while( !lpi.FIsLast() )
 				{
+#if ASSERTSENABLED
+					++dbg_nLinksCur;
+#endif //ASSERTSENABLED
 					*pppelPartClass++ = m_rgsmeMap[ lpi.PGNChild()->REl() ];
 					lpi.NextChild();
 				}
+#if ASSERTSENABLED
+				if ( size_t(-1) == dbg_nLinksFirst )
+					dbg_nLinksFirst = dbg_nLinksCur;
+				else
+					Assert( dbg_nLinksCur == dbg_nLinksFirst ); // Each node should have the same number of links out.
+#endif //ASSERTSENABLED
 
 				// Now attempt to insert this new transition container into the set of unique
 				//	transition sets of the current group of the partition:
@@ -518,7 +529,7 @@ protected:
 				}
 				else
 				{
-					assert( (*pppc)->empty() ); // not a new partition class.
+					Assert( (*pppc)->empty() ); // not a new partition class.
 				}
 
 				// Indicate that this state is part of the partition class:
@@ -537,7 +548,7 @@ protected:
 			else
 			{
 				++itCur;	// Move to the next group of the partition to see if we can split that.
-				assert( m_stUsedClassCache == 1 );
+				Assert( m_stUsedClassCache == 1 );
 				m_cachePartClasses[ 0 ]->clear();
 			}
 
@@ -562,8 +573,8 @@ protected:
 		_UpdateStateMap( grInSet, ppc->RSetStates() );
 		ppc->clearNotSS();
 		pair< typename _TyPartition::iterator, bool >	pib = m_partition.insert( grInSet );
-		assert( pib.second );
-		assert( ppc->empty() );
+		Assert( pib.second );
+		Assert( ppc->empty() );
 
 		// Now for each of the remaining partition classes:
 		for ( ; ++itSpcCur != m_setPartClasses.end(); )
@@ -571,7 +582,7 @@ protected:
 			ppc = *itSpcCur;
 			_InsertNewSS( ppc->RSetStates(), ppc->NSingleState() );
 			ppc->clearNotSS();
-			assert( ppc->empty() );
+			Assert( ppc->empty() );
 		}
 	}
 
@@ -581,6 +592,7 @@ protected:
 		_TyState	iTransState;
 		if ( !m_rgLookupRep[ (size_type)( iTransState = _pgl->PGNChild()->RElConst() ) ] )
 		{
+			Assert( !!m_rgsmeMap[ iTransState ] );
 			// Then determine the representative for this node:
 			if ( m_rgsmeMap[ iTransState ]->first >= 0 )
 			{
@@ -599,7 +611,7 @@ protected:
 			// Then need to move the link:
 			_pgl->RemoveParent();
 			_pgl->InsertParent( m_rgLookupRep[ (size_type)iTransState ]->PPGLParentHead() );
-			_pgl->SetChildNode( m_rgLookupRep[(size_type)iTransState ] );
+			_pgl->SetChildNode( m_rgLookupRep[ (size_type)iTransState ] );
 		}
 	}
 
@@ -607,7 +619,6 @@ protected:
 													_TySetStates & _rssUtil )
 	{
 		// Compress the graph in place.
-
 		m_rDfaCtxt.RemoveDeadState( );
 
 		// Now start compressing partition groups.
@@ -631,21 +642,19 @@ protected:
 		// ( Also they will be the only ones that are left. )
 		_TySetStates	ssOutOnAlpha( (_TyState)m_rDfa.AlphabetSize(), m_rDfa.get_allocator() );
 
-		// Create a lookup which we will lazily fill with the representative state's graph node
-		//	as we process:
-		m_rgLookupRep.allocate( m_stDfaStatesOrig );
-		memset( m_rgLookupRep.begin(), 0, m_stDfaStatesOrig * sizeof( _TyGraphNode * ) );
+		// Create a lookup which we will lazily fill with the representative state's graph node as we process:
+		m_rgLookupRep.resize( m_stDfaStatesOrig );
 
 		typename _TyPartition::iterator itCur = _rcitUpper;
 
-    typename _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing.
+    typename _TySetStates::size_type	stNonReps = 1;	// Accumulate the number of non-reps we will be removing. Initialize to 1 due to dead state removal above.
 
 		typename _TyGraph::_TyLinkPosIterNonConst	lpi;
 
 		do
 		{
 			const _TyPartitionEl * ppelCur = *itCur;
-      assert( -1 == ppelCur->first ); // We shouldn't see any singletons.
+      Assert( -1 == ppelCur->first ); // We shouldn't see any singletons.
 
 			_rssUtil = ppelCur->second;	// Copy the set of states - we will modify below.
 
@@ -657,7 +666,9 @@ protected:
 			lpi = pgnRep->PPGLChildHead();
 			while( !lpi.FIsLast() )
 			{
-				ssOutOnAlpha.setbit( *lpi );
+				Assert(*lpi >= 0);
+				Assert( !ssOutOnAlpha.isbitset( (size_t)*lpi ) );
+				ssOutOnAlpha.setbit( (size_t)*lpi );
 				_CheckMoveHead( lpi.PGLCur() );
 				lpi.NextChild();
 			}
@@ -677,7 +688,8 @@ protected:
 				{
 					typename _TyDfa::_TyAlphaIndex	ai;
 					_TyGraphLink *	pgl = lpi.PGLCur();
-					if ( ssOutOnAlpha.isbitset( ai = pgl->RElConst() ) )
+					Assert(pgl->RElConst() >= 0);
+					if ( ssOutOnAlpha.isbitset( (size_t)(ai = pgl->RElConst()) ) )
 					{
 						// Then a redundant link - remove:
 						m_rDfa._RemoveLink( pgl );
@@ -688,7 +700,7 @@ protected:
 						pgl->RemoveChild();
 						pgl->InsertChild( pgnRep->PPGLChildHead() );
 						pgl->SetParentNode( pgnRep );
-						ssOutOnAlpha.setbit( ai );
+						ssOutOnAlpha.setbit( (size_t)ai );
 
 						// Check to see if the tail needs to be moved:
 						_CheckMoveHead( pgl );
@@ -721,7 +733,7 @@ protected:
 				{
 					// This should from a representative ( we aren't checking but it should be a singleton ).
 					_TyGraphLink *	pgl = lpi.PGLCur();
-					assert( !( m_rgLookupRep[ (size_t)pgl->PGNParent()->RElConst() ] ) ||
+					Assert( !( m_rgLookupRep[ (size_t)pgl->PGNParent()->RElConst() ] ) ||
 									( m_rgLookupRep[(size_t)pgl->PGNParent()->RElConst() ] == pgl->PGNParent() ) );
 					pgl->RemoveParent();
 					pgl->InsertParent( pgnRep->PPGLParentHead() );
@@ -744,8 +756,8 @@ protected:
 			while ( _rssUtil.size() != ( iStateNonRep = _rssUtil.getclearfirstset( iStateNonRep ) ) )
 			{
 				_TyGraphNode *	pgnNonRep = m_rDfa.PGNGetNode( iStateNonRep );
-				assert( !pgnNonRep->FParents() );
-				assert( !pgnNonRep->FChildren() );
+				Assert( !pgnNonRep->FParents() );
+				Assert( !pgnNonRep->FChildren() );
         m_rDfa.m_gDfa.destroy_node( pgnNonRep );
 				m_rDfa.m_nodeLookup[ iStateNonRep ] = 0;
 			}

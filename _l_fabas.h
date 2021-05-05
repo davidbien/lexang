@@ -53,7 +53,7 @@ private:
 	typedef _fa_accept_action _TyThis;
 public:
 
-	typedef _simple_bitvec< _TyLookaheadVector, t_TyAllocator > _TySetActionIds;
+	typedef _simple_bitvec< vtyLookaheadVector, t_TyAllocator > _TySetActionIds;
 
 	EActionActionType m_eaatType;
 	t_TyActionIdent m_aiAction;
@@ -92,11 +92,24 @@ public:
 		if ( !!_r.m_psrTriggers )
 			m_psrTriggers.template emplace< _TySetActionIds const & >( *_r.m_psrTriggers );
 	}
+	void AssertValid() const
+	{
+#if ASSERTSENABLED
+		if ( !!( e_aatTrigger & m_eaatType ) )
+		{
+			//Assert( !!m_pSdpAction ); // Should have an action.
+			Assert( !m_psrTriggers );
+			if ( !!m_psrTriggers )
+				Assert( m_psrTriggers->countsetbits() );
+		}
+#endif //ASSERTSENABLED
+	}
 
 	t_TyActionIdent	GetOriginalActionId() const
 	{
 		return m_eaatType == e_aatLookahead ? m_aiAction : m_aiRelated;
 	}
+
 
 	t_TyAllocator get_allocator() const _BIEN_NOTHROW
 	{
@@ -132,7 +145,7 @@ public:
 				default:
 				{
 					// For other actions we merely compare action ids:
-					assert( m_aiAction != _r.m_aiAction );
+					Assert( m_aiAction != _r.m_aiAction );
 					return m_aiAction < _r.m_aiAction;
 				}
 				break;
@@ -170,29 +183,21 @@ public:
 	typedef typename _Alloc_traits< typename set < _TyRange, _TyCompareRange >::value_type, t_TyAllocator >::allocator_type _TyAlphabetAllocator;
 	typedef set< _TyRange, _TyCompareRange, _TyAlphabetAllocator >	_TyAlphabet;
 
-	typedef _fa_accept_action< _TyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
+	typedef _fa_accept_action< vtyActionIdent, _TySdpActionBase, __L_DEFAULT_ALLOCATOR > _TyAcceptAction;
 
   // REVIEW: <dbien>: This is kind of bogus - shouldn't really 
   //  reference an internal impll class.
 	typedef __DGRAPH_NAMESPACE _graph_node_base	_TyLexanGraphNodeBase;
 
-#ifdef __LEXANG_USE_STLPORT
-  typedef deque< _TyLexanGraphNodeBase *, t_TyAllocator >	_TyNodeLookup;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename deque< _TyLexanGraphNodeBase * >::value_type, t_TyAllocator >::allocator_type _TyNodeLookupAllocator;
   typedef deque< _TyLexanGraphNodeBase *, _TyNodeLookupAllocator >	_TyNodeLookup;
-#endif //__LEXANG_USE_STLPORT
 
 	// Type for set of states:
 	typedef _simple_bitvec< unsigned int, t_TyAllocator >		_TySetStates;
 
 	// Type for state set cache:
-#ifdef __LEXANG_USE_STLPORT
-  typedef deque< _swap_object< _TySetStates >, t_TyAllocator >	_TySSCache;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename deque< _swap_object< _TySetStates > >::value_type, t_TyAllocator >::allocator_type _TySSCacheAllocator;
   typedef deque< _swap_object< _TySetStates >, _TySSCacheAllocator >	_TySSCache;
-#endif //__LEXANG_USE_STLPORT
 
 	_TyAlphabet	m_setAlphabet;
 
@@ -256,7 +261,7 @@ public:
 	template < class t_tyJsonValueLife >
 	void StatesToJSON( t_tyJsonValueLife & _jvl, _TySetStates const & _r ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			for ( typename _TySetStates::size_type stCur = 0;
@@ -270,12 +275,10 @@ public:
 	template < class t_tyJsonOutputStream >
 	void AlphabetToJSON( JsonValueLife< t_tyJsonOutputStream > & _jvl  ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
-			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
-						it != m_setAlphabet.end();
-						( ++it == m_setAlphabet.end() ) || ( _ros << "," ) )
+			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin(); it != m_setAlphabet.end(); ++it )
 			{
 				JsonValueLife< t_tyJsonOutputStream > jvl( _jvl, ejvtArray );
 				it->ToJSONStream( jvl );
@@ -284,7 +287,7 @@ public:
 	}
 	void AlphabetToJSON( JsonValueLifeAbstractBase< t_TyChar > & _jvl  ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			for (	typename _TyAlphabet::const_iterator it = m_setAlphabet.begin();
@@ -303,7 +306,7 @@ protected:
 	{
 		m_ssCache.clear();
 		m_uiUnusedCacheBitVec = 0;
-		assert(	m_uiUnusedCacheBitVec == ( ( 1 << m_ssCache.size() ) - 1 ) );
+		Assert(	m_uiUnusedCacheBitVec == ( ( 1 << m_ssCache.size() ) - 1 ) );
 	}
 
   // So a deque invalidates all iterators when a push_back or push_front is performed.
@@ -322,7 +325,7 @@ protected:
 		else
 		{
 			// Need a new cache:
-			assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
+			Assert( m_ssCache.size()+1 < ms_kiMaxSetCache );
 			_TySetStates ss( static_cast< size_t >( m_iCurState ), get_allocator() );
 			m_ssCache.push_back( ss );
 			_rpss = &m_ssCache.back().RObject();
@@ -333,8 +336,8 @@ protected:
   // Provide the element to be released. It is an exception situation if the element is outside of the range of current elements.
 	void _ReleaseSSCache(size_t _stRelease)
 	{
-		assert(_stRelease < m_ssCache.size());
-		assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
+		Assert(_stRelease < m_ssCache.size());
+		Assert(!(m_uiUnusedCacheBitVec & (1 << _stRelease)));
 		m_uiUnusedCacheBitVec |= ( 1 << _stRelease );
 	}
 

@@ -10,13 +10,23 @@
 
 // This module declares DFA types.
 
+#include "_l_ns.h"
+
 __REGEXP_BEGIN_NAMESPACE
 
 class alpha_index_overflow : public _t__Named_exception< __L_DEFAULT_ALLOCATOR >
 {
+	typedef alpha_index_overflow _TyThis;
 	typedef _t__Named_exception< __L_DEFAULT_ALLOCATOR > _TyBase;
 public:
-	alpha_index_overflow( const string_type & __s ) : _TyBase(__s) {}
+  alpha_index_overflow( const char * _pc )
+    : _TyBase( _pc ) 
+  {
+  }
+  alpha_index_overflow( const string_type & __s ) 
+    : _TyBase( __s ) 
+  {
+  }
 };
 
 template < class t_TyChar, class t_TyAllocator >
@@ -24,9 +34,6 @@ class _dfa_context;
 
 template < class t_TyGraphLink >
 struct _sort_dfa_link 
-#ifdef __LEXANG_USE_STLPORT
-	: public binary_function< const t_TyGraphLink *, const t_TyGraphLink *, bool >
-#endif //__LEXANG_USE_STLPORT
 {
 	bool	operator()( const t_TyGraphLink * const & _rpglL, 
 										const t_TyGraphLink * const & _rpglR ) const _BIEN_NOTHROW
@@ -45,6 +52,7 @@ protected:
 	using _TyBase::m_iCurState;
 	using _TyBase::m_setAlphabet;
 	using _TyBase::_STUpdateNodeLookup;
+	using _TyBase::ms_kreTriggerStart;
 public:
 	using _TyBase::m_nodeLookup;
 	using _TyBase::get_allocator;
@@ -72,7 +80,7 @@ public:
 	typedef typename _TyBase::_TyAlphabet _TyAlphabet;
 	typedef typename _TyBase::_TySetStates _TySetStates;
 
-	typedef int	_TyAlphaIndex;	// We use an index into a range lookup table as the link element.
+	typedef int64_t	_TyAlphaIndex;	// We use an index into a range lookup table as the link element.
 															// If the index is negative then it is an index into the CCRIndex.
 
 	typedef __DGRAPH_NAMESPACE dgraph< _TyState, _TyAlphaIndex, false, t_TyAllocator > _TyGraph;
@@ -85,10 +93,9 @@ public:
 	// Char range lookup stuff:
 	_sdpn< _TyRange, t_TyAllocator > m_rgrngLookup;
 
-	// Compressed character range map - we allow multiple entries that compare equal -
-	//	we check before inserting a new entry that it is not present in the equal range:
+	// Compressed character range map - use _TyRange::CanonicalLess() since we may have overlapping ranges.
   typedef typename _Alloc_traits< typename multimap< _TyRange, _TyAlphaIndex >::value_type, t_TyAllocator >::allocator_type _TySetCompCharRangeAllocator;
-  typedef multimap< _TyRange, _TyAlphaIndex, less< _TyRange >, _TySetCompCharRangeAllocator > _TySetCompCharRange;
+  typedef map< _TyRange, _TyAlphaIndex, _fa_char_range_canonical_less< _TyRange >, _TySetCompCharRangeAllocator > _TySetCompCharRange;
   typedef typename _Alloc_traits< typename deque< typename _TySetCompCharRange::iterator >::value_type, t_TyAllocator >::allocator_type _TyDequeCCRIndexAllocator;
   typedef deque< typename _TySetCompCharRange::iterator, _TyDequeCCRIndexAllocator > _TyDequeCCRIndex;
 	
@@ -96,14 +103,21 @@ public:
 	_sdpd< _TyDequeCCRIndex, t_TyAllocator > m_pCCRIndex;
 
 	bool m_fHasLookaheads;	// any lookaheads in the rules ?
-	bool m_fHasTriggers;		// triggers ?
+	size_type m_nTriggers;		// # of triggers
 	size_type m_nUnsatisfiableTransitions; // # of unsatisfiable.
-	_TyActionIdent m_iMaxActions;
+	vtyActionIdent m_iMaxActions;
+
+	// We consume the tokenid->rangeel map converting it to a rangeel->tokenid map as we consume.
+	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
+	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
+	typedef typename _Alloc_traits< typename map< _TyRangeEl, vtyTokenIdent >::value_type, t_TyAllocator >::allocator_type _TyMapTriggerTransitionToTokenIdAllocator;
+	typedef map< _TyRangeEl, vtyTokenIdent, less< _TyRangeEl >, _TyMapTriggerTransitionToTokenIdAllocator > _TyMapTriggerTransitionToTokenId;
+	_TyMapTriggerTransitionToTokenId m_mapTriggerTransitionToTokenId;
 
 	// Triggers - we need an extra copy since ambiguity may have occurred:
-	typedef less< _TyActionIdent > _TyCompareAI;
-  typedef typename _Alloc_traits< typename map< _TyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
-  typedef map< _TyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
+	typedef less< vtyActionIdent > _TyCompareAI;
+  typedef typename _Alloc_traits< typename map< vtyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
+  typedef map< vtyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
 
 	_dfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
@@ -112,9 +126,10 @@ public:
 			m_fHasDeadState( false ),
 			m_rgrngLookup( _rAlloc ),
 			m_pSetCompCharRange( _rAlloc ),
+			m_mapTriggerTransitionToTokenId( _rAlloc ),
 			m_pCCRIndex( _rAlloc ),
 			m_fHasLookaheads( false ),
-			m_fHasTriggers( false ),
+			m_nTriggers( 0 ),
 			m_nUnsatisfiableTransitions( 0 ),
 			m_pMapTriggers( _rAlloc )
 	{
@@ -126,14 +141,21 @@ public:
   }
 #endif //_DEBUG
 
-	size_type	AlphabetSize() const	{ return m_setAlphabet.size(); }
+	size_type	AlphabetSize() const	
+	{ 
+		return m_setAlphabet.size(); 
+	}
+	_TyAlphaIndex AIGetLastSatisfiable() const
+	{
+		return (_TyAlphaIndex)( AlphabetSize() - 1 - ( m_nTriggers + m_nUnsatisfiableTransitions ) );
+	}
 
 	_TyGraphNode *	PGNGetNode( _TyState _iState )
 	{
 		return static_cast< _TyGraphNode * >( m_nodeLookup[ _iState ] );
 	}
 
-	_TyRange	LookupRange( _TyAlphaIndex _ai )
+	_TyRange	LookupRange( _TyAlphaIndex _ai ) const
 	{
 		if ( _ai < 0 )
 		{
@@ -142,7 +164,34 @@ public:
 		}
 		else
 		{
-			return m_rgrngLookup[ _ai ];
+			return m_rgrngLookup[ (size_t)_ai ];
+		}
+	}
+
+	typedef std::pair< _TyAlphaIndex, _TyAlphaIndex > _TyPrAI;
+	void GetTriggerUnsatAIRanges( _TyPrAI * _prpraiTriggers, _TyPrAI * _praiUnsatisfiable ) const
+	{
+		if ( _prpraiTriggers )
+		{
+			_prpraiTriggers->first = AlphabetSize() - m_nTriggers - m_nUnsatisfiableTransitions;
+			_prpraiTriggers->second = _prpraiTriggers->first + m_nTriggers;
+		}
+		if ( _praiUnsatisfiable )
+		{
+			_praiUnsatisfiable->first = AlphabetSize() - m_nUnsatisfiableTransitions;
+			_praiUnsatisfiable->second = _praiUnsatisfiable->first + m_nUnsatisfiableTransitions;
+		}
+	}
+
+	void ConsumeMapTokenIdToTriggerTransition( _TyMapTokenIdToTriggerTransition const & _r )
+	{
+		Assert( !m_mapTriggerTransitionToTokenId.size() );
+		typename _TyMapTokenIdToTriggerTransition::const_iterator cit = _r.begin();
+		for ( ; _r.end() != cit; ++cit )
+		{
+			pair< typename _TyMapTriggerTransitionToTokenId::iterator, bool > pib = m_mapTriggerTransitionToTokenId.insert( typename _TyMapTriggerTransitionToTokenId::value_type( ms_kreTriggerStart + cit->second, cit->first ) );
+			VerifyThrow( !!pib.second );
+			pib = m_mapTriggerTransitionToTokenId.insert( typename _TyMapTriggerTransitionToTokenId::value_type( ms_kreTriggerStart + cit->second+1, cit->first ) );
 		}
 	}
 
@@ -154,9 +203,8 @@ public:
 
 		typedef _sort_dfa_link< _TyGraphLink >	_TySortDfaLinks;
 
-		bool	fCheckUnsat = ( m_fHasTriggers + m_nUnsatisfiableTransitions );
-		_TyAlphaIndex	aiLimit = (_TyAlphaIndex)( stAlphabet - 1 -
-			( m_fHasTriggers + m_nUnsatisfiableTransitions ) );
+		bool	fCheckUnsat = !!( m_nTriggers + m_nUnsatisfiableTransitions );
+		_TyAlphaIndex	aiLimit = AIGetLastSatisfiable();
 
 		typename _TyGraph::_TyLinkPosIterNonConst lpi;
 		typename _TyNodeLookup::iterator itnlEnd = m_nodeLookup.end();
@@ -204,14 +252,14 @@ public:
 			}
 			else
 			{
-				assert( pgn->FParents() );
+				Assert( pgn->FParents() );
 			}
 		}
 	}
 
 	void	CompressTransitions()
 	{
-		assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
+		Assert( !m_pSetCompCharRange );	// This is only done once - should be done just before generation.
 		if ( !m_pSetCompCharRange )
 		{
 			m_pSetCompCharRange.template emplace< typename _TySetCompCharRange::key_compare const &,
@@ -231,11 +279,12 @@ public:
 				{
 					_TyGraphLink *	pgl = lpi.PGLCur();
 					_TyGraphNode *	pgn = pgl->PGNChild();
-					_TyRange r = m_rgrngLookup[ pgl->RElConst() ];
+					Assert(pgl->RElConst() >= 0);
+					_TyRange r = m_rgrngLookup[ (size_t)pgl->RElConst() ];
 					_TyRange *	prConsecutive;
 					for(	lpi.NextChild(); 
 								!lpi.FIsLast() && 
-									r.isconsecutiveright( *( prConsecutive = &( m_rgrngLookup[ *lpi ] ) ) ); )
+									r.isconsecutiveright( *( prConsecutive = &( m_rgrngLookup[(size_t)*lpi ] ) ) ); )
 					{
 						_TyGraphLink *	pglRemove = lpi.PGLCur();
 						if ( pglRemove->PGNChild() == pgn )
@@ -248,31 +297,20 @@ public:
 							break;
 						}
 					}
-					if ( r != m_rgrngLookup[ pgl->RElConst() ] )
+					Assert(pgl->RElConst() >= 0);
+					if ( r != m_rgrngLookup[(size_t)pgl->RElConst() ] )
 					{
 						// Then a unique range - see if we already have it:
-						pair< typename _TySetCompCharRange::iterator, typename _TySetCompCharRange::iterator >
-							pit = m_pSetCompCharRange->equal_range( r );
-						typename _TySetCompCharRange::iterator itFound;
-						if ( ( itFound = find_if( pit.first, pit.second, 
-#ifdef __LEXANG_USE_STLPORT
-										unary1st( bind2nd( equal_to< _TyRange >(), r ), 
-															typename _TySetCompCharRange::value_type() ) ) 
-#else //__LEXANG_USE_STLPORT
-                  [=,&kr = as_const(r)](auto _el) 
-                  { 
-                    static_assert(is_const_v<remove_reference_t<decltype(kr)>>);
-                    return kr == _el.first; 
-                  } )
-#endif //__LEXANG_USE_STLPORT
-              ) == pit.second )
+						typename _TySetCompCharRange::iterator itFound = m_pSetCompCharRange->find( r );
+						if ( m_pSetCompCharRange->end() == itFound )
 						{
 							// Then a new range:
 							typename _TySetCompCharRange::value_type	vt( r, (_TyAlphaIndex)m_pCCRIndex->size() );
-							itFound = m_pSetCompCharRange->insert( vt );
+							pair< typename _TySetCompCharRange::iterator, bool > pib = m_pSetCompCharRange->insert( vt );
+							Assert( pib.second );
+							itFound = pib.first;
 							m_pCCRIndex->push_back( itFound );
 						}
-
 						pgl->RElNonConst() = -( itFound->second + 1 );
 					}
 				}
@@ -303,7 +341,7 @@ public:
 					prngFound->contains( _rc ) )
 		{
 			size_type st = prngFound - m_rgrngLookup.begin();
-			if (st > numeric_limits< _TyAlphaIndex >::max())
+			if (st > (numeric_limits< _TyAlphaIndex >::max)())
 				throw alpha_index_overflow("_LookupAlphaSetNum(): Alpha index overflowed.");
 			return prngFound - m_rgrngLookup.begin();
 		}
@@ -318,7 +356,7 @@ public:
 	{
 		if ( m_fHasDeadState )
 		{
-			assert( 0 );	// ni - though easy.
+			Assert( 0 );	// ni - though easy.
 		}
 
     // Set up the release of the pssAccepting. There are a lot of local variables required for this.
@@ -377,7 +415,7 @@ public:
 		}
 
 		// If we are at an accepting state:
-		return _rctxt.m_pssAccept->isbitset( pgnCur->RElConst() );
+		return pssAccepting->isbitset( pgnCur->RElConst() );
 	}
 
 	void	Dump( ostream & _ros, _TyDfaCtxt const & _rCtxt ) const
@@ -411,7 +449,7 @@ protected:
 	{
     *_ppgn = m_gDfa.create_node1( m_iCurState );
 		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgn );
-    assert(_TyState(stNodeAdded) == m_iCurState);
+    Assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	} 
 
@@ -451,7 +489,7 @@ protected:
 		}
 	
 		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgnAccept );
-    assert(_TyState(stNodeAdded) == m_iCurState);
+    Assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -505,19 +543,12 @@ public:
 	typedef typename _TyDfa::_TyAcceptAction _TyAcceptAction;
 	typedef _swap_object< _TySetStates > _TySwapSS;
 	typedef less< _TySwapSS > _TyCompareStates;
-#ifdef __LEXANG_USE_STLPORT
-  typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, t_TyAllocator > _TyPartAcceptStates;
-  typedef hash_map< _TyState, typename _TyPartAcceptStates::value_type *,
-										  hash< _TyState >, equal_to< _TyState >,
-										  t_TyAllocator > _TyAcceptPartLookup;
-#else //__LEXANG_USE_STLPORT
   typedef typename _Alloc_traits< typename map< _TySwapSS, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TyPartAcceptStatesAllocator;
   typedef map< _TySwapSS, _TyAcceptAction, _TyCompareStates, _TyPartAcceptStatesAllocator > _TyPartAcceptStates;
   typedef typename _Alloc_traits< typename unordered_map< _TyState, typename _TyPartAcceptStates::value_type * >::value_type, t_TyAllocator >::allocator_type _TyAcceptPartLookupAllocator;
   typedef unordered_map< _TyState, typename _TyPartAcceptStates::value_type *,
                         hash< _TyState >, equal_to< _TyState >,
                       _TyAcceptPartLookupAllocator > _TyAcceptPartLookup;
-#endif //__LEXANG_USE_STLPORT
 
 	_TyGraphNode * m_pgnStart;
 	_sdpd< _TySetStates, t_TyAllocator > m_pssAccept;
@@ -554,7 +585,7 @@ public:
 
 	void	GetAcceptingNodeSet( _TySetStates & _rss ) const
 	{
-		assert( m_pssAccept );
+		Assert( m_pssAccept );
 		_rss = *m_pssAccept;
 	}
 
@@ -594,7 +625,7 @@ public:
 #endif //!NDEBUG
 				m_pPartLookup->insert( vt );
 #ifndef NDEBUG
-				assert( pib.second );
+				Assert( pib.second );
 #endif //!NDEBUG
 			}
 		}
@@ -620,12 +651,17 @@ public:
 
 	void	ProcessUnsatisfiableTranstitions()
 	{
-		assert( !RDfa().m_fHasDeadState );	// This should be removed first.
+		Assert( !RDfa().m_fHasDeadState );	// This should be removed first.
 
 		if ( !RDfa().m_nUnsatisfiableTransitions )
+		{
+			size_t stRemoved;
+			 // We should have no orphaned portions of the graphs.
+			VerifyThrowSz( !( stRemoved = _STCheckPruneAlternateRoots( false ) ), "Found orphaned portion(s) or alternate roots and removed them ([%lu] nodes removed), but didn't expect to find orphaned portions.", stRemoved );
 			return;
+		}
 
-		assert( !( RDfa().m_nUnsatisfiableTransitions % 2 ) );	// Should have an even number of unsats.
+		Assert( !( RDfa().m_nUnsatisfiableTransitions % 2 ) );	// Should have an even number of unsats.
 
 		// The algorithm works like this:
 		// 1) Move through the states starting from zero looking for unsatifiable trailing contexts -
@@ -639,7 +675,9 @@ public:
 		// 4) Disconnect the child of (1) and destroy the subgraph at the parent.
 		// 5) search for more trailing contexts (1).
 
-		typename _TyDfa::_TyAlphaIndex	aiLimit = (typename _TyDfa::_TyAlphaIndex)( RDfa().m_setAlphabet.size()-1-RDfa().m_nUnsatisfiableTransitions );
+		typedef std::pair< typename _TyDfa::_TyAlphaIndex, typename _TyDfa::_TyAlphaIndex > _TyPrAI;
+		_TyPrAI praiTriggers, praiUnsatisfiable;
+		RDfa().GetTriggerUnsatAIRanges( &praiTriggers, &praiUnsatisfiable );
 
     typename _TySetStates::size_type stRemoved = 0;
 
@@ -652,14 +690,17 @@ public:
 			_TyGraphNode *	pgn = RDfa().PGNGetNode( nState );
 			if ( pgn )
 			{
-				// Then check for a single odd unsat out trans:
+				// Then check for a single odd numbered unsat out trans:
 				_TyGraphLink *	pglUnsat = *pgn->PPGLChildHead();
 				if (	pglUnsat && !*pglUnsat->PPGLBGetNextChild() &&
-							( pglUnsat->RElConst() > aiLimit ) &&
-							!( ( pglUnsat->RElConst() - aiLimit ) % 2 ) )
+							( pglUnsat->RElConst() >= praiUnsatisfiable.first ) &&
+							FVerifyInline( pglUnsat->RElConst() < praiUnsatisfiable.second ) &&
+							!!( ( pglUnsat->RElConst() - praiUnsatisfiable.first ) % 2 ) )
 				{
 					// Then we have found the trailing context of a portion of the graph to be excised.
 					_TyGraphNode *	pgnReconnect = pglUnsat->PGNChild();
+
+					// We ignore all unsatisfiable transitions found that don't match pglUnsat->RElConst()-1 or pglUnsat->RElConst().
 
 					// Get a forward graph iterator iterating the parents:
 					typename _TyGraph::iterator	gfit( pgn, 0, true, false, RDfa().get_allocator() );
@@ -685,25 +726,59 @@ public:
 							// Then at a node - check to see if has any unsat out trans - they are at the beginning
 							//	- but after any trigger transitions:
 							_TyGraphLink *	pglFirst = *(gfit.PGNCur()->PPGLChildHead());
-							if ( RDfa().m_fHasTriggers )
-							{
-								if ( pglFirst && ( pglFirst->RElConst() == aiLimit ) )
-								{
-									pglFirst = *pglFirst->PPGLGetNextChild();
-								}
-							}
+							for ( ; !!pglFirst && ( pglFirst->RElConst() >= praiTriggers.first ) && ( pglFirst->RElConst() < praiTriggers.second ); 
+										pglFirst = *pglFirst->PPGLGetNextChild() )
+									;
 
-							if ( pglFirst && ( pglFirst->RElConst() > aiLimit ) )
+							if (	!!pglFirst && ( pglFirst->RElConst() >= praiUnsatisfiable.first ) && 
+										( pglFirst->RElConst() < praiUnsatisfiable.second ) )
 							{
-								// Then found one - this node to be deleted:
+								// We don't expect to encounter any other unsatisfiables and we want to know even in release whether or not we do:
+								VerifySz( ( ( pglFirst->RElConst() == pglUnsat->RElConst()-1 ) || ( pglFirst->RElConst() == pglUnsat->RElConst() ) ), 
+									"pglFirst->RElConst()[%lu] pglUnsat->RElConst()[%lu]", size_t(pglFirst->RElConst()), size_t(pglUnsat->RElConst()) );
+								// Then found one - this node to be deleted.
+								Assert( !!stRemoved || ( gfit.PGNCur() == pgn ) ); // First time through we should remove the root.
 								RDfa().m_nodeLookup[ gfit.PGNCur()->RElConst() ] = 0;
+								_TyGraphNode * pgnRemoved = gfit.PGNCur();
 								++gfit;	// Move to next node or link.
 								++stRemoved;
-							}
+								if ( 1 != stRemoved )// We don't check on the first node because we know there is only one child.
+								{
+									// Now remove links for any children of pgnRemoved who enter into nodes which do not contain any of the unsatifiable transactions we are interested in.
+									// The first easy check is to see if it enters into a node which has already been zeroed - in which it should not be removed.
+									// Note that we needn't remove the link entirely - just remove it from connecting back to the non-pruned graph - deletion will correctly delete unconnected links.
+									// First move past any unsatisfiable transitions:
+									_TyGraphLink * pglNext = *pglFirst->PPGLGetNextChild();
+									for (; !!pglNext; pglNext = *pglNext->PPGLGetNextChild())
+									{
+										_TyGraphNode * pgnCheck = pglNext->PGNChild();
+										if ( !RDfa().m_nodeLookup[ pgnCheck->RElConst() ] )
+										{
+											// points at already removed node - leave the link because we need the to-be-removed subgraph to be connected for deletion purposes.
+											continue;
+										}
+										_TyGraphLink *	pglFirstCheck = *pgnCheck->PPGLChildHead();
+										for (; !!pglFirstCheck && (pglFirstCheck->RElConst() >= praiTriggers.first) && (pglFirstCheck->RElConst() < praiTriggers.second);
+											pglFirstCheck = *pglFirstCheck->PPGLGetNextChild())
+										{
+											// REVIEW<dbien>: Want to see this scenario if it happens. It's likely that the connection to the trigger will keep this "to be excised" portion of the graph connected to the main graph and cause crashing issues.
+											Assert( false ); 
+										}
+										Assert( !!pglFirstCheck ); // REVIEW<dbien>:Want to see if this ever fires and check out that scenario - could just remove this.
+										if ( !!pglFirstCheck && ( ( pglFirstCheck->RElConst() != pglUnsat->RElConst()-1 ) && ( pglFirstCheck->RElConst() != pglUnsat->RElConst() ) ) )
+										{
+											// Then pglNext connects back to the main graph and should be removed from it's child's parent list:
+											pglNext->RemoveParent();
+											pglNext->SetChildNode( nullptr );
+											// We leave it unconnected since it will be pruned and deletion correctly deletes links with only one connection.
+										} // if
+									} // for
+								} // if
+							} // if
 							else
 							{
-								assert( pglEntered );
-								assert( pglEntered->PGNParent() == gfit.PGNCur() );
+								Assert( pglEntered );
+								Assert( pglEntered->PGNParent() == gfit.PGNCur() );
 
 								// This node to remain in graph - record the state:
 								ssFoundNodes.setbit( gfit.PGNCur()->RElConst() );
@@ -715,10 +790,11 @@ public:
 								__DEBUG_STMT( pglEntered = 0 )
 							}
 						}
-					}
+					} // while ( !gfit.FAtEnd() )...
 					pglUnsat->RemoveParent();
 					pglUnsat->SetChildNode( 0 );
 					
+					Assert( !RDfa().m_nodeLookup[ pgn->RElConst() ] ); // If not then when would we zero it? We're deleting the node below.
 					RDfa().m_gDfa.destroy_node( pgn );
 				}
 			}
@@ -728,6 +804,133 @@ public:
 		{
 			CompressNodeLookup( stRemoved );
 		}
+
+		// Now, for complex "completed by" expressions - i.e. ones that are completed by a variable length series of characters
+		//	as opposed to a fix length set of characters, we may have orphaned sections of the DFA which need removal.
+		(void)_STCheckPruneAlternateRoots( true );
+	}
+
+	// Pull this method out because MSVC is endlessly looping during the link.
+	void _GetConnectedSet( _TyGraphNode *	_pgnRoot, _TySetStates & _bvConnected, bool _fClosedDirected, bool _fDirectionDown )
+	{
+		Assert( _bvConnected.empty() );
+		typename _TyGraph::iterator	gfit( _pgnRoot, 0, _fClosedDirected, _fDirectionDown, RDfa().get_allocator() );
+		for ( ; !gfit.FAtEnd(); ++gfit )
+		{
+			if ( !gfit.PGLCur() ) // We want scearios where we are at a node and not at any link of that node.
+				_bvConnected.setbit( gfit.PGNCur()->RElConst() );
+		}
+	}
+
+	// This will check for nodes that are orphaned from the main DFA and then remove appropriately.
+	// Return the number of nodes removed thusly.
+	size_t _STCheckRemoveOrphanedSubgraphs( bool _fCallCompressNodeLookup )
+	{
+		// If a node is not connected to the root node (node 0) then it needs removal, as well once we have found such a set of nodes we must
+		//	then test for connectedness betwen that set to determine which set of nodes needs deletion.
+		// We will check for such orphaned portions for interconnectivity amongst themselves so that we may appropriately detroy the set of
+		//	orphaned subgraphs.
+		// Algorithm:
+		// 1) First pass: Start at the root node and accumulate a bit vector of every node we encounter along the way - this is the set of connected nodes.
+		// 2) Then start with the first disconnected node and do essentially the same thing - move through and accumulate a bitvector of nodes connected to it.
+		//	a) Zero this set of nodes and then delete destroy the subgraph at the first disconnected node.
+		//	b) If there are more disconnected nodes left then go to (2) and repeat until there are no disconnected nodes left.
+		_TySetStates bvDisconnected( RDfa().NStates(), RDfa().get_allocator() );
+		bvDisconnected.clear();
+		// We will iterate both parents and children to find connected nodes, however we should
+		//	be able to just iterate down. Iterating both directions correctly detects multiple roots - even though
+		//	multiple roots are not currently supported we will account for it for completeness purposes (and because it is easy to do so).
+		// This method is removing orphaned subgraphs - not inaccessible roots.
+		{ //B
+			_TyGraphNode *	pgnRoot = RDfa().PGNGetNode( 0 );
+			VerifyThrowSz( !!pgnRoot, "No root node?!" );
+			_GetConnectedSet( pgnRoot, bvDisconnected, false, true );
+			bvDisconnected.invert(); // now disconnected set.
+		} //EB
+
+		size_t stRemoved = 0;
+		while ( !bvDisconnected.empty() )
+		{
+			_TyGraphNode *	pgnRootSG;
+			{//B
+				typename _TySetStates::size_type stRootSG;
+				_TySetStates bvCopyDisconnected( bvDisconnected );
+				// Move through and find the first non-null node in bvCopyDisconnected:
+				for ( stRootSG = bvCopyDisconnected.getclearfirstset();
+							( bvCopyDisconnected.size() != stRootSG ) && !( pgnRootSG = RDfa().PGNGetNode( stRootSG ) );
+							( stRootSG = bvCopyDisconnected.getclearfirstset( stRootSG ) ) )
+					;
+				Assert( pgnRootSG );
+			}//EB
+			VerifyThrow( !!pgnRootSG );
+			_TySetStates bvConnectedSG( RDfa().NStates(), RDfa().get_allocator() );
+			bvConnectedSG.clear();
+			_GetConnectedSet( pgnRootSG, bvConnectedSG, false, true );
+			bvDisconnected.and_not_equals( bvConnectedSG );
+			// Now zero all the nodes we found:
+			for (typename _TySetStates::size_type stRemove = bvConnectedSG.getclearfirstset();
+						bvConnectedSG.size() != stRemove;
+						( stRemove = bvConnectedSG.getclearfirstset( stRemove ) ), ++stRemoved )
+				RDfa().m_nodeLookup[ stRemove ] = 0;
+			// Remove the root:
+			RDfa().m_gDfa.destroy_node( pgnRootSG );
+		}
+		if ( _fCallCompressNodeLookup && stRemoved )
+		{
+			CompressNodeLookup( stRemoved );
+		}
+		return stRemoved;
+	}
+
+	// This will check for nodes that are inaccessible from the root node of the DFA in a childwise traversal.
+	// These are extraneous nodes as they cannot participate in the lexical analysis. These can be created by the
+	//	 "completed by" algorithm of inserting "unsatisifiable" pairs into the NFA.
+	// This is similar to _STCheckRemoveOrphanedSubgraphs() but we must clip any connections between roots and the main graph.
+	// Return the number of nodes removed thusly.
+	size_t _STCheckPruneAlternateRoots( bool _fCallCompressNodeLookup )
+	{
+		// Algorithm:
+		// 1) Mark all nodes accessible in a downward (childwise) closed iteration from the root node.
+		//	a) All nodes not such marked are not required in the resultant DFA. They won't hurt anything but they are detritus.
+		// 3) Then move through all detritus nodes and remove any children connecting to nodes which are not detritus.
+		// 4) Then perform "removal procedure" which we used in _STCheckRemoveOrphanedSubgraphs() to detroy connected subgraphs among the nodes to be removed.
+		_TySetStates bvDetritus( RDfa().NStates(), RDfa().get_allocator() );
+		bvDetritus.clear();
+		{ //B
+			_TyGraphNode *	pgnRoot = RDfa().PGNGetNode( 0 );
+			VerifyThrowSz( !!pgnRoot, "No root node?!" );
+			_GetConnectedSet( pgnRoot, bvDetritus, true, true );
+			bvDetritus.invert(); // now disconnected set.
+		} //EB
+
+		{ //B
+			_TySetStates bvDetritusCopy( bvDetritus );
+			// Move through and find the first non-null node in bvDetritusCopy:
+			for ( typename _TySetStates::size_type stDetritus = bvDetritusCopy.getclearfirstset();
+						( bvDetritusCopy.size() != stDetritus );
+						( stDetritus = bvDetritusCopy.getclearfirstset( stDetritus ) ) )
+			{
+				_TyGraphNode *	pgnDetritus = RDfa().PGNGetNode( stDetritus );
+				Assert( !!pgnDetritus ); // We can deal with it not being populated but we expect it populated.
+				if ( !!pgnDetritus )
+				{
+					_TyGraphLink *	pglCur = *(pgnDetritus->PPGLChildHead());
+					for ( ; !!pglCur; pglCur = *pglCur->PPGLGetNextChild() )
+					{
+						_TyGraphNode * pgnCheck = pglCur->PGNChild();
+						if ( !bvDetritus.isbitset( pgnCheck->RElConst() ) ) // yes bvDetritus.
+						{
+							// pruning shears...
+							pglCur->RemoveParent();
+							pglCur->SetChildNode( nullptr );
+						}
+					}
+				}
+			}
+		} //EB
+
+		// Now we should just be able to call _STCheckRemoveOrphanedSubgraphs since we would have just created at least one orphaned subgraph:
+		return _STCheckRemoveOrphanedSubgraphs( _fCallCompressNodeLookup );
 	}
 
 	void	RemoveDeadState( )
@@ -741,7 +944,16 @@ public:
 				RDfa()._RemoveLink( lpi.PGLCur() );
 			}
 
-			// Dead state is orphaned - but has a lot of children ( itself ).
+			// Dead state is orphaned - but has a lot of children ( itself ) - assert that is the case:
+#if ASSERTSENABLED
+			{//B
+				typename _TyGraph::_TyLinkPosIterConst	lpi( RDfa().PGNGetNode( 0 )->PPGLChildHead() );
+				_TyGraphNode * pgnDead = RDfa().PGNGetNode( 0 );
+				while( !lpi.FIsLast() )
+					Assert( lpi.PGLCur()->PGNChild() == pgnDead );
+			} //EB
+#endif //ASSERTSENABLED
+
 			RDfa().m_gDfa.destroy_node( RDfa().PGNGetNode( 0 ) );
 			RDfa().m_nodeLookup[ 0 ] = 0;
 
@@ -802,7 +1014,7 @@ public:
 					// Set the state in the appropriate accept partition:
 					typename _TyMapToNewAccept::iterator itPart = mapToNewAccept.find( 
 																									PVTGetAcceptPart( iState ) );
-					assert( mapToNewAccept.end() != itPart );
+					Assert( mapToNewAccept.end() != itPart );
 					itPart->second.RObject().setbit( iState - iEmptyNodes );
 				}
 				if ( iEmptyNodes )
@@ -859,7 +1071,7 @@ public:
 			// Swap the bitvector in from <mapToNewAccept>:
 			typename _TyPartAcceptStates::value_type	vt( itMap->second, itMap->first->second );
 			pair< typename _TyPartAcceptStates::iterator, bool >	pibInsert = partAcceptNew.insert( vt );
-			assert( pibInsert.second );
+			Assert( pibInsert.second );
 		}
 
 		m_partAccept.swap( partAcceptNew );
@@ -868,12 +1080,12 @@ public:
 		m_pssAccept->swap( ssNewAccept );
 
 		// Set the number of states in the DFA:
-		assert( RDfa().m_nodeLookup.size() == stNewStates );
+		Assert( RDfa().m_nodeLookup.size() == stNewStates );
 		RDfa().SetNumStates( stNewStates );
 
 		RDfa()._ClearSSCache();	// Clear any SS cache's - they are at the old size.
 
-		assert( RDfa().m_nodeLookup.size() == m_pssAccept->size() );
+		Assert( RDfa().m_nodeLookup.size() == m_pssAccept->size() );
 	}
 
 	// Compress accept paritions that correspond to the same trigger actions.
@@ -945,11 +1157,11 @@ public:
 				m_partAccept.erase( rvtSTP.second.first );
 				const_cast< _TySetStates& >( vtCopy.first.RObject() ).
 						swap( rvtSTP.second.second.RObject() );
-#ifndef NDEBUG
+#if ASSERTSENABLED
 				pair< typename _TyPartAcceptStates::iterator, bool > pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 				m_partAccept.insert( vtCopy );
-				assert( pib.second );
+				Assert( pib.second );
 			}
 		}
 	}

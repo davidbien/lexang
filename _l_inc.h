@@ -25,6 +25,7 @@
 #include "_swapobj.h"
 #include "_pairfxn.h"
 #include "_fcallobj.h"
+#include "_l_types.h"
 #include "_l_chrtr.h"
 #include "_l_chrng.h"
 #include "_l_axion.h"
@@ -36,6 +37,7 @@
 #include "_l_dfacr.h"
 #include "_l_dfopt.h"
 #include "_l_lxgen.h"
+#include "_l_data.h"
 
 #endif //__L_INC_H
 

@@ -23,20 +23,33 @@ template < class t_TyChar, class t_TyAllocator > class _nfa_context;
 
 // class regexp_trigger_first:
 // We throw this when we encounter a trigger as the first state in an NFA - it will fire all the time regardless of input - so it is dumb
-#ifdef __NAMDDEXC_STDBASE
-#pragma push_macro("std")
-#undef std
-#endif //__NAMDDEXC_STDBASE
-class regexp_trigger_found_first_exception : public std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
+class regexp_trigger_found_first_exception : public _t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
 {
-  typedef std::_t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
+  typedef _t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
 public:
-  regexp_trigger_found_first_exception() : _TyBase("regexp_trigger_found_first_exception") {}
-  regexp_trigger_found_first_exception(const string_type & __s) : _TyBase(__s) {}
+  regexp_trigger_found_first_exception() 
+		: _TyBase("regexp_trigger_found_first_exception") 
+	{
+	}
+  regexp_trigger_found_first_exception( const char * _pc ) 
+		: _TyBase(_pc) 
+	{
+	}
+  regexp_trigger_found_first_exception(const string_type & __s) 
+		: _TyBase(__s) 
+	{
+	}
 };
-#ifdef __NAMDDEXC_STDBASE
-#pragma pop_macro("std")
-#endif //__NAMDDEXC_STDBASE
+
+// ENFACreationOptions: Options for creation of the NFA from regular expression.
+// Used as bitmasks, as in ( 1 << encoIgnoreTriggers ).
+enum ENFACreationOptions : uint32_t
+{
+	encoIgnoreTriggers,
+		// Ignore any declared triggers.
+	encoNFACreationOptionsCount // This at the end always.
+};
+
 
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
 class _nfa 
@@ -51,7 +64,7 @@ protected:
 	using _TyBase::m_iCurState;	
 	using _TyBase::m_setAlphabet;
 	using _TyBase::m_nodeLookup;
-	using _TyBase::ms_kreTrigger;
+	using _TyBase::ms_kreTriggerStart;
 	using _TyBase::ms_kreUnsatisfiableStart;
 	using _TyBase::_STUpdateNodeLookup;
 	using _TyBase::_STGetSSCache;
@@ -65,6 +78,7 @@ public:
 	friend struct _create_dfa;
 	friend class _nfa_context< t_TyChar, t_TyAllocator >;
 
+	typedef t_TyChar _TyChar;
 	typedef _nfa_context_base< t_TyChar > _TyNfaCtxtBase;
 	typedef _nfa_context< t_TyChar, t_TyAllocator >	_TyNfaCtxt;
 	typedef _TyNfaCtxt _TyContext;
@@ -72,6 +86,7 @@ public:
 	typedef typename _TyBase::_TyRange _TyRange;
 	typedef typename _TyBase::_TyRangeEl _TyRangeEl;
 	typedef typename _TyBase::_TySetStates _TySetStates;
+	typedef typename _TyBase::_TyActionObjectBase _TyActionObjectBase;
 	typedef typename _TyBase::_TyAcceptAction _TyAcceptAction;
 	typedef typename _TyBase::_TyUnsignedChar _TyUnsignedChar;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
@@ -81,6 +96,7 @@ public:
 	typedef __DGRAPH_NAMESPACE dgraph< _TyState, _TyRange, false, t_TyAllocator > _TyGraph;
 	typedef typename _TyGraph::_TyGraphNode _TyGraphNode;
 	typedef typename _TyGraph::_TyGraphLink _TyGraphLink;
+	typedef uint32_t _TyGrfNFACreationOptions;
 
 	_TyGraph m_gNfa;
 
@@ -93,34 +109,46 @@ public:
 	// We cache the selection iterator to keep from allocating/deallocating all the time:
 	_TySelectIterConst	m_selit;
 
-	bool m_fHaveEmpty;	// Have we already added the empty set to the alphabet lookup.
+	bool m_fHaveEmpty{false};	// Have we already added the empty set to the alphabet lookup.
 
 	// Cache for already computed closure by state:
 	char * m_cpClosureCache;
 	// bit vector indicating which cache sets are computed.
 	_TySetStates m_ssClosureComputed;
 
-	int m_iActionCur;
+	int m_iActionCur{0};
+	_TyGrfNFACreationOptions m_grfNFACreationOptions{0};
 
 	typedef less< _TyState > _TyCompareStates;
 	typedef typename _Alloc_traits< typename map< _TyState, _TyAcceptAction, _TyCompareStates >::value_type, t_TyAllocator >::allocator_type _TySetAcceptStatesAllocator;
 	typedef map< _TyState, _TyAcceptAction, _TyCompareStates, _TySetAcceptStatesAllocator > _TySetAcceptStates;
 	typedef typename _TySetAcceptStates::iterator _TySetAcceptIT;
 	typedef typename _TySetAcceptStates::value_type _TySetAcceptVT;
+	typedef basic_string< t_TyChar, char_traits< t_TyChar >, typename _Alloc_traits< t_TyChar, t_TyAllocator >::allocator_type > _TyString;
 
 	// Sometimes need to order the accept actions by action identifier:
-	typedef less< _TyActionIdent > _TyCompareAI;
-	typedef typename _Alloc_traits< typename map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
-	typedef map< _TyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
+	// REVIEW:<dbien>: This system likely needs to change. Probably have to figure out some other manner of ordering actions - especially when this is used for triggers and not tokens.
+	typedef less< vtyActionIdent > _TyCompareAI;
+	typedef typename _Alloc_traits< typename map< vtyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TySetASByActionIDAllocator;
+	typedef map< vtyActionIdent, typename _TySetAcceptStates::value_type *, _TyCompareAI, _TySetASByActionIDAllocator > _TySetASByActionID;
+
+	// Need a map from _l_action_object_base::VGetTokenId() to the first trigger (of the pair) associated with it. This ensures that instances of same triggers distributed
+	//	throughout the NFA will combine appropriately with one another when forming the DFA and then optimizing it.
+	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
+	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
+	_TyMapTokenIdToTriggerTransition m_mapTokenIdToTriggerTransition;
+	size_type m_nTriggers;
+	size_type m_nUnsatisfiableTransitions;
 	bool m_fHasLookaheads;
-	bool m_fHasTriggers;
 	bool m_fHasFreeActions;
-	int m_nUnsatisfiableTransitions;
 
-	_nfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
+	_nfa( _nfa const & ) = delete;
+	_nfa operator = ( _nfa const & ) = delete;
+
+	_nfa( _TyGrfNFACreationOptions _grfNFACreationOptions = 0, t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		:	 _TyBase( _rAlloc ),
 			_TyCharAllocBase( _rAlloc ),
 			m_fHaveEmpty( false ),
@@ -131,33 +159,46 @@ public:
 			m_iActionCur( 0 ),
 			m_pSetAcceptStates( get_allocator() ),
 			m_pLookupActionID( get_allocator() ),
+			m_mapTokenIdToTriggerTransition( get_allocator() ),
 			m_fHasLookaheads( false ),
-			m_fHasTriggers( false ),
+			m_nTriggers( 0 ),
 			m_fHasFreeActions( false ),
-			m_nUnsatisfiableTransitions( 0 )
+			m_nUnsatisfiableTransitions( 0 ),
+			m_grfNFACreationOptions( _grfNFACreationOptions )
 	{
 		m_pSetAcceptStates.template emplace< const _TyCompareStates &, const t_TyAllocator & >( _TyCompareStates(), get_allocator() );
 		// m_pSetAcceptStates.template emplace< const _TyCompareStates &, const t_TyAllocator & >
 		// 															( _TyCompareStates(), get_allocator() );
 	}
-
 	~_nfa()
 	{
 		DeallocClosureCache();
 	}
 
+	void AssertValid() const
+	{
+#if ASSERTSENABLED
+		Assert( m_nTriggers == m_mapTokenIdToTriggerTransition.size() * 2 );
+#endif //ASSERTSENABLED
+	}
+
 	t_TyAllocator get_allocator() const _BIEN_NOTHROW	{ return _TyCharAllocBase::get_allocator(); }
 
+	bool FIgnoreTriggers() const
+	{
+		return !!( m_grfNFACreationOptions & ( 1 << encoIgnoreTriggers ) );
+	}
 	void	AllocClosureCache()
 	{
 		_TySetStates	ssComputed( NStates(), get_allocator() );
 		m_ssClosureComputed.swap( ssComputed );
 		m_ssClosureComputed.clear();
 
-		assert( !m_cpClosureCache );
+		Assert( !m_cpClosureCache );
 
 		_TyCharAllocBase::allocate_n( m_cpClosureCache, 
 																	m_ssClosureComputed.size_bytes() * NStates() );
+		memset( m_cpClosureCache, 0, m_ssClosureComputed.size_bytes() * NStates() );
 	}
 
 	void	DeallocClosureCache()
@@ -207,9 +248,9 @@ public:
 
 		while( *_pc && !pssCur->empty() )
 		{
-			assert( pssMove->empty() );
+			Assert( pssMove->empty() );
 			ComputeSetMoveStates( *pssCur, _TyRange( *_pc, *_pc ), *pssMove );
-			assert( pssCur->empty() );
+			Assert( pssCur->empty() );
 			ComputeSetClosure( *pssMove, *pssCur );
 			if ( !pssCur->empty() )
 			{
@@ -254,7 +295,7 @@ public:
 
 	void ToJSONStream( JsonValueLifeAbstractBase< t_TyChar > & _jvl, _TyNfaCtxt const & _rCtxt ) const
 	{
-		assert( _jvl.FAtObjectValue() ); // Will throw below if we aren't...
+		Assert( _jvl.FAtObjectValue() ); // Will throw below if we aren't...
 		// Dump the alphabet and the graph:
 		{//B
 			std::unique_ptr< JsonValueLifeAbstractBase< t_TyChar > > pjvlAlphabet;
@@ -281,25 +322,22 @@ public:
 	}
 
 protected:	// accessed by _nfa_context:
-
 	void	DestroySubGraph( _TyGraphNode * _pgn )
 	{
 		if ( !!_pgn )
 			m_gNfa.destroy_node( _pgn );
 	}
-
 	void	CreateRangeNFA( _TyNfaCtxt & _rctxt, _TyRange const & _rr )
 	{
-    	assert( !_rctxt.m_pgnStart ); // throw-safety.
+    	Assert( !_rctxt.m_pgnStart ); // throw-safety.
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, _rr, &_rctxt.m_pgnAccept );
 	}
-
 	void	CreateStringNFA( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
 	{
 		if ( *_pc )
 		{
-			assert( !_rctxt.m_pgnStart );
+			Assert( !_rctxt.m_pgnStart );
 			_NewStartState( &_rctxt.m_pgnStart );
 			_rctxt.m_pgnAccept = _rctxt.m_pgnStart;
 
@@ -316,11 +354,181 @@ protected:	// accessed by _nfa_context:
 			CreateRangeNFA( _rctxt, _TyRange( 0, 0 ) );
 		}
 	}
+	void CreateLiteralNotInSetNFA( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
+	{
+		Assert( !_rctxt.m_pgnStart );
+		if ( *_pc )
+		{
+			_TyString str( _pc );
+			std::sort( str.begin(), str.end() );
+			// If we see duplicate characters specified then we will throw an exception because it shouldn't be intended and may indicate a bug in the specification.
+			{//B
+				typename _TyString::const_iterator citDupe;
+				VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
+					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+			}//EB
+			// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
+			{//B
+				typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
+				VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
+					"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+			}//EB
+
+			const _TyUnsignedChar * pcCur = str.c_str();
+			_TyUnsignedChar ucLast = 0;
+			do
+			{
+				++ucLast;
+				while( *pcCur == ucLast )
+				{
+					++pcCur;
+					++ucLast;
+				}
+				if ( !ucLast ) // check for overflow for unsigned char type.
+					break;
+				if ( ucLast <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax )
+				{
+					_TyUnsignedChar ucNewLast = !*pcCur ? _l_char_type_map< _TyUnsignedChar >::ms_kcMax : ( *pcCur++ - 1 );
+					_TyRange rgNew( ucLast, ucNewLast );
+					ucLast = ucNewLast + 1;
+					if ( !_rctxt.m_pgnStart )
+						CreateRangeNFA( _rctxt, rgNew );
+					else
+						_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+					if ( !ucLast )
+						break;
+				}
+			}
+			while ( _l_char_type_map< _TyUnsignedChar >::ms_kcMax > ucLast );
+		}
+		else
+		{
+			// Create an NFA that accepts everything. This could be used with "completed by" to allow freeform data to be parsed. 
+			//	(i.e. it isn't necessarily a bug to specify this though it certainly might be)
+			CreateRangeNFA( _rctxt, _TyRange( 1, _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+		}
+	}
+	void CreateLiteralNotInSetNFANoSurrogates( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
+	{
+		Assert( !_rctxt.m_pgnStart );
+		if ( *_pc )
+		{
+			_TyString str( _pc );
+			std::sort( str.begin(), str.end() );
+			// If we see duplicate characters specified then we will throw an exception because it shouldn't be intended and may indicate a bug in the specification.
+			{//B
+				typename _TyString::const_iterator citDupe;
+				VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
+					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+			}//EB
+			// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
+			{//B
+				typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
+				VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
+					"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+			}//EB
+
+			const _TyUnsignedChar * pcCur = str.c_str();
+			_TyUnsignedChar ucLast = 0;
+			do
+			{
+				++ucLast;
+				while( *pcCur == ucLast )
+				{
+					++pcCur;
+					++ucLast;
+				}
+				if ( !ucLast ) // check for overflow for unsigned char type.
+					break;
+				if ( ucLast <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax )
+				{
+					_TyUnsignedChar ucNewLast = !*pcCur ? _l_char_type_map< _TyUnsignedChar >::ms_kcMax : ( *pcCur++ - 1 );
+					_TyRange rgNew( ucLast, ucNewLast );
+					ucLast = ucNewLast+1;
+					if ( !_l_char_type_map< _TyChar >::ms_kfHasSurrogates )
+					{
+						if ( !_rctxt.m_pgnStart )
+							CreateRangeNFA( _rctxt, rgNew );
+						else
+							_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+					}
+					else
+					{
+						static const _TyRange rgSurrogates( _l_char_type_map< _TyChar >::ms_kcSurrogateFirst, _l_char_type_map< _TyChar >::ms_kcSurrogateLast );
+						_TyRange rgSecondPart;
+						rgNew.remove( rgSurrogates, rgSecondPart );
+						if ( !rgNew.empty() )
+						{
+							do
+							{
+								if ( !_rctxt.m_pgnStart )
+									CreateRangeNFA( _rctxt, rgNew );
+								else
+									_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+								rgNew = rgSecondPart;
+								rgSecondPart.set_empty();
+							}
+							while( !rgNew.empty() );
+						}
+					}
+				}
+			}
+			while ( _l_char_type_map< _TyUnsignedChar >::ms_kcMax > ucLast );
+		}
+		else
+		{
+			// Create an NFA that accepts everything except for surrogates. This could be used with "completed by" to allow freeform data to be parsed. 
+			//	(i.e. it isn't necessarily a bug to specify this though it certainly might be)
+			if ( _l_char_type_map< _TyChar >::ms_kfHasSurrogates )
+			{
+				CreateRangeNFA( _rctxt, _TyRange( 1, _l_char_type_map< _TyChar >::ms_kcSurrogateFirst-1 ) );
+				_NewTransition( _rctxt.m_pgnStart, _TyRange( _l_char_type_map< _TyChar >::ms_kcSurrogateLast+1, _l_char_type_map< _TyChar >::ms_kcMax ), _rctxt.m_pgnAccept );
+			}
+			else
+			{
+				CreateRangeNFA( _rctxt, _TyRange( 1, _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+			}
+		}
+	}
+	void CreateLiteralAnyInSetNFA( _TyNfaCtxt & _rctxt, _TyUnsignedChar const * _pc )
+	{
+		Assert( !_rctxt.m_pgnStart );
+		VerifyThrowSz( !!*_pc, "For 'any in set' an empty string is not valid - the set must not be empty.");
+		_TyString str( _pc );
+		std::sort( str.begin(), str.end() );
+		// If we see duplicate characters specified then we will throw an exception because it shouldn't be intended and may indicate a bug in the specification.
+		{//B
+			typename _TyString::const_iterator citDupe;
+			VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
+				"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+		}//EB
+		// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
+		{//B
+			typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
+			VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
+				"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+		}//EB
+
+		const _TyUnsignedChar * pcCur = str.c_str();
+		do
+		{
+			// Find any adjacent characters:
+			_TyRange rgNew( *pcCur, *pcCur );
+			for ( ; *pcCur == pcCur[1]+1; ++pcCur )
+				;
+			rgNew.second = *pcCur++;
+			if ( !_rctxt.m_pgnStart )
+				CreateRangeNFA( _rctxt, rgNew );
+			else
+				_NewTransition( _rctxt.m_pgnStart, rgNew, _rctxt.m_pgnAccept );
+		}
+		while ( *pcCur );
+	}
 	void	CreateFollowsNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
 	{
 		// Need to do a node-splice - easy since each has no siblings in the right direction:
-		assert( !_rctxt1_Result.m_pgnAccept->FChildren() );
-		assert( !_rctxt2.m_pgnStart->FParents() );
+		Assert( !_rctxt1_Result.m_pgnAccept->FChildren() );
+		Assert( !_rctxt2.m_pgnStart->FParents() );
 
 		(*(_rctxt2.m_pgnStart->PPGLChildHead()))->AppendChildListToTail( 
 			_rctxt1_Result.m_pgnAccept->PPGLBChildHead() );
@@ -349,7 +557,7 @@ protected:	// accessed by _nfa_context:
 		_NewAcceptingState( _rctxt2.m_pgnAccept, 
 												_TyRange( 0, 0 ), &_rctxt2.m_pgnAccept );
 		_NewTransition( pgnStart, _TyRange( 0, 0 ), _rctxt2.m_pgnStart );
-		dtorSubGraph.Reset();
+		dtorSubGraph.Reset(); // pgnStart is now connected to a lifetime-managed graph and won't be leaked upon throw.
 		_rctxt2.m_pgnStart = pgnStart;
 
 		_NewTransition( pgnStart, _TyRange( 0, 0 ), _rctxt1_Result.m_pgnStart );
@@ -360,7 +568,6 @@ protected:	// accessed by _nfa_context:
 										_TyRange( 0, 0 ), _rctxt2.m_pgnAccept );
 		_rctxt1_Result.m_pgnAccept = _rctxt2.m_pgnAccept;
 	}
-
 	void	CreateExcludesNFA( _TyNfaCtxt & _rctxt1_Result, _TyNfaCtxt & _rctxt2 )
 	{
 	// Just like the or except don't connect the accepting states together:
@@ -382,11 +589,11 @@ protected:	// accessed by _nfa_context:
 		aa.m_eaatType = e_aatAntiAccepting;
 		_TySetAcceptVT	vtAcceptState( _rctxt2.m_pgnAccept->RElConst(), aa );
 
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair<_TySetAcceptIT,bool> pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_pSetAcceptStates->insert( vtAcceptState );
-		assert( pib.second );
+		Assert( pib.second );
 	}
 
 	void	_Renumber(	_TyGraphNode * _pgnNew, _TyState _stAcceptOld, 
@@ -403,7 +610,7 @@ protected:	// accessed by _nfa_context:
 					*_ppgnAcceptNew = pgn;
 				}
 				pgn->RElNonConst() = m_iCurState++;
-				assert( pgn->RElNonConst() == m_nodeLookup.size() );
+				Assert( pgn->RElNonConst() == m_nodeLookup.size() );
 				(void)_STUpdateNodeLookup( pgn );
 			}
 		}
@@ -425,13 +632,24 @@ protected:	// accessed by _nfa_context:
 		_Renumber( pcNfaTemp->m_pgnStart, 
 			_rctxt1_Result.m_pgnAccept->RElConst(), &pcNfaTemp->m_pgnAccept );
 
+		size_type nUnsatisfiablesAtStart = m_nUnsatisfiableTransitions;
+
 		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
-		CreateUnsatisfiableNFA( _rctxt2, 0 );
+#if 0 // REVIEW:<dbien>: This idea is partially formed and I kinda see how to do it, but it requires some more experimentation.
+//		Assert( !( nUnsatisfiablesAtStart % 4 ) ); // We hand them out in sets of four.
+		// Adding a tail allows complete flexibilty in the nature of the completed by sub-regular-expression.
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+2 );
+		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+3 );
+		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
+#endif //0
+
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart );
 		CreateOrNFA( *pcNfaTemp, _rctxt2 );
 		CreateZeroOrMoreNFA( *pcNfaTemp );
-		CreateUnsatisfiableNFA( _rctxt2, 1 );
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+1 );
 		CreateFollowsNFA( *pcNfaTemp, _rctxt2 );
-		CreateUnsatisfiableNFA( _rctxt2, 1 );
+		CreateUnsatisfiableNFA( _rctxt2, nUnsatisfiablesAtStart+1 );
 		CreateFollowsNFA( *pcNfaTemp, _rctxt2 );
 
 		CreateFollowsNFA( _rctxt1_Result, *pcNfaTemp );
@@ -462,58 +680,73 @@ protected:	// accessed by _nfa_context:
 		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
 	}
 
-	void	CreateTriggerNFA( _TyNfaCtxt & _rctxt )
+	bool FCreateTriggerNFA( _TyNfaCtxt & _rctxt, _TyActionObjectBase const & _raob )
 	{
-    assert( !_rctxt.m_pgnStart ); // throw-safety.
+    Assert( !_rctxt.m_pgnStart ); // throw-safety.
     // If the current state is 0 then we are starting all productions with a trigger. This doesn't seem to make much sense and indeed the trigger fires regardless
     //  so I am going to throw an error if the current state is 0 when this trigger is encountered.
     if (!m_iCurState)
       throw regexp_trigger_found_first_exception();
 
+		if ( FIgnoreTriggers() )
+		{
+			// Just return an empty NFA:
+			CreateRangeNFA( _rctxt, _TyRange( 0, 0 ) );
+			return false;
+		}
+		
+		// Check if we have already added a trigger for this action object and if so use the trigger values added at that time,
+		//	otherwise add new ones.
+		pair< typename _TyMapTokenIdToTriggerTransition::const_iterator, bool > pibTrigger =  
+			m_mapTokenIdToTriggerTransition.insert( typename _TyMapTokenIdToTriggerTransition::value_type( _raob.VGetTokenId(), m_nTriggers ) );
+		if ( pibTrigger.second )
+			m_nTriggers += 2; // New trigger.
+
+		// Isolate the trigger accept state so we can better decide when we see ambiguity.
 		_NewStartState( &_rctxt.m_pgnStart );
 		_NewAcceptingState( _rctxt.m_pgnStart, 
-												_TyRange( 0, 0 ), 
+												_TyRange( ms_kreTriggerStart + pibTrigger.first->second, ms_kreTriggerStart + pibTrigger.first->second ), 
 												&_rctxt.m_pgnAltAccept );
+		// We increment m_nTriggers in AddTrigger() below.
 		_NewAcceptingState(	_rctxt.m_pgnAltAccept, 
-												_TyRange( ms_kreTrigger, ms_kreTrigger ), 
+												_TyRange( ms_kreTriggerStart + pibTrigger.first->second+1, ms_kreTriggerStart + pibTrigger.first->second+1 ), 
 												&_rctxt.m_pgnAccept );
+		return true;
 	}
-
-	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_t _nUnsatisfiable )
+	void	CreateUnsatisfiableNFA( _TyNfaCtxt & _rctxt, size_type _nUnsatisfiable )
 	{
 		CreateRangeNFA( _rctxt, 
 			_TyRange( (_TyRangeEl)( ms_kreUnsatisfiableStart + _nUnsatisfiable ),
 								(_TyRangeEl)( ms_kreUnsatisfiableStart + _nUnsatisfiable ) ) );
-		m_nUnsatisfiableTransitions = max( int( _nUnsatisfiable+1 ), m_nUnsatisfiableTransitions );
+		m_nUnsatisfiableTransitions = max( size_type( _nUnsatisfiable+1 ), m_nUnsatisfiableTransitions );
 	}
 
 	void	AddTrigger( _TyState _st, const _TySdpActionBase * _pSdpAction )
 	{
-		assert( _pSdpAction );
-		// Store the trigger accept state and its related action
-		m_fHasTriggers = true;
+		Assert( _pSdpAction );
+		// Store the trigger accept state and its related action:
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		aa.m_eaatType = e_aatTrigger;
 		_TySetAcceptVT	vtAcceptState( _st, aa );
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair< _TySetAcceptIT, bool > pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_pSetAcceptStates->insert( vtAcceptState );
-		assert( pib.second );
+		Assert( pib.second );
 	}
 
 	void	AddAction( _TyState _st, const _TySdpActionBase * _pSdpAction )
 	{
-		assert( _pSdpAction );
-		// Store the trigger accept state and its related action
+		Assert( _pSdpAction );
+		// Store the accept state and its related action:
 		m_fHasFreeActions = true;
 		_TyAcceptAction	aa( m_iActionCur++, _pSdpAction );
 		_TySetAcceptVT	vtAcceptState( _st, aa );
-#ifndef NDEBUG
+#if ASSERTSENABLED
 		pair< _TySetAcceptIT, bool > pib =
-#endif //!NDEBUG
+#endif //ASSERTSENABLED
 		m_pSetAcceptStates->insert( vtAcceptState );
-		assert( pib.second );
+		Assert( pib.second );
 	}
 
 	void CreateAltRuleNFA( _TyNfaCtxt & _rctxt )
@@ -536,7 +769,7 @@ protected:	// accessed by _nfa_context:
 
 	void	_AddAccept( _TyNfaCtxt & _rCtxt )
 	{
-		assert( _rCtxt.m_pgnAccept );
+		Assert( _rCtxt.m_pgnAccept );
 		_TyAcceptAction	aa( m_iActionCur++, _rCtxt.m_pSdpAction );
 		// If this accept state has a related lookahead intermediate accept state
 		//	( the actual accept state for expression ) then relate the two
@@ -560,7 +793,7 @@ protected:	// accessed by _nfa_context:
 			_TySetAcceptVT	vtInter( _rCtxt.m_pgnAltAccept->RElConst(), aaInter );
 			_rCtxt.m_pgnAltAccept = 0;
 			pair< _TySetAcceptIT, bool >	pib = m_pSetAcceptStates->insert( vtInter );
-			assert( pib.second );	// If this assert fires then we need some code similar to that of below ( though not sure if it will work ).
+			Assert( pib.second );	// If this Assert fires then we need some code similar to that of below ( though not sure if it will work ).
 			itLookaheadAccept = pib.first;
 
 			// Also relate the lookahead state:
@@ -574,10 +807,10 @@ protected:	// accessed by _nfa_context:
 		pair< _TySetAcceptIT, bool >	pib = m_pSetAcceptStates->insert( vtAcceptState );
 		if ( !pib.second )
 		{
-			assert( !pib.first->second.m_pSdpAction );
+			Assert( !pib.first->second.m_pSdpAction );
 			// Then we have already set the action id for this action - use
 			//	the action id as set - it disambiguates accepting states:
-			assert( aa.m_eaatType != e_aatLookahead );	// This isn't currently supported ( i don't think ).
+			Assert( aa.m_eaatType != e_aatLookahead );	// This isn't currently supported ( i don't think ).
 
 			vtAcceptState.second.m_aiAction = pib.first->second.m_aiAction;
 			if ( aa.m_eaatType == e_aatLookahead )
@@ -592,7 +825,7 @@ protected:	// accessed by _nfa_context:
 			}
 			m_pSetAcceptStates->erase( pib.first );
 			pib = m_pSetAcceptStates->insert( vtAcceptState );
-			assert( pib.second );
+			Assert( pib.second );
 		}
 		_rCtxt.m_pgnAccept = 0;
 		_rCtxt.m_pSdpAction.Release();
@@ -627,7 +860,7 @@ protected:	// accessed by _nfa_context:
 	void	ComputeSetClosure(	_TySetStates & _rsetStart,
 														_TySetStates & _rsetResult )
 	{
-		assert( _rsetResult.empty() );
+		Assert( _rsetResult.empty() );
 		if ( _rsetStart.empty() )
 			return;
 
@@ -646,7 +879,7 @@ protected:	// accessed by _nfa_context:
 					_rsetStart.size() != nState;
 					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
 		{
-			assert( nState < (_TyState)m_nodeLookup.size() );
+			Assert( nState < (_TyState)m_nodeLookup.size() );
 
 			// We may have already computed the closure for this state:
 			if ( m_ssClosureComputed.isbitset( nState ) )
@@ -696,15 +929,15 @@ protected:	// accessed by _nfa_context:
 			}
 		}
 
-		assert( _rsetStart.empty() );
+		Assert( _rsetStart.empty() );
 	}
 
 	void	ComputeSetMoveStates(	_TySetStates & _rsetStart,
 															_TyRange const & _rInput,
 															_TySetStates & _rsetResult )
 	{
-		assert( !_rsetStart.empty() );
-		assert( _rsetResult.empty() );
+		Assert( !_rsetStart.empty() );
+		Assert( _rsetResult.empty() );
 
 		// Re-use the sets for efficiency:
 		_TySetStates * pssCur;
@@ -717,13 +950,13 @@ protected:	// accessed by _nfa_context:
 					_rsetStart.size() != nState;
 					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
 		{
-			assert( nState < (_TyState)m_nodeLookup.size() );
+			Assert( nState < (_TyState)m_nodeLookup.size() );
 			pssCur->clear();
 			ComputeMoveStates( PGNGetNode( nState ), _rInput, *pssCur );
 			_rsetResult |= *pssCur;
 		}
 
-		assert( _rsetStart.empty() );
+		Assert( _rsetStart.empty() );
 	}
 
 	// Sometimes get internal compiler errors when this is the method below:
@@ -732,7 +965,7 @@ protected:	// accessed by _nfa_context:
 									_TySetStates & _rsetResult,
 									bool _fUseClosureCache )
 	{
-		assert( _rsetResult.empty() );
+		Assert( _rsetResult.empty() );
 
 		m_selit.SetPGNBCur( const_cast< _TyGraphNode * >( _pgnStart ) );
 		m_selit.Reset();
@@ -780,7 +1013,7 @@ protected:	// accessed by _nfa_context:
 	{
 		*_ppgn = m_gNfa.create_node1( m_iCurState );
     size_t stNodeNumAdded = _STUpdateNodeLookup( *_ppgn );
-    assert(_TyState(stNodeNumAdded) == m_iCurState);
+    Assert(_TyState(stNodeNumAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -814,7 +1047,7 @@ protected:	// accessed by _nfa_context:
     // can throw after this.
 	
 		size_t stNodeAdded = _STUpdateNodeLookup( *_ppgnAccept );
-    assert(_TyState(stNodeAdded) == m_iCurState);
+    Assert(_TyState(stNodeAdded) == m_iCurState);
 		m_iCurState++;
 	}
 
@@ -841,72 +1074,129 @@ protected:	// accessed by _nfa_context:
 		endLink.Reset();
 	}
 
-	void _UpdateAlphabet( _TyRange const & _r )
+	// Produce a small dump of the alphabet to a string so we can see wtf is up with the stdlib++'s set impl...
+	void _DumpAlphabetToString( std::string & _rstr )
+	{
+		for ( typename _TyAlphabet::const_iterator citCur = m_setAlphabet.begin(); m_setAlphabet.end() != citCur;  )
+		{
+			_TyRange const & rrng = *citCur;
+			string strRng;
+			rrng.DumpToString( strRng );
+			_rstr += strRng;
+			if ( ++citCur != m_setAlphabet.end() )
+				_rstr += ",";
+		}
+	}
+
+	void _UpdateAlphabet( _TyRange const & _rArg )
 	{
 		// Special case empty:
-		if ( !_r.first )
+		_TyRange rUpdate = _rArg;
+		if ( !rUpdate.first )
 		{
-			assert( !_r.second );
+			Assert( !rUpdate.second );
 			if ( !m_fHaveEmpty )
 			{
-				m_setAlphabet.insert( m_setAlphabet.begin(), _r );
+				m_setAlphabet.insert( m_setAlphabet.begin(), rUpdate );
 				m_fHaveEmpty = true;
 			}
 		}
 		else
 		{
-			assert( _r.first <= _r.second );
+			Assert( rUpdate.first <= rUpdate.second );
 			// Increase granularity and extent of alphabet set if required:
-			typename _TyAlphabet::iterator itLower = m_setAlphabet.lower_bound( _r );
-			typename _TyAlphabet::iterator itUpper = m_setAlphabet.upper_bound( _r );
+			// m_setAlphabet can only contain disjoint ranges and that allows the comparator to work correctly.
+			// To *correctly* find the matching elements of the set we should search the endpoints with two ranges:
+			std::pair< typename _TyAlphabet::iterator, typename _TyAlphabet::iterator > pritER = 
+				{ m_setAlphabet.lower_bound( _TyRange( rUpdate.first, rUpdate.first ) ), m_setAlphabet.upper_bound( _TyRange( rUpdate.second, rUpdate.second ) ) };
+			__DEBUG_STMT( size_t dbg_nRange = distance( pritER.first, pritER.second ) );
 
-			// Move from the low to the high, inserting records in the spaces:
-			_TyRangeEl	cLow = _r.first;
-			for( ; itLower != itUpper; )
+			// Move from the low to the high, inserting records in the spaces.
+			// I was hacking this more or less and it worked in MSVC and it broke in STDLIBC++ under clang.
+			// Now we will do it more correctly: Add our additions to an array and then insert those after we are done iterating the current set.
+			typedef vector< typename _TyAlphabet::iterator > _TyRgIter;
+			_TyRgIter rgItRemove; // First we will remove all the removals.
+			typedef vector< _TyRange > _TyRgRange;
+			_TyRgRange rgInsert; // Then we will insert all the insertions.
+			_TyRangeEl cLow = rUpdate.first;
+			for( ; pritER.first != pritER.second; )
 			{
-				assert( cLow <= _r.second );
+				Assert( cLow <= rUpdate.second );
 
-				typename _TyAlphabet::value_type const & rvt = *itLower;
+				const typename _TyAlphabet::value_type & rvt = *pritER.first;
 				if ( cLow < rvt.first )
 				{
-					m_setAlphabet.insert( itLower++, _TyRange( cLow, rvt.first-1 ) );
-					cLow = rvt.second+1;
+					rgInsert.push_back( _TyRange( cLow, rvt.first-1 ) );
+					cLow = rvt.first;
+					// ++pritER.first; - note this change breaks things - maybe I knew what I was doing some twenty years ago.
 				}
 				else
 				{
-					assert( cLow <= rvt.second );
+					Assert( cLow <= rvt.second );
 					// If the low splits the current range then need to split
 					if ( cLow > rvt.first )
 					{
-						swap( const_cast< _TyRange& >( rvt ).second, cLow );
-						const_cast< _TyRange& >( rvt ).second--;
-						if ( cLow > _r.second )
+						// We will remove the current object and replace it with two or three objects depending:
+						rgItRemove.push_back( pritER.first );
+						++pritER.first;
+						const _TyRange & rrngInserted = rgInsert.emplace_back( rvt.first, cLow - 1 );
+						cLow = rvt.second;
+						if ( cLow > rUpdate.second )
 						{
 							// Then we have split one range into three:
-							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, _r.second ) );
-							m_setAlphabet.insert( itLower, _TyRange( _r.second+1, cLow ) );
-							assert( itLower == itUpper );
+							rgInsert.push_back( _TyRange( rrngInserted.second+1, rUpdate.second ) );
+							rgInsert.push_back( _TyRange( rUpdate.second+1, cLow ) );
+							Assert( pritER.first == pritER.second );
 						}
 						else
-						{
-							m_setAlphabet.insert( ++itLower, _TyRange( rvt.second+1, cLow++ ) );
-						}
+							rgInsert.push_back( _TyRange( rrngInserted.second+1, cLow++ ) );
 					}
 					else
 					{
-						cLow = rvt.second+1;
-						++itLower;
+						Assert( cLow == rvt.first );
+						if ( rUpdate.second < rvt.second )
+						{
+							// splitting the last intersection of rUpdate:
+							rgItRemove.push_back( pritER.first );
+							++pritER.first;
+							Assert( pritER.first == pritER.second );
+							rgInsert.push_back( _TyRange( rvt.first, rUpdate.second ) );
+							cLow = rUpdate.second+1;
+							rUpdate.second = rvt.second;
+						}
+						else
+						{
+							cLow = rvt.second+1;
+							++pritER.first;
+						}
 					}
 				}
 			}
 
-			if ( cLow <= _r.second )
+			if ( cLow <= rUpdate.second )
+				rgInsert.push_back( _TyRange( cLow, rUpdate.second ) );
+			
+			// Now remove all removals and insert all insertions:
+			for ( typename _TyRgIter::const_iterator citRemovals = rgItRemove.begin(); rgItRemove.end() != citRemovals; ++citRemovals )
 			{
-				m_setAlphabet.insert( itLower, _TyRange( cLow, _r.second ) );
+				Assert( m_setAlphabet.end() != m_setAlphabet.find( **citRemovals ) );
+				m_setAlphabet.erase( *citRemovals );
+			}
+			for ( typename _TyRgRange::const_iterator citInsertions = rgInsert.begin(); rgInsert.end() != citInsertions; ++citInsertions )
+			{
+				bool fInserted = m_setAlphabet.insert( *citInsertions ).second;
+				Assert( fInserted );
+				VerifyThrow( fInserted );
 			}
 		}
+#if 0 /* TRACESENABLED */
+		static size_t nRep = 0;
+		Trace( "m_setAlphabet.size()[%lu] after [%lu] reps.", m_setAlphabet.size(), nRep++ );
+		string strAlphabet;
+		_DumpAlphabetToString( strAlphabet );
+		Trace( "Alphabet:{%s}", strAlphabet.c_str() );
+#endif // TRACESENABLED
 	}
-
 };
 
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
@@ -925,6 +1215,7 @@ public:
 	typedef typename _TyNfa::_TyGraphLink _TyGraphLink;
 	typedef typename _TyNfa::_TySetStates _TySetStates;
 	typedef typename _TyNfa::_TyUnsignedChar _TyUnsignedChar;
+	typedef typename _TyBase::_TyActionObjectBase _TyActionObjectBase;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 	typedef typename _TyBase::_TyRange _TyRange;
 	typedef typename _TyBase::_TyState _TyState;
@@ -975,7 +1266,7 @@ public:
 				// NOTE: It is the start state of the trigger that is 
 				//	registered as the accepting state - this is because the trigger
 				//	is executed on the transition to the trigger accept state.
-				assert( _pSdp );
+				Assert( _pSdp );
 				RNfa().AddTrigger( m_pgnAltAccept->RElConst(), _pSdp );
 				m_pgnAltAccept = 0;
 			}
@@ -987,7 +1278,7 @@ public:
 			break;
 			default:
 			{
-				assert( !m_pSdpAction.Ptr() );
+				Assert( !m_pSdpAction.Ptr() );
 				_pSdp->clone( &m_pSdpAction.PtrRef() ); // Copy the action.
 			}
 			break;
@@ -1053,6 +1344,18 @@ public:
 	{
 		RNfa().CreateRangeNFA( *this, _rr );
 	}
+	void CreateLiteralNotInSetNFA( t_TyChar const * _pc )
+	{
+		RNfa().CreateLiteralNotInSetNFA( *this, (_TyUnsignedChar*)_pc );
+	}
+	void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc )
+	{
+		RNfa().CreateLiteralNotInSetNFANoSurrogates( *this, (_TyUnsignedChar*)_pc );
+	}
+	void CreateLiteralAnyInSetNFA( t_TyChar const * _pc )
+	{
+		RNfa().CreateLiteralAnyInSetNFA( *this, (_TyUnsignedChar*)_pc );
+	}
 	void CreateFollowsNFA( _TyBase & _rcb )
 	{
 		RNfa().CreateFollowsNFA( *this, static_cast< _TyThis & >( _rcb ) );
@@ -1063,11 +1366,11 @@ public:
 		//	where it is ).
 		RNfa().CreateLookaheadNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void CreateTriggerNFA()
+	bool FCreateTriggerNFA( _TyActionObjectBase const & _raob )
 	{
 		// We need to save the intermediate accept state ( otherwise we won't know
 		//	where it is ).
-		RNfa().CreateTriggerNFA( *this );
+		return RNfa().FCreateTriggerNFA( *this, _raob );
 	}
 	void CreateOrNFA( _TyBase & _rcb )
 	{
@@ -1158,7 +1461,7 @@ __REGEXP_END_NAMESPACE
 	void	MinusClosure(	const _TyGraphNode * _pgnStart,
 											_TySetStates & _rsetResult )
 	{
-		assert( _rsetResult.empty() );
+		Assert( _rsetResult.empty() );
 
 		typedef _select_minus_closure	_TyMinusSelect;
 		typedef typename _TyGraph::_TyGraphTraits:: 
@@ -1207,7 +1510,7 @@ __REGEXP_END_NAMESPACE
 		//	reverse closure then we have a bogus minus pattern.
 		if ( ssReverse.FIntersects( ssForward ) )
 		{
-			assert( 0 );
+			Assert( 0 );
 			//throw _bad_minus_pattern_exception();
 		}
 

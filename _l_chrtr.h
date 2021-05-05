@@ -18,6 +18,7 @@ __REGEXP_BEGIN_NAMESPACE
 template < class t_TyCharType >
 struct _l_char_type_map;
 
+#if 0
 template <>
 struct _l_char_type_map< char >
 {
@@ -26,8 +27,12 @@ struct _l_char_type_map< char >
   typedef signed char   _TySigned;
   typedef short         _TyLarger;
 
-  static const char ms_kcMin = CHAR_MIN;
-  static const char ms_kcMax = CHAR_MAX;
+  static constexpr char ms_kcMin = CHAR_MIN;
+  static constexpr char ms_kcMax = CHAR_MAX;
+
+  static constexpr char ms_kcSurrogateFirst = 0;
+  static constexpr char ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // no surrogates present in UTF-8 or we at least are not checking for them.
 };
 
 template <>
@@ -36,138 +41,110 @@ struct _l_char_type_map< unsigned char >
   typedef char            _TyChar;
   typedef unsigned char   _TyUnsigned;
   typedef signed char     _TySigned;
-  typedef unsigned short  _TyLarger;
+  typedef uint64_t  _TyLarger;
 
-  static const unsigned char ms_kcMin = 0;
-  static const unsigned char ms_kcMax = UCHAR_MAX;
+  static constexpr unsigned char ms_kcMin = 0;
+  static constexpr unsigned char ms_kcMax = UCHAR_MAX;
 
-  static const _TyLarger ms_kucTrigger = UCHAR_MAX + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = UCHAR_MAX + 2;
+  static constexpr unsigned char ms_kcSurrogateFirst = 0;
+  static constexpr unsigned char ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // no surrogates present in UTF-8 or we at least are not checking for them.
+
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1 ) ) / 2; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+};
+#endif //0
+
+template <>
+struct _l_char_type_map< char8_t >
+{
+  typedef char8_t       _TyChar;
+  typedef char8_t       _TyUnsigned;
+  typedef int8_t       _TySigned;
+  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
+  typedef uint64_t      _TyLarger;
+  static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
+
+  static constexpr char8_t ms_kcMin = 0;
+  static constexpr char8_t ms_kcMax = 0xFF;
+
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000ull;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1ull ) ) / 2ull; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1ull;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+
+  static constexpr char8_t ms_kcSurrogateFirst = 0;
+  static constexpr char8_t ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // while there are surrogates in UTF16 (that is what they are for) we don't limit by any surrogates because valid UTF16 codepoints begin with surrogates.
 };
 
 template <>
-struct _l_char_type_map< signed char >
+struct _l_char_type_map< char16_t >
 {
-  typedef char          _TyChar;
-  typedef unsigned char _TyUnsigned;
-  typedef signed char   _TySigned;
-  typedef signed short  _TyLarger;
+  typedef char16_t       _TyChar;
+  typedef char16_t       _TyUnsigned;
+  typedef int16_t       _TySigned;
+  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
+  typedef uint64_t      _TyLarger;
+  static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
 
-  static const signed char ms_kcMin = SCHAR_MIN;
-  static const signed char ms_kcMax = SCHAR_MAX;
+  static constexpr char16_t ms_kcMin = 0;
+  static constexpr char16_t ms_kcMax = 0xFFFF;
+
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000ull;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1ull ) ) / 2ull; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1ull;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+
+  static constexpr char16_t ms_kcSurrogateFirst = 0;
+  static constexpr char16_t ms_kcSurrogateLast = 0;
+  static constexpr bool ms_kfHasSurrogates = false; // while there are surrogates in UTF16 (that is what they are for) we don't limit by any surrogates because valid UTF16 codepoints begin with surrogates.
 };
 
-#if 1 //def WIN32
 template <>
-struct _l_char_type_map< wchar_t >
+struct _l_char_type_map< char32_t >
 {
-  typedef wchar_t       _TyChar;
-  typedef wchar_t       _TyUnsigned;
+  typedef char32_t       _TyChar;
+  typedef char32_t       _TyUnsigned;
   typedef int32_t       _TySigned;
   static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
   typedef uint64_t      _TyLarger;
   static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
 
-#if 0 // These are defined incorrectly/differently under gcc, use USHRT_MAX
-  static const wchar_t ms_kcMin = WCHAR_MIN;
-  static const wchar_t ms_kcMax = WCHAR_MAX;
-#else //0
-  static const wchar_t ms_kcMin = 0;
-  static const wchar_t ms_kcMax = 0x10FFFF;
-#endif //0
+  static constexpr char32_t ms_kcMin = 0;
+  static constexpr char32_t ms_kcMax = 0x10FFFF;
 
-  static const _TyLarger ms_kucTrigger = ms_kcMax + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = ms_kcMax + 2;
+  // Provide a large set of triggers and unsatisifiable transitions:
+  static constexpr _TyLarger ms_knTriggerStart = 0x0200000ull;
+  static constexpr _TyLarger ms_knTriggerLast = ( UINT64_MAX - ( ms_knTriggerStart + 1ull ) ) / 2ull; // inclusive.
+  static constexpr _TyLarger ms_knUnsatisfiableStart = ms_knTriggerLast + 1ull;
+  static constexpr _TyLarger ms_knUnsatisfiableLast = UINT64_MAX;
+
+  static constexpr char32_t ms_kcSurrogateFirst = 0xd800;
+  static constexpr char32_t ms_kcSurrogateLast = 0xdfff;
+  static constexpr bool ms_kfHasSurrogates = true;
 };
-#if 1
+
+#if 0
 template <>
 struct _l_char_type_map< int32_t >
 {
-  typedef wchar_t       _TyChar;
-  typedef wchar_t       _TyUnsigned;
+  typedef char32_t       _TyChar;
+  typedef char32_t       _TyUnsigned;
   typedef int32_t       _TySigned;
   static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
   typedef int64_t      _TyLarger;
   static_assert( sizeof( _TyLarger ) > sizeof ( _TyUnsigned ) );
 
-  static const int32_t ms_kcMin = INT32_MIN;
-  static const int32_t ms_kcMax = INT32_MAX;
-};
-#else //0
-template <>
-struct _l_char_type_map< signed short >
-{
-  typedef wchar_t       _TyChar;
-  typedef wchar_t       _TyUnsigned;
-  typedef signed short  _TySigned;
-  typedef signed long   _TyLarger;
-
-  static const signed short ms_kcMin = SHRT_MIN;
-  static const signed short ms_kcMax = SHRT_MAX;
-};
-
-template <>
-struct _l_char_type_map< signed int >
-{
-  typedef unsigned int      _TyChar;
-  typedef unsigned int      _TyUnsigned;
-  typedef signed int        _TySigned;
-	typedef signed long long  _TyLarger;
-
-  static const signed int ms_kcMin = INT_MIN;
-  static const signed int ms_kcMax = INT_MAX;
-};
-
-template <>
-struct _l_char_type_map< unsigned int >
-{
-  static const unsigned int ms_kcMin = 0;
-  static const unsigned int ms_kcMax = UINT_MAX;
-
-  typedef unsigned int        _TyChar;
-  typedef unsigned int        _TyUnsigned;
-  typedef signed int          _TySigned;
-	typedef unsigned long long  _TyLarger;
-
-#if 0 // This needs to be worked on - could just use a ulong - only need 3 non-characters
-  static const _TyLarger ms_kucTrigger = UINT_MAX - 2;
-  static const _TyLarger ms_kucUnsatisfiableStart = UINT_MAX - 1;
-#endif //0
+  // static constexpr int32_t ms_kcMin = INT32_MIN;
+  // static constexpr int32_t ms_kcMax = INT32_MAX;
 };
 #endif //0
-#else // LINUX/MAC
-template <>
-struct _l_char_type_map< wchar_t >
-{
-  typedef wchar_t _TyChar;
-  typedef wchar_t _TyUnsigned;
-  typedef int32_t _TySigned;
-  static_assert( sizeof( _TySigned ) == sizeof ( _TyUnsigned ) );
-  typedef uint64_t _TyLarger;
-
-#if 0 // These are defined incorrectly/differently under gcc, use UINT32_MAX (I thikn they are signed under linux).
-  static const wchar_t ms_kcMin = WCHAR_MIN;
-  static const wchar_t ms_kcMax = WCHAR_MAX;
-#else //0
-  static const wchar_t ms_kcMin = 0;
-  static const wchar_t ms_kcMax = UINT32_MAX;
-#endif //0
-
-  static const _TyLarger ms_kucTrigger = UINT32_MAX + 1;
-  static const _TyLarger ms_kucUnsatisfiableStart = UINT32_MAX + 2;
-};
-template <>
-struct _l_char_type_map< int32_t >
-{
-  typedef wchar_t       _TyChar;
-  typedef wchar_t       _TyUnsigned;
-  typedef int32_t       _TySigned;
-  typedef int64_t   _TyLarger;
-
-  static const int32_t ms_kcMin = INT32_MIN;
-  static const int32_t ms_kcMax = INT32_MAX;
-};
-#endif
 
 __REGEXP_END_NAMESPACE
 

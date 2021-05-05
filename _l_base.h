@@ -1,5 +1,4 @@
-#ifndef __L_BASE_H__
-#define __L_BASE_H__
+#pragma once
 
 //          Copyright David Lawrence Bien 1997 - 2020.
 // Distributed under the Boost Software License, Version 1.0.
@@ -40,11 +39,11 @@ public:
 	typedef _fa_char_range< _TyRangeEl, t_TyChar > _TyRange;
 
 	// Now define the non-alphabet characters:
-	static const _TyRangeEl	ms_kreTrigger;
+	static const _TyRangeEl	ms_kreTriggerStart;
 	static const _TyRangeEl	ms_kreUnsatisfiableStart;
 
 #ifdef _MSC_VER
-	typedef int	_TyState;
+	typedef int64_t	_TyState;
 #elif __APPLE__
   typedef int64_t	_TyState;
 #else
@@ -74,13 +73,13 @@ public:
 
 template < class t_TyChar >
 const typename _fa_base< t_TyChar >::_TyRangeEl
-_fa_base< t_TyChar >::ms_kreTrigger = 
-    _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_kucTrigger;
+_fa_base< t_TyChar >::ms_kreTriggerStart = 
+    _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_knTriggerStart;
 
 template < class t_TyChar >
 const typename _fa_base< t_TyChar >::_TyRangeEl
 _fa_base< t_TyChar >::ms_kreUnsatisfiableStart = 
-	  _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_kucUnsatisfiableStart;
+	  _l_char_type_map< typename _fa_base< t_TyChar >::_TyUnsignedChar >::ms_knUnsatisfiableStart;
 
 template < class t_TyChar >
 class _context_base
@@ -117,6 +116,7 @@ private:
 	typedef _context_base< t_TyChar > _TyBase;
 public:
 	typedef _fa_base< t_TyChar > _TyNfaBase;
+	typedef _l_action_object_base< t_TyChar, true > _TyActionObjectBase;
 	typedef typename _TyBase::_TySdpActionBase _TySdpActionBase;
 	typedef typename _TyBase::_TyRange _TyRange;
 
@@ -142,9 +142,12 @@ public:
 	virtual void CreateLiteralNFA( t_TyChar const & _rc ) = 0;
 	virtual void CreateStringNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateRangeNFA( _TyRange const & _rr ) = 0;
+	virtual void CreateLiteralNotInSetNFA( t_TyChar const * _pc ) = 0;
+	virtual void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc ) = 0;
+	virtual void CreateLiteralAnyInSetNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
-	virtual void CreateTriggerNFA( ) = 0;
+	virtual bool FCreateTriggerNFA( _TyActionObjectBase const & _raob ) = 0;
 	virtual void CreateOrNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateZeroOrMoreNFA() = 0;
 	virtual void CreateExcludesNFA( _TyThis & _rcb ) = 0;
@@ -156,4 +159,3 @@ public:
 
 __REGEXP_END_NAMESPACE
 
-#endif //__L_BASE_H__

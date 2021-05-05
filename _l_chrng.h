@@ -44,13 +44,20 @@ public:
 	_fa_char_range( t_TyRangeEl _rFirst, t_TyRangeEl _rSecond )
 		: _TyBase( _rFirst, _rSecond )
 	{
+		Assert( second >= first );
+	}
+
+	void set_empty()
+	{
+		first = 0;
+		second = 0;
 	}
 
 	bool	empty() const _BIEN_NOTHROW
 	{
 		if ( !first )
 		{
-			assert( !second );
+			Assert( !second );
 			return true;
 		}
 		return false;
@@ -59,6 +66,11 @@ public:
 	bool	operator < ( _TyThis const & _r ) const _BIEN_NOTHROW
 	{
 		return second < _r.first;
+	}
+	// This is for containers which can have overlapping char ranges.
+	bool CanonicalLess( _TyThis const & _r ) const _BIEN_NOTHROW
+	{
+		return static_cast< _TyBase const & >( *this ) < _r;
 	}
 
 	bool	intersects( _TyThis const & _r ) const _BIEN_NOTHROW
@@ -86,25 +98,63 @@ public:
 	{
 		return isconsecutiveleft( _r ) || isconsecutiveright( _r );
 	}
+	// Return this range without _r and return any remaining range in _rSecondResult.
+	void remove( _TyThis const & _r, _TyThis & _rSecondResult )
+	{
+		if ( first < _r.first )
+		{
+			if ( second > _r.second )
+			{
+				_rSecondResult.first = _r.second+1;
+				_rSecondResult.second = second;
+			}
+			else
+			{
+				_rSecondResult.set_empty();
+				if ( second < _r.first )
+					return;
+			}
+			second = _r.first-1;
+		}
+		else
+		{
+			_rSecondResult.set_empty();
+			if ( first <= _r.second )
+			{
+				if ( second <= _r.second )
+					set_empty();
+				else
+					first = _r.second+1;
+			}
+		}			
+	}
 
 	friend std::ostream & operator << ( std::ostream & _ros, const _TyThis & _r )
 	{
-		_ros << "['" << ( _r.first ? _r.first : ' ' ) << 
-					 "'-'" << ( _r.second ? _r.second : ' ' ) << "']";
+    std::ostream::sentry s(_ros);
+    if ( s ) 
+		{
+			_ros << "['" << ( _r.first ? _r.first : ' ' ) << 
+						"'-'" << ( _r.second ? _r.second : ' ' ) << "']";
+		}
 		return _ros;
+	}
+	void DumpToString( string & _rstr ) const
+	{
+		PrintfStdStr( _rstr, "[%lu-%lu]", first, second );
 	}
 
 	template < class t_TyJsonValueLife >
 	void ToJSONStream( t_TyJsonValueLife & _jvl  ) const
 	{
-		assert( _jvl.FAtArrayValue() );
+		Assert( _jvl.FAtArrayValue() );
 		if ( _jvl.FAtArrayValue() )
 		{
 			if ( !first )
 				_jvl.WriteNullValue();
 			else
-			if ( ( first > _l_char_type_map< _TyChar >::ms_kcMax ) || ( first < 32 ) ) // filter out unprintable characters.
-				_jvl.WriteValue( (_TyUnsignedChar)first );
+			if ( ( first > 254/* _l_char_type_map< _TyChar >::ms_kcMax */ ) || ( first < 32 ) ) // filter out unprintable characters.
+				_jvl.PrintfStringValue( "0x%lx", size_t((_TyUnsignedChar)first) );
 			else
 			{
 				_TyChar ch = (_TyChar)first;
@@ -113,8 +163,8 @@ public:
 			if ( !second )
 				_jvl.WriteNullValue();
 			else
-			if ( ( second > _l_char_type_map< _TyChar >::ms_kcMax ) || ( second < 32 ) ) // filter out unprintable characters.
-				_jvl.WriteValue( (_TyUnsignedChar)second );
+			if ( ( second > 254/* )_l_char_type_map< _TyChar >::ms_kcMax */ ) || ( second < 32 ) ) // filter out unprintable characters.
+				_jvl.PrintfStringValue( "0x%lx", size_t((_TyUnsignedChar)second) );
 			else
 			{
 				_TyChar ch = (_TyChar)second;
@@ -124,15 +174,22 @@ public:
 	}
 };
 
-template < class _TyNfaCharRange >
+template < class t_TyNfaCharRange >
 struct _fa_char_range_intersect
-#ifdef __LEXANG_USE_STLPORT
-	: public binary_function< _TyNfaCharRange, _TyNfaCharRange, bool >
-#endif //__LEXANG_USE_STLPORT
 {
-	bool operator ()( _TyNfaCharRange const & _rL, _TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
+	bool operator ()( t_TyNfaCharRange const & _rL, t_TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
 	{
 		return _rL.intersects( _rR );
+	}
+};
+
+// Calls _TyNfaCharRange::CanonicalLess().
+template < class t_TyNfaCharRange >
+struct _fa_char_range_canonical_less
+{
+	bool operator ()( t_TyNfaCharRange const & _rL, t_TyNfaCharRange const & _rR ) const _BIEN_NOTHROW
+	{
+		return _rL.CanonicalLess( _rR );
 	}
 };
 

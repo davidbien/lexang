@@ -16,7 +16,7 @@
 #define __REGEXP_OP_USE_NAMESPACE ns_re_op
 
 // Choose namespace:
-#if !defined( _STLP_USE_NAMESPACES ) && !defined( __REGEXP_USE_NAMESPACE )
+#if !defined( __REGEXP_USE_NAMESPACE )
 #define __REGEXP_GLOBALNAMESPACE
 #endif
 
@@ -31,26 +31,19 @@
 #endif //__REGEXP_USE_NAMESPACE
 #define __REGEXP_BEGIN_NAMESPACE namespace __REGEXP_USE_NAMESPACE { __BIENUTIL_USING_NAMESPACE using namespace std;
 #define __REGEXP_END_NAMESPACE }
-#define __REGEXP_USING_NAMESPACE using namespace __REGEXP_USE_NAMESPACE;
+#define __REGEXP_USING_NAMESPACE using namespace __REGEXP_USE_NAMESPACE; __BIENUTIL_USING_NAMESPACE
 #define __REGEXP_NAMESPACE __REGEXP_USE_NAMESPACE::
 #endif //__REGEXP_GLOBALNAMESPACE
-
-#if 0  // always put the regexp ops in a namespace
-#if !defined( _STLP_USE_NAMESPACES ) && !defined( __REGEXP_OP_USE_NAMESPACE )
-#error here
-//#error Can't put the regular expression operators in the global namespace.
-#endif //!_STLP_USE_NAMESPACES
-#endif //0
 
 #ifndef __REGEXP_OP_USE_NAMESPACE
 #define __REGEXP_OP_USE_NAMESPACE ns_re_op
 #endif //!__REGEXP_OP_USE_NAMESPACE
-#define __REGEXP_OP_BEGIN_NAMESPACE namespace __REGEXP_OP_USE_NAMESPACE { __BIENUTIL_USING_NAMESPACE __REGEXP_USING_NAMESPACE using namespace std;
+#define __REGEXP_OP_BEGIN_NAMESPACE namespace __REGEXP_OP_USE_NAMESPACE { __REGEXP_USING_NAMESPACE
 #define __REGEXP_OP_END_NAMESPACE }
 #define __REGEXP_OP_USING_NAMESPACE using namespace __REGEXP_OP_USE_NAMESPACE;
 #define __REGEXP_OP_NAMESPACE __REGEXP_OP_USE_NAMESPACE::
 
-#if !defined( _STLP_USE_NAMESPACES ) && !defined( __LEXOBJ_USE_NAMESPACE )
+#if !defined( __LEXOBJ_USE_NAMESPACE )
 #define __REGEXP_GLOBALNAMESPACE
 #endif
 
@@ -63,9 +56,9 @@
 #ifndef __LEXOBJ_USE_NAMESPACE
 #define __LEXOBJ_USE_NAMESPACE ns_lxo
 #endif //!__LEXOBJ_USE_NAMESPACE
-#define __LEXOBJ_BEGIN_NAMESPACE namespace __LEXOBJ_USE_NAMESPACE { __BIENUTIL_USING_NAMESPACE
+#define __LEXOBJ_BEGIN_NAMESPACE namespace __LEXOBJ_USE_NAMESPACE { __BIENUTIL_USING_NAMESPACE __REGEXP_USING_NAMESPACE using namespace std;
 #define __LEXOBJ_END_NAMESPACE }
-#define __LEXOBJ_USING_NAMESPACE using namespace __LEXOBJ_USE_NAMESPACE;
+#define __LEXOBJ_USING_NAMESPACE using namespace __LEXOBJ_USE_NAMESPACE; __REGEXP_USING_NAMESPACE
 #define __LEXOBJ_NAMESPACE __LEXOBJ_USE_NAMESPACE::
 #endif //__LEXOBJ_GLOBALNAMESPACE
 
