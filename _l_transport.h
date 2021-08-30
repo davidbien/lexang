@@ -1,5 +1,10 @@
 #pragma once
 
+//          Copyright David Lawrence Bien 1997 - 2021.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          https://www.boost.org/LICENSE_1_0.txt).
+
 // _l_transport.h
 // Transport objects for lexical analyzer.
 // dbien : 26DEC2020 - moved from _l_strm.h cuz it was getting biggish.
