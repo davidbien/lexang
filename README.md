@@ -4,7 +4,7 @@
 Note that this project depends on the repository https://github.com/davidbien/dgraph and https://github.com/davidbien/bienutil.
 
 ## Mechanism:
-Currently the regular expression are written in C++ code via overridden global operators declared in a namespace. Compilation generates the type structure that describes a given regular expression. A set of such regular expressions are converted into an NFA (nondiscrete finite automata) and then this NFA is converted to a DFA (discrete finite automata) and optionally optimized to the smallest possible DFA.  
+The regular expression are written in C++ code via overridden global operators declared in a namespace. Compilation generates the type structure that describes a given regular expression. A set of such regular expressions are converted into an NFA (nondiscrete finite automata) and then this NFA is converted to a DFA (discrete finite automata) and optionally optimized to the smallest possible DFA.  
 Most if not all of the algorithms I gleaned from the Dragon Book ( https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools ).
 
 ## Regular Expressions:
