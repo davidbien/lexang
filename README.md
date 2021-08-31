@@ -1,7 +1,7 @@
-# lexang
-### A set of templates that allow generation of a lexicographical analyzer given a set of regular expressions.  
+# Lexical Analyzer Generator Template Library
+### A set of templates that allow generation of a lexical analyzer given a set of regular expressions.  
 ### Meant to be somewhat of a replacement for the good old unix lex command.
-Note that this project depends on the repository https://github.com/davidbien/dgraph.
+Note that this project depends on the repository https://github.com/davidbien/dgraph and https://github.com/davidbien/bienutil.
 
 ## Mechanism:
 Currently the regular expression are written in C++ code via overridden global operators declared in a namespace. Compilation generates the type structure that describes a given regular expression. A set of such regular expressions are converted into an NFA (nondiscrete finite automata) and then this NFA is converted to a DFA (discrete finite automata) and optionally optimized to the smallest possible DFA.  
