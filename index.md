@@ -22,8 +22,8 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   Example: **~literal('a')** will match "", "a", "aa", etc.  
   **One or more**: Represented by **operator ++( regexp )**.  
   Example: **++literal('a')** will match "a", "aa", "aaa", etc.  
-  **Zero or one**: Represented by **operator --( regexp )**.  
-  Example: **--literal('a')** will match "" and "a" only.  
+  **Zero or one**: Represented by **operator \-\-( regexp )**.  
+  Example: **\-\-literal('a')** will match "" and "a" only.  
 #### Binary operations:
   **Follows**: Represented by **operator \*( regexp, regexp )**.  
   Example: **literal('a') * literal('b')** will match "ab".  
@@ -35,7 +35,7 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   **Completes**: Represented by the **operator +( regexp, regexp )**.  
   Example: **++litrange('a','z') + "zzz"** will match any sequence of characters 'a' - 'z' but will stop when "zzz" is encountered.  
   **Lookahead**: Represented by **operator /( regexp, regexp )**.  
-  Example: **++litrange('a','z') / litstr("--")** will match any sequence of characters 'a' to 'z' when followed by the string "--", not including the "--".
+  Example: **++litrange('a','z') / litstr("\-\-")** will match any sequence of characters 'a' to 'z' when followed by the string "\-\-", not including the "\-\-".
 
 ### Complex example of regular expression usage:
 This encodes the start of the XML regular expressions as specified some years ago (like 20 years ago).
