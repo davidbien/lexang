@@ -1,11 +1,11 @@
 # Lexical Analyzer Generator Template Library
 ### A set of templates that allow generation of a lexical analyzer given a set of regular expressions.  
 ### Meant to be somewhat of a replacement for the good old unix lex command.
-Note that this project depends on the repository [https://github.com/davidbien/dgraph](https://github.com/davidbien/dgraph) and https://github.com/davidbien/bienutil.
+Note that this project depends on the repository [https://github.com/davidbien/dgraph](https://github.com/davidbien/dgraph) and [https://github.com/davidbien/bienutil](https://github.com/davidbien/bienutil).
 
 ## Mechanism:
 The regular expression are written in C++ code via overridden global operators declared in a namespace. Compilation generates the type structure that describes a given regular expression. A set of such regular expressions are converted into an NFA (nondiscrete finite automata) and then this NFA is converted to a DFA (discrete finite automata) and optionally optimized to the smallest possible DFA.  
-Most if not all of the algorithms I gleaned from the Dragon Book (https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools).
+Most if not all of the algorithms I gleaned from the Dragon Book [https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools](https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools).
 
 ## Regular Expressions:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
