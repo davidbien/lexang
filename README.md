@@ -1,3 +1,5 @@
+(this is out of date) see https://davidbien.github.io/lexang/ for up-to-date documentation
+
 # Lexical Analyzer Generator Template Library
 ### A set of templates that allow generation of a lexical analyzer given a set of regular expressions.  
 ### Meant to be somewhat of a replacement for the good old unix lex command.
