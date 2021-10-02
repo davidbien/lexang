@@ -38,32 +38,41 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   Example: **++litrange('a','z') / litstr("\-\-")** will match any sequence of characters 'a' to 'z' when followed by the string "\-\-", not including the "\-\-".
 
 ### Complex example of regular expression usage:
-This encodes the start of the XML regular expressions as specified some years ago (like 20 years ago).
+This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).
+Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp)
 <pre>
-typedef wchar_t _TyCharTokens;
-typedef _TyDefaultAllocator _TyAllocator;
-typedef _regexp_final< _TyCharTokens, _TyAllocator > _TyFinal;
-#define l(x)	literal< _TyCharTokens >(x)
-#define ls(x)	litstr< _TyCharTokens >(x)
-#define lr(x,y)	litrange< _TyCharTokens >(x,y)
+typedef char8_t _TyCTok;
+typedef _regexp_final< _TyCTok, _TyAllocator > _TyFinal;
+typedef _regexp_trigger< _TyCTok, _TyAllocator > _TyTrigger;
 
-_TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x020,0xd7ff) | lr(0xe000,0xfffd); // [2].
-_TyFinal S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); // [3]
-_TyFinal Eq = --S * l(L'=') * --S; // [25].
-_TyFinal BaseChar = lr(0x0041,0xd7a3);	// [85].
-_TyFinal Ideographic = lr(0x4e00,0x9fa5) | l(0x3007) | lr(0x3021,0x3029); // [86]
-_TyFinal CombiningChar = lr(0x0300,0x309a);	// [87]
-_TyFinal Digit = lr(0x0030,0x0039) | lr(0x0660,0x0669); // [88]
-_TyFinal Extender = l(0x00b7) | l(0x02d0);	// [89].
-_TyFinal Letter = BaseChar | Ideographic;	// [84].
-_TyFinal NameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | l(L':') | CombiningChar | Extender; // [4]
+// Define some simple macros to make the productions more readable.
+#define l(x) literal<_TyCTok>(x)
+#define ls(x) litstr<_TyCTok>(x)
+#define lr(x,y)	litrange<_TyCTok>(x,y)
+#define lanyof(x) litanyinset<_TyCTok>(x)
+#define lnot(x) litnotset<_TyCTok>(x)
+#define t(a) _TyTrigger(a)
 
-_TyFinal Name = ( Letter | l(L'_') | l(L':') ) * ~NameChar;	// [5]
-_TyFinal PITarget = Name - ( ( ( l(L'x') | l(L'X') ) * ( l(L'm') | l(L'M') ) * ( l(L'l') | l(L'L') ) ) );
-_TyFinal NCNameChar = Letter | Digit | l(L'.') | l(L'-') | l(L'_') | CombiningChar | Extender;	// namespace support
-_TyFinal NCName = ( Letter | l(L'_') ) * ~NCNameChar;
+// Utility and multiple use non-triggered productions:
+_TyFinal S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); //[3]
+_TyFinal Eq = --S * l(u8'=') * --S; //[25].
+_TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x20,0xFF); //[2].
+
+_TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4]
+_TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF);	//[4a]
+_TyFinal Name = NameStartChar * ~NameChar; //[5]
+
+// namespace support:
+_TyFinal NameStartCharNoColon = lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4ns]
+_TyFinal NameCharNoColon = NameStartCharNoColon | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF);	//[4ans]
+_TyFinal NCName = NameStartCharNoColon * ~NameCharNoColon;
 _TyFinal Prefix = NCName;
 _TyFinal LocalPart = NCName;
+
+// Qualified name - the first use of triggers that transmit a signal to the lexer so that a position can be recorded.
+_TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>()) 
+  * --( l(u8':')	* t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
+        * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
 _TyFinal QName = Prefix * --( l(L':') * LocalPart );
 _TyFinal DefaultAttName = ls(L"xmlns");
