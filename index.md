@@ -16,7 +16,19 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   **String of characters:** Represented by the method **litstr(char\*)**.  
   Example: **litstr("string")** matches the string **"string"**, **litstr(L"string")** matches the wchar_t **"string"**.  
   **Range of characters:** Represented by the method **litrange(char,char)**.  
-  Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive. 
+  Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive.
+  **Any character in string:** Represented by the method **litanyinset(string)**.
+  Example: **litanyinset("aeiou")** matches any of the characters 'a','e','i','o','u'.
+  **Any character not in string:** Represented by the method **litnotset(string)**.
+  Note that this method **may** match surrogates for UTF-32.
+  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.
+  **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates(string)**.
+  Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.
+  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.
+
+  Note that, writh resepect to surrogates, the parser doesn't attempt to discern if UTF-8 and UTF-16 sequences represent
+  valid sequences. Also surrogates will be matched in UTF-32 unless otherwise prevented.
+
 #### Unary operations:
   **Zero or more**: Represented by **operator ~( regexp )**.  
   Example: **~literal('a')** will match "", "a", "aa", etc.  
@@ -40,6 +52,7 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
 ### Complex example of regular expression usage:
 This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).
   Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp)
+  There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
 <pre>
 typedef char8_t _TyCTok;
 typedef _regexp_final< _TyCTok, _TyAllocator > _TyFinal;
@@ -59,19 +72,20 @@ _TyFinal Eq = --S * l(u8'=') * --S; //[25].
 _TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x20,0xFF); //[2].
 
 _TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4]
-_TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF);	//[4a]
+_TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF); //[4a]
 _TyFinal Name = NameStartChar * ~NameChar; //[5]
 
 // namespace support:
 _TyFinal NameStartCharNoColon = lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4ns]
-_TyFinal NameCharNoColon = NameStartCharNoColon | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF);	//[4ans]
+_TyFinal NameCharNoColon = NameStartCharNoColon | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') 
+  | lr(0x80,0xBF); //[4ans]
 _TyFinal NCName = NameStartCharNoColon * ~NameCharNoColon;
 _TyFinal Prefix = NCName;
 _TyFinal LocalPart = NCName;
 
-// Qualified name - the first use of triggers that transmit a signal to the lexer so that a position can be recorded.
+// Qualified name - first use of triggers: transmit a signal to the lexer so that a position can be recorded.
 _TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>()) 
-  * --( l(u8':')	* t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
+  * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
         * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
 _TyFinal QName = Prefix * --( l(L':') * LocalPart );
