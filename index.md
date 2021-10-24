@@ -71,21 +71,21 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal Eq = --S * l(u8'=') * --S; //[25].
     _TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x20,0xFF); //[2].
 
-    _TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF);//[4]
+    _TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') |lr(0xC0,0xFF);//[4]
     _TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF); //[4a]
     _TyFinal Name = NameStartChar * ~NameChar; //[5]
 
     // namespace support:
-    _TyFinal NameStartCharNoColon = lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4ns]
+    _TyFinal NameStartCharNoColon = lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF);//[4ns]
     _TyFinal NameCharNoColon = NameStartCharNoColon | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') 
       | lr(0x80,0xBF); //[4ans]
     _TyFinal NCName = NameStartCharNoColon * ~NameCharNoColon;
     _TyFinal Prefix = NCName;
     _TyFinal LocalPart = NCName;
 
-    // Qualified name, first triggers: transmit a signal to the lexer so that a position can be recorded.
+    // Qualified name, first triggers: transmit a signal to the lexer so that position can be recorded.
     _TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>())
-      * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
+            * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
             * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
     _TyFinal QName = Prefix * --( l(L':') * LocalPart );
@@ -96,9 +96,9 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
                     | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); //[66]
     _TyFinal Reference = EntityRef | CharRef;	// [67]
-    _TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '"'
-                                    lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff)
-                                    | lr(0xe000,0xfffd);
+    _TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d)	// Char - '&' - '<' - '"'
+                                | lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff)
+                                | lr(0xe000,0xfffd);
     _TyFinal AVCharNoAmperLessSingle = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
                                       lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
                                       | lr(0xe000,0xfffd);
