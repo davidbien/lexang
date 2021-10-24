@@ -52,7 +52,7 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
 ### Complex example of regular expression usage:
 This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).
   Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp)
-  There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
+  There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.  
     typedef char8_t _TyCTok;
     typedef _regexp_final< _TyCTok, _TyAllocator > _TyFinal;
     typedef _regexp_trigger< _TyCTok, _TyAllocator > _TyTrigger;
