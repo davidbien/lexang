@@ -117,7 +117,7 @@ _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
 _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
                  MixedBegin * --S * l(L')'); // [51].
 
-&lt;code></pre>
+&lt;/code></pre>
 
 ## Actions and triggers.
 ### Actions: Are associated with final productions.
