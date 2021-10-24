@@ -71,7 +71,7 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal Eq = --S * l(u8'=') * --S; //[25].
     _TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x20,0xFF); //[2].
 
-    _TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4]
+    _TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF);//[4]
     _TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF); //[4a]
     _TyFinal Name = NameStartChar * ~NameChar; //[5]
 
