@@ -16,17 +16,17 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   **String of characters:** Represented by the method **litstr(char\*)**.  
   Example: **litstr("string")** matches the string **"string"**, **litstr(L"string")** matches the wchar_t **"string"**.  
   **Range of characters:** Represented by the method **litrange(char,char)**.  
-  Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive.
-  **Any character in string:** Represented by the method **litanyinset(string)**.
-  Example: **litanyinset("aeiou")** matches any of the characters 'a','e','i','o','u'.
-  **Any character not in string:** Represented by the method **litnotset(string)**.
-  Note that this method **may** match surrogates for UTF-32.
-  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.
-  **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates(string)**.
-  Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.
-  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.
+  Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive.  
+  **Any character in string:** Represented by the method **litanyinset("string")**.  
+  Example: **litanyinset("aeiou")** matches any of the characters 'a','e','i','o','u'.  
+  **Any character not in string:** Represented by the method **litnotset(string)**.  
+  Note that this method **may** match surrogates for UTF-32.  
+  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.  
+  **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates(string)**.  
+  Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.  
+  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.  
 
-  Note that, writh resepect to surrogates, the parser doesn't attempt to discern if UTF-8 and UTF-16 sequences represent
+  Note that, writh respect to surrogates, the parser doesn't attempt to discern if UTF-8 and UTF-16 sequences represent
   valid sequences. Also surrogates will be matched in UTF-32 unless otherwise prevented.
 
 #### Unary operations:
@@ -116,6 +116,7 @@ _TyFinal Comment = ls(L"<\!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) *
 _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
 _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
                  MixedBegin * --S * l(L')'); // [51].
+
 </pre>
 
 ## Actions and triggers.
