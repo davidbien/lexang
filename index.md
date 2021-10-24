@@ -24,7 +24,7 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.  
   **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates("string")**.  
   Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.  
-  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.  
+  Example: **litnotset_no_surrogates("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.  
 
   Note that, writh respect to surrogates, the parser doesn't attempt to discern if UTF-8 and UTF-16 sequences represent
   valid sequences. Also surrogates will be matched in UTF-32 unless otherwise prevented.
