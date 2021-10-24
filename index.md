@@ -84,7 +84,7 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal LocalPart = NCName;
 
     // Qualified name, first triggers: transmit a signal to the lexer so that a position can be recorded.
-    _TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>()) 
+    _TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>())
       * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
             * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
@@ -94,7 +94,7 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal NSAttName = PrefixedAttName | DefaultAttName;
     _TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
     _TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
-                    | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); // [66]
+                    | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); //[66]
     _TyFinal Reference = EntityRef | CharRef;	// [67]
     _TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '"'
                                     lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff)
@@ -102,7 +102,7 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal AVCharNoAmperLessSingle = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
                                       lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
                                       | lr(0xe000,0xfffd);
-    _TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	// [10]
+    _TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	//[10]
                       | l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
     _TyFinal Attribute = NSAttName * Eq * AttValue // [41]
                       | QName * Eq * AttValue;
