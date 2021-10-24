@@ -53,71 +53,68 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
 This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).
   Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp)
   There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
-<pre><code>
-typedef char8_t _TyCTok;
-typedef _regexp_final< _TyCTok, _TyAllocator > _TyFinal;
-typedef _regexp_trigger< _TyCTok, _TyAllocator > _TyTrigger;
+    typedef char8_t _TyCTok;
+    typedef _regexp_final< _TyCTok, _TyAllocator > _TyFinal;
+    typedef _regexp_trigger< _TyCTok, _TyAllocator > _TyTrigger;
 
-// Define some simple macros to make the productions more readable.
-#define l(x) literal<_TyCTok>(x)
-#define ls(x) litstr<_TyCTok>(x)
-#define lr(x,y)	litrange<_TyCTok>(x,y)
-#define lanyof(x) litanyinset<_TyCTok>(x)
-#define lnot(x) litnotset<_TyCTok>(x)
-#define t(a) _TyTrigger(a)
+    // Define some simple macros to make the productions more readable.
+    #define l(x) literal<_TyCTok>(x)
+    #define ls(x) litstr<_TyCTok>(x)
+    #define lr(x,y)	litrange<_TyCTok>(x,y)
+    #define lanyof(x) litanyinset<_TyCTok>(x)
+    #define lnot(x) litnotset<_TyCTok>(x)
+    #define t(a) _TyTrigger(a)
 
-// Utility and multiple use non-triggered productions:
-_TyFinal S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); //[3]
-_TyFinal Eq = --S * l(u8'=') * --S; //[25].
-_TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x20,0xFF); //[2].
+    // Utility and multiple use non-triggered productions:
+    _TyFinal S = ++( l(0x20) | l(0x09) | l(0x0d) | l(0x0a) ); //[3]
+    _TyFinal Eq = --S * l(u8'=') * --S; //[25].
+    _TyFinal Char =	l(0x09) | l(0x0a) | l(0x0d) | lr(0x20,0xFF); //[2].
 
-_TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4]
-_TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF); //[4a]
-_TyFinal Name = NameStartChar * ~NameChar; //[5]
+    _TyFinal NameStartChar = l(u8':') | lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4]
+    _TyFinal NameChar = NameStartChar | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') | lr(0x80,0xBF); //[4a]
+    _TyFinal Name = NameStartChar * ~NameChar; //[5]
 
-// namespace support:
-_TyFinal NameStartCharNoColon = lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4ns]
-_TyFinal NameCharNoColon = NameStartCharNoColon | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') 
-  | lr(0x80,0xBF); //[4ans]
-_TyFinal NCName = NameStartCharNoColon * ~NameCharNoColon;
-_TyFinal Prefix = NCName;
-_TyFinal LocalPart = NCName;
+    // namespace support:
+    _TyFinal NameStartCharNoColon = lr(u8'A',u8'Z') | l(u8'_') | lr(u8'a',u8'z') | lr(0xC0,0xFF); //[4ns]
+    _TyFinal NameCharNoColon = NameStartCharNoColon | l(u8'-') | l(u8'.') | lr(u8'0',u8'9') 
+      | lr(0x80,0xBF); //[4ans]
+    _TyFinal NCName = NameStartCharNoColon * ~NameCharNoColon;
+    _TyFinal Prefix = NCName;
+    _TyFinal LocalPart = NCName;
 
-// Qualified name - first use of triggers: transmit a signal to the lexer so that a position can be recorded.
-_TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>()) 
-  * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
-        * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
+    // Qualified name - first use of triggers: transmit a signal to the lexer so that a position can be recorded.
+    _TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>()) 
+      * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
+            * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
-_TyFinal QName = Prefix * --( l(L':') * LocalPart );
-_TyFinal DefaultAttName = ls(L"xmlns");
-_TyFinal PrefixedAttName = ls(L"xmlns:") * NCName;
-_TyFinal NSAttName = PrefixedAttName | DefaultAttName;
-_TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
-_TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
-                 | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); // [66]
-_TyFinal Reference = EntityRef | CharRef;	// [67]
-_TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '"'
-                                   lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff) 
-                                   | lr(0xe000,0xfffd);
-_TyFinal AVCharNoAmperLessSingle = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
-                                   lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
-                                   | lr(0xe000,0xfffd);
-_TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	// [10]
-                  | l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
-_TyFinal Attribute = NSAttName * Eq * AttValue // [41]
-                   | QName * Eq * AttValue;
+    _TyFinal QName = Prefix * --( l(L':') * LocalPart );
+    _TyFinal DefaultAttName = ls(L"xmlns");
+    _TyFinal PrefixedAttName = ls(L"xmlns:") * NCName;
+    _TyFinal NSAttName = PrefixedAttName | DefaultAttName;
+    _TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
+    _TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
+                    | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); // [66]
+    _TyFinal Reference = EntityRef | CharRef;	// [67]
+    _TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '"'
+                                      lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff) 
+                                      | lr(0xe000,0xfffd);
+    _TyFinal AVCharNoAmperLessSingle = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
+                                      lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
+                                      | lr(0xe000,0xfffd);
+    _TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	// [10]
+                      | l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
+    _TyFinal Attribute = NSAttName * Eq * AttValue // [41]
+                      | QName * Eq * AttValue;
 
-_TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
-_TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
-                     | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
-// note: extra '\' to allow display in git markup - it gets converted to XML 
-//   and then interpreted as a commment - bug in git markup - should be in CDATA section:
-_TyFinal Comment = ls(L"<\!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
-_TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
-_TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
-                 MixedBegin * --S * l(L')'); // [51].
-
-&lt;/code></pre>
+    _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
+    _TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
+                        | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
+    // note: extra '\' to allow display in git markup - it gets converted to XML 
+    //   and then interpreted as a commment - bug in git markup - should be in CDATA section:
+    _TyFinal Comment = ls(L"<\!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
+    _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
+    _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
+                    MixedBegin * --S * l(L')'); // [51].
 
 ## Actions and triggers.
 ### Actions: Are associated with final productions.
