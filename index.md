@@ -82,7 +82,7 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal Prefix = NCName;
     _TyFinal LocalPart = NCName;
 
-    // Qualified name - first use of triggers: transmit a signal to the lexer so that a position can be recorded.
+    // Qualified name, first triggers: transmit a signal to the lexer so that a position can be recorded.
     _TyFinal QName = t(TyGetTriggerPrefixBegin<_TyLexT>()) * Prefix * t(TyGetTriggerPrefixEnd<_TyLexT>()) 
       * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
             * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
