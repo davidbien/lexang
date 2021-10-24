@@ -22,7 +22,7 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
   **Any character not in string:** Represented by the method **litnotset(string)**.  
   Note that this method **may** match surrogates for UTF-32.  
   Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.  
-  **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates(string)**.  
+  **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates("string")**.  
   Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.  
   Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.  
 
