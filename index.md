@@ -106,19 +106,33 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
     _TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
                         | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
-    _TyFinal Comment = ls(L"&lt;!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
+    // note: extra '\' to allow display in git markup - it gets converted to XML 
+    //   and then interpreted as a commment - bug in git markup - should be in CDATA section:
+    _TyFinal Comment = ls(L"<\!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
     _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
     _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
                     MixedBegin * --S * l(L')'); // [51].
 
-## Actions and triggers.
-### All Actions and Triggers have unique "action identifiers" of type vtyActionIdent (int32_t) which uniquely identify the action or trigger in question.
-### Actions: Are associated with final productions and serve to communicate the token to the analyzer.
-### Triggers: Triggers are placed inline within a regular expression and serve to communicate positions within a token to the analyzer.
+## Tokens, Triggers, and Actions.
+### Tokens and Triggers are Actions that have unique "action identifiers" of type vtyActionIdent(int32_t) which uniquely identify the Token or Trigger in question.
+### Tokens: Are associated with final productions and serve to communicate the token found to the analyzer. Examples:
+    static const vtyActionIdent s_knTokenSTag = 1000;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTokenSTag = _l_action_token< _l_action_save_data_single< s_knTokenSTag, 
+      TyGetTriggerSaveTagName<t_TyLexTraits,t_fInLexGen>, 
+      TyGetTriggerSaveAttributes<t_TyLexTraits,t_fInLexGen> > >;
 
+    static const vtyActionIdent s_knTokenETag = 1001;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTokenETag = _l_action_token< _l_action_save_data_single< s_knTokenETag, 
+      TyGetTriggerPrefixEnd<t_TyLexTraits,t_fInLexGen>, 
+      TyGetTriggerLocalPartEnd<t_TyLexTraits,t_fInLexGen> > >;
 
-
-  
+    static const vtyActionIdent s_knTokenEmptyElemTag = 1002;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTokenEmptyElemTag = _l_action_token< _l_action_save_data_single< s_knTokenEmptyElemTag, 
+      TyGetTriggerSaveTagName<t_TyLexTraits,t_fInLexGen>, 
+      TyGetTriggerSaveAttributes<t_TyLexTraits,t_fInLexGen> > >;  
 
 ## Conversion to NFA, DFA and optimized DFA:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
