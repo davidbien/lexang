@@ -106,8 +106,6 @@ This encodes the start of the XML regular expressions as specified in [https://w
     _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
     _TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
                         | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
-    // note: extra '\' to allow display in git markup - it gets converted to XML 
-    //   and then interpreted as a commment - bug in git markup - should be in CDATA section:
     _TyFinal Comment = ls(L"<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
     _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
     _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
@@ -134,7 +132,25 @@ This encodes the start of the XML regular expressions as specified in [https://w
       TyGetTriggerSaveTagName<t_TyLexTraits,t_fInLexGen>, 
       TyGetTriggerSaveAttributes<t_TyLexTraits,t_fInLexGen> > >;
 
-### Triggers: Are used to communicate positions within a Token to the analyzer. This obviates re-parsing of a found token in most cases by finding all relevant positions while parsing the token.
+### Triggers: Are used to communicate positions within a Token to the analyzer. This obviates re-parsing of a found token in most cases by finding all relevant positions while parsing the token. Note that Triggers cannot be used at the start of a final production as they would signal every time. If a Trigger is used at the start of a final production then an exception is thrown during analyzer generation. Examples:
+    static const vtyActionIdent s_knTriggerPrefixBegin = 18;
+    static const vtyActionIdent s_knTriggerPrefixEnd = 19;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTriggerPrefixBegin = _l_trigger_position< t_TyLexTraits, 
+                                                         s_knTriggerPrefixBegin, t_fInLexGen >;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTriggerPrefixEnd = _l_trigger_string< t_TyLexTraits, s_knTriggerPrefixEnd, 
+                                                     s_knTriggerPrefixBegin, t_fInLexGen >;
+
+    static const vtyActionIdent s_knTriggerLocalPartBegin = 20;
+    static const vtyActionIdent s_knTriggerLocalPartEnd = 21;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTriggerLocalPartBegin = _l_trigger_position< t_TyLexTraits, 
+                                                    s_knTriggerLocalPartBegin, t_fInLexGen >;
+    template < class t_TyLexTraits, bool t_fInLexGen = true >
+    using TyGetTriggerLocalPartEnd = _l_trigger_string< t_TyLexTraits, s_knTriggerLocalPartEnd, 
+                                                        s_knTriggerLocalPartBegin, t_fInLexGen >;
+
 
 ## Conversion to NFA, DFA and optimized DFA:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
