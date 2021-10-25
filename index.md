@@ -146,7 +146,7 @@ This encodes the start of the XML regular expressions as specified in [https://w
     static const vtyActionIdent s_knTriggerLocalPartEnd = 21;
     template < class t_TyLexTraits, bool t_fInLexGen = true >
     using TyGetTriggerLocalPartBegin = _l_trigger_position< t_TyLexTraits, 
-                                                    s_knTriggerLocalPartBegin, t_fInLexGen >;
+                                                            s_knTriggerLocalPartBegin, t_fInLexGen >;
     template < class t_TyLexTraits, bool t_fInLexGen = true >
     using TyGetTriggerLocalPartEnd = _l_trigger_string< t_TyLexTraits, s_knTriggerLocalPartEnd, 
                                                         s_knTriggerLocalPartBegin, t_fInLexGen >;
