@@ -51,7 +51,7 @@ Note that the usual C++ operator precedence is enforced by the compiler. I have 
 
 ### Complex example of regular expression usage:
 This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).
-  Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp)
+  Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp).
   There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.  
 
     typedef char8_t _TyCTok;
@@ -89,9 +89,6 @@ This encodes the start of the XML regular expressions as specified in [https://w
             * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
     _TyFinal QName = Prefix * --( l(L':') * LocalPart );
-    _TyFinal DefaultAttName = ls(L"xmlns");
-    _TyFinal PrefixedAttName = ls(L"xmlns:") * NCName;
-    _TyFinal NSAttName = PrefixedAttName | DefaultAttName;
     _TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
     _TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
                     | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); //[66]
@@ -104,22 +101,21 @@ This encodes the start of the XML regular expressions as specified in [https://w
                                       | lr(0xe000,0xfffd);
     _TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	//[10]
                       | l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
-    _TyFinal Attribute = NSAttName * Eq * AttValue // [41]
-                      | QName * Eq * AttValue;
+    _TyFinal Attribute = QName * Eq * AttValue;
 
     _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
     _TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
                         | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
-    // note: extra '\' to allow display in git markup - it gets converted to XML 
-    //   and then interpreted as a commment - bug in git markup - should be in CDATA section:
-    _TyFinal Comment = ls(L"<\!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
+    _TyFinal Comment = ls(L"&lt;!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
     _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
     _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
                     MixedBegin * --S * l(L')'); // [51].
 
 ## Actions and triggers.
-### Actions: Are associated with final productions.
-### Triggers: Triggers are placed inline within a regular expression.
+### All Actions and Triggers have unique "action identifiers" of type vtyActionIdent (int32_t) which uniquely identify the action or trigger in question.
+### Actions: Are associated with final productions and serve to communicate the token to the analyzer.
+### Triggers: Triggers are placed inline within a regular expression and serve to communicate positions within a token to the analyzer.
+
 
 
   
