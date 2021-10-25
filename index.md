@@ -108,12 +108,12 @@ This encodes the start of the XML regular expressions as specified in [https://w
                         | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
     // note: extra '\' to allow display in git markup - it gets converted to XML 
     //   and then interpreted as a commment - bug in git markup - should be in CDATA section:
-    _TyFinal Comment = ls(L"<\!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
+    _TyFinal Comment = ls(L"<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
     _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
     _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
                     MixedBegin * --S * l(L')'); // [51].
 
-## Tokens, Triggers, and Actions.
+## Actions: Tokens and Triggers
 ### Tokens and Triggers are Actions that have unique "action identifiers" of type vtyActionIdent(int32_t) which uniquely identify the Token or Trigger in question.
 ### Tokens: Are associated with final productions and serve to communicate the token found to the analyzer. Examples:
     static const vtyActionIdent s_knTokenSTag = 1000;
@@ -132,7 +132,9 @@ This encodes the start of the XML regular expressions as specified in [https://w
     template < class t_TyLexTraits, bool t_fInLexGen = true >
     using TyGetTokenEmptyElemTag = _l_action_token< _l_action_save_data_single< s_knTokenEmptyElemTag, 
       TyGetTriggerSaveTagName<t_TyLexTraits,t_fInLexGen>, 
-      TyGetTriggerSaveAttributes<t_TyLexTraits,t_fInLexGen> > >;  
+      TyGetTriggerSaveAttributes<t_TyLexTraits,t_fInLexGen> > >;
+
+### Triggers: Are used to communicate positions within a Token to the analyzer. This obviates re-parsing of a found token in most cases by finding all relevant positions while parsing the token.
 
 ## Conversion to NFA, DFA and optimized DFA:
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
