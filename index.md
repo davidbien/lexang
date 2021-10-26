@@ -119,7 +119,7 @@ There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
       * ~( S * Attribute * t(TyGetTriggerSaveAttributes<_TyLexT>()) ) * --S * l(u8'>'); // [12]
     _TyFinal ETag = ls(u8"</") * QName * --S * l(u8'>');// [13]
     _TyFinal EmptyElemTag = l(u8'<') * QName * t(TyGetTriggerSaveTagName<_TyLexT>()) 
-      * ~( S * Attribute * t(TyGetTriggerSaveAttributes<_TyLexT>()) ) * --S * ls(u8"/>");// [14]								
+      * ~( S * Attribute * t(TyGetTriggerSaveAttributes<_TyLexT>()) ) * --S * ls(u8"/>");// [14]
 
 ## Actions: Tokens and Triggers
 ### Tokens and Triggers are Actions that have unique "action identifiers" of type vtyActionIdent(int32_t) which uniquely identify the Token or Trigger in question.
