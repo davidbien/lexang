@@ -11,48 +11,48 @@ Most if not all of the algorithms I gleaned from the Dragon Book [https://en.wik
 ### Regular expressions are represented using a namespace in which several global operators are overridden.
 Note that the usual C++ operator precedence is enforced by the compiler. I have tried to map regular expression operations to C++ operators accordingly.
 #### Literals:
-  **Single character:** Represented by the method **literal(char)**.  
-  Example: **literal('x')** matches the character **'x'**, **literal(L'x')** matches the wchar_t **'x'**.  
-  **String of characters:** Represented by the method **litstr(char\*)**.  
-  Example: **litstr("string")** matches the string **"string"**, **litstr(L"string")** matches the wchar_t **"string"**.  
-  **Range of characters:** Represented by the method **litrange(char,char)**.  
-  Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive.  
-  **Any character in string:** Represented by the method **litanyinset("string")**.  
-  Example: **litanyinset("aeiou")** matches any of the characters 'a','e','i','o','u'.  
-  **Any character not in string:** Represented by the method **litnotset(string)**.  
-  Note that this method **may** match surrogates for UTF-32.  
-  Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.  
-  **Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates("string")**.  
-  Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.  
-  Example: **litnotset_no_surrogates("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.  
+**Single character:** Represented by the method **literal(char)**.  
+Example: **literal('x')** matches the character **'x'**, **literal(L'x')** matches the wchar_t **'x'**.  
+**String of characters:** Represented by the method **litstr(char\*)**.  
+Example: **litstr("string")** matches the string **"string"**, **litstr(L"string")** matches the wchar_t **"string"**.  
+**Range of characters:** Represented by the method **litrange(char,char)**.  
+Example: **litrange('a','z')** matches any character in the range 'a' to 'z' inclusive.  
+**Any character in string:** Represented by the method **litanyinset("string")**.  
+Example: **litanyinset("aeiou")** matches any of the characters 'a','e','i','o','u'.  
+**Any character not in string:** Represented by the method **litnotset(string)**.  
+Note that this method **may** match surrogates for UTF-32.  
+Example: **litnotset("aeiou")** matches any character that isn't among "aeiou" including any surrogates.  
+**Any character not in string excluding surrogates:** Represented by **litnotset_no_surrogates("string")**.  
+Note that this only has any effect for UTF-32 - surrogates in the ranges U+D800 to U+DFFF are not matched.  
+Example: **litnotset_no_surrogates("aeiou")** matches any character that isn't among "aeiou" excluding any surrogates.  
 
-  Note that, writh respect to surrogates, the parser doesn't attempt to discern if UTF-8 and UTF-16 sequences represent
-  valid sequences. Also surrogates will be matched in UTF-32 unless otherwise prevented.
+Note that, writh respect to surrogates, the parser doesn't attempt to discern if UTF-8 and UTF-16 sequences represent
+valid sequences. Also surrogates will be matched in UTF-32 unless otherwise prevented.
 
 #### Unary operations:
-  **Zero or more**: Represented by **operator ~( regexp )**.  
-  Example: **~literal('a')** will match "", "a", "aa", etc.  
-  **One or more**: Represented by **operator ++( regexp )**.  
-  Example: **++literal('a')** will match "a", "aa", "aaa", etc.  
-  **Zero or one**: Represented by **operator \-\-( regexp )**.  
-  Example: **\-\-literal('a')** will match "" and "a" only.  
+**Zero or more**: Represented by **operator ~( regexp )**.  
+Example: **~literal('a')** will match "", "a", "aa", etc.  
+**One or more**: Represented by **operator ++( regexp )**.  
+Example: **++literal('a')** will match "a", "aa", "aaa", etc.  
+**Zero or one**: Represented by **operator \-\-( regexp )**.  
+Example: **\-\-literal('a')** will match "" and "a" only.  
 #### Binary operations:
-  **Follows**: Represented by **operator \*( regexp, regexp )**.  
-  Example: **literal('a') * literal('b')** will match "ab".  
-  **Or**: Represented by the bitwise OR **operator |( regexp, regexp )**.  
-  Example: **literal('a') | literal('b')** will match "a" or "b".  
+**Follows**: Represented by **operator \*( regexp, regexp )**.  
+Example: **literal('a') * literal('b')** will match "ab".  
+**Or**: Represented by the bitwise OR **operator |( regexp, regexp )**.  
+Example: **literal('a') | literal('b')** will match "a" or "b".  
 #### Special operations:
-  **Excludes**: Represented by **operator -( regexp, regexp )**.  
-  Example: **++literal('a') * ~literal('b') - litstr('ab')** will match any number of 'a's followed by 0 or more 'b's except for the string "ab".  
-  **Completes**: Represented by the **operator +( regexp, regexp )**.  
-  Example: **++litrange('a','z') + "zzz"** will match any sequence of characters 'a' - 'z' but will stop when "zzz" is encountered.  
-  **Lookahead**: Represented by **operator /( regexp, regexp )**.  
-  Example: **++litrange('a','z') / litstr("\-\-")** will match any sequence of characters 'a' to 'z' when followed by the string "\-\-", not including the "\-\-".
+**Excludes**: Represented by **operator -( regexp, regexp )**.  
+Example: **++literal('a') * ~literal('b') - litstr('ab')** will match any number of 'a's followed by 0 or more 'b's except for the string "ab".  
+**Completes**: Represented by the **operator +( regexp, regexp )**.  
+Example: **++litrange('a','z') + "zzz"** will match any sequence of characters 'a' - 'z' but will stop when "zzz" is encountered.  
+**Lookahead**: Represented by **operator /( regexp, regexp )**.  
+Example: **++litrange('a','z') / litstr("\-\-")** will match any sequence of characters 'a' to 'z' when followed by the string "\-\-", not including the "\-\-".
 
 ### Complex example of regular expression usage:
-This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).
-  Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp).
-  There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.  
+This encodes the start of the XML regular expressions as specified in [https://www.w3.org/TR/xml/](https://www.w3.org/TR/xml/).  
+Source: [https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp](https://github.com/davidbien/xmlp/blob/master/xmlpgen_utf8.cpp).  
+There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.  
 
     typedef char8_t _TyCTok;
     typedef _regexp_final< _TyCTok, _TyAllocator > _TyFinal;
@@ -88,28 +88,38 @@ This encodes the start of the XML regular expressions as specified in [https://w
             * --( l(u8':') * t( TyGetTriggerLocalPartBegin<_TyLexT>() ) 
             * LocalPart * t( TyGetTriggerLocalPartEnd<_TyLexT>() ) ); //[7]
 
-    _TyFinal QName = Prefix * --( l(L':') * LocalPart );
-    _TyFinal EntityRef = l(L'&') * Name * l(L';'); // [49]
-    _TyFinal CharRef = ls(L"&#") * ++lr(L'0',L'9') * l(L';') 
-                    | ls(L"&#x") * ++( lr(L'0',L'9') | lr(L'A',L'F') | lr(L'a',L'f') ) * l(L';'); //[66]
+    // Attribute value and character data productions:
+    _TyFinal EntityRef = l(u8'&') * t( TyGetTriggerEntityRefBegin<_TyLexT>() ) 	// [49]
+                                  * Name * t( TyGetTriggerEntityRefEnd<_TyLexT>() ) * l(u8';');
+    _TyFinal CharRefDecData = ++lr(u8'0',u8'9');
+    _TyFinal CharRefHexData = ++( lr(u8'0',u8'9') | lr(u8'A',u8'F') | lr(u8'a',u8'f') );
+    _TyFinal CharRefDec = ls(u8"&#") * t( TyGetTriggerCharDecRefBegin<_TyLexT>() ) * CharRefDecData 
+                                     * t( TyGetTriggerCharDecRefEnd<_TyLexT>()  ) * l(u8';');
+    _TyFinal CharRefHex = ls(u8"&#x") * t( TyGetTriggerCharHexRefBegin<_TyLexT>() ) * CharRefHexData 
+                                      * t( TyGetTriggerCharHexRefEnd<_TyLexT>() ) * l(u8';');
+    _TyFinal CharRef = CharRefDec | CharRefHex; // [66]
     _TyFinal Reference = EntityRef | CharRef;	// [67]
-    _TyFinal AVCharNoAmperLessDouble = l(0x09) | l(0x0a) | l(0x0d)	// Char - '&' - '<' - '"'
-                                | lr(0x020,0x021) | lr(0x023,0x025) | lr(0x027,0x03b) | lr(0x03d,0xd7ff)
-                                | lr(0xe000,0xfffd);
-    _TyFinal AVCharNoAmperLessSingle = l(0x09) | l(0x0a) | l(0x0d) |	// Char - '&' - '<' - '\''
-                                      lr(0x020,0x025) | lr(0x028,0x03b) | lr(0x03d,0xd7ff) 
-                                      | lr(0xe000,0xfffd);
-    _TyFinal AttValue = l(L'\"') * ~( AVCharNoAmperLessDouble | Reference ) * l(L'\"')	//[10]
-                      | l(L'\'') * ~( AVCharNoAmperLessSingle | Reference ) * l(L'\'');
+    
+    _TyFinal _AVCharRangeNoAmperLessDouble =	t(TyGetTriggerCharDataBegin<_TyLexT>()) 
+          * ++lnot(u8"&<\"") * t(TyGetTriggerCharDataEnd<_TyLexT>());
+    _TyFinal _AVCharRangeNoAmperLessSingle =	t(TyGetTriggerCharDataSingleQuoteBegin<_TyLexT>()) 
+          * ++lnot(u8"&<\'") * t(TyGetTriggerCharDataSingleQuoteEnd<_TyLexT>());
+    _TyFinal AttCharDataNoDoubleQuoteOutputValidate = ~lnot(u8"&<\"");
+    _TyFinal AttCharDataNoSingleQuoteOutputValidate = ~lnot(u8"&<\'");
+    // We need only record whether single or double quotes were used as a convenience to any 
+    //  reader/writer system that may want to duplicate the current manner of quoting.
+    // No need to record a single quote trigger as the lack of double quote is adequate.
+    _TyFinal AttValue =	l(u8'\"') * t( TyGetTriggerAttValueDoubleQuote<_TyLexT>() ) // [10]
+                      * ~( _AVCharRangeNoAmperLessDouble | Reference )  * l(u8'\"') 
+                      | l(u8'\'') * ~( _AVCharRangeNoAmperLessSingle | Reference ) * l(u8'\''); 
     _TyFinal Attribute = QName * Eq * AttValue;
 
-    _TyFinal PI = ls(L"<?")	* PITarget * ( ls(L"?>") | ( S * ( ~Char + ls(L"?>") ) ) );
-    _TyFinal CharNoMinus =	l(0x09) | l(0x0a) | l(0x0d) // [2].
-                        | lr(0x020,0x02c) | lr(0x02e,0xd7ff) | lr(0xe000,0xfffd);
-    _TyFinal Comment = ls(L"<!--") * ~( CharNoMinus | ( l(L'-') * CharNoMinus ) ) * ls(L"-->");
-    _TyFinal MixedBegin = l(L'(') * --S * ls(L"#PCDATA");
-    _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") |
-                    MixedBegin * --S * l(L')'); // [51].
+    // The various types of tags:
+    _TyFinal STag = l(u8'<') * QName * t(TyGetTriggerSaveTagName<_TyLexT>()) 
+      * ~( S * Attribute * t(TyGetTriggerSaveAttributes<_TyLexT>()) ) * --S * l(u8'>'); // [12]
+    _TyFinal ETag = ls(u8"</") * QName * --S * l(u8'>');// [13]
+    _TyFinal EmptyElemTag = l(u8'<') * QName * t(TyGetTriggerSaveTagName<_TyLexT>()) 
+      * ~( S * Attribute * t(TyGetTriggerSaveAttributes<_TyLexT>()) ) * --S * ls(u8"/>");// [14]								
 
 ## Actions: Tokens and Triggers
 ### Tokens and Triggers are Actions that have unique "action identifiers" of type vtyActionIdent(int32_t) which uniquely identify the Token or Trigger in question.
@@ -132,6 +142,10 @@ This encodes the start of the XML regular expressions as specified in [https://w
       TyGetTriggerSaveTagName<t_TyLexTraits,t_fInLexGen>, 
       TyGetTriggerSaveAttributes<t_TyLexTraits,t_fInLexGen> > >;
 
+    STag.SetAction( TyGetTokenSTag<_TyLexT>() );
+    ETag.SetAction( TyGetTokenETag<_TyLexT>() );
+    EmptyElemTag.SetAction( TyGetTokenEmptyElemTag<_TyLexT>() );
+
 ### Triggers: Are used to communicate positions within a Token to the analyzer. This obviates re-parsing of a found token in most cases by finding all relevant positions while parsing the token. Note that Triggers cannot be used at the start of a final production as they would signal every time. If a Trigger is used at the start of a final production then an exception is thrown during analyzer generation. Examples:
     static const vtyActionIdent s_knTriggerPrefixBegin = 18;
     static const vtyActionIdent s_knTriggerPrefixEnd = 19;
@@ -153,4 +167,4 @@ This encodes the start of the XML regular expressions as specified in [https://w
 
 
 ## Conversion to NFA, DFA and optimized DFA:
-### Regular expressions are represented using a namespace in which several global operators are overridden.
+### To produce the lexical analyzer(s) (potentially one for each type of input character UTF-8, 16 or 32) the final productions are converted first to a NFA (non-discrete finite automata) then to a DFA (discrete finite automata) and then this DFA is optimized to most compact form, getting rid of redundancies. For the XML parser I produce 
