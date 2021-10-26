@@ -100,12 +100,10 @@ There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
     _TyFinal CharRef = CharRefDec | CharRefHex; // [66]
     _TyFinal Reference = EntityRef | CharRef;	// [67]
     
-    _TyFinal _AVCharRangeNoAmperLessDouble =	t(TyGetTriggerCharDataBegin<_TyLexT>()) 
+    _TyFinal _AVCharRangeNoAmperLessDouble = t(TyGetTriggerCharDataBegin<_TyLexT>()) 
           * ++lnot(u8"&<\"") * t(TyGetTriggerCharDataEnd<_TyLexT>());
-    _TyFinal _AVCharRangeNoAmperLessSingle =	t(TyGetTriggerCharDataSingleQuoteBegin<_TyLexT>()) 
+    _TyFinal _AVCharRangeNoAmperLessSingle = t(TyGetTriggerCharDataSingleQuoteBegin<_TyLexT>()) 
           * ++lnot(u8"&<\'") * t(TyGetTriggerCharDataSingleQuoteEnd<_TyLexT>());
-    _TyFinal AttCharDataNoDoubleQuoteOutputValidate = ~lnot(u8"&<\"");
-    _TyFinal AttCharDataNoSingleQuoteOutputValidate = ~lnot(u8"&<\'");
     // We need only record whether single or double quotes were used as a convenience to any 
     //  reader/writer system that may want to duplicate the current manner of quoting.
     // No need to record a single quote trigger as the lack of double quote is adequate.
