@@ -144,6 +144,15 @@ There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
     ETag.SetAction( TyGetTokenETag<_TyLexT>() );
     EmptyElemTag.SetAction( TyGetTokenEmptyElemTag<_TyLexT>() );
 
+### Tokens that may be recognized by a single start state are grouped together using the method AddRule. Example:
+    _TyFinal AllXmlTokens( STag );
+    AllXmlTokens.AddRule( ETag );
+    AllXmlTokens.AddRule( EmptyElemTag );
+    AllXmlTokens.AddRule( Comment );
+    AllXmlTokens.AddRule( PI );
+    AllXmlTokens.AddRule( CharDataAndReferences );
+    AllXmlTokens.AddRule( CDSect );
+
 ### Triggers: Are used to communicate positions within a Token to the analyzer. This obviates re-parsing of a found token in most cases by finding all relevant positions while parsing the token. Note that Triggers cannot be used at the start of a final production as they would signal every time. If a Trigger is used at the start of a final production then an exception is thrown during analyzer generation. Examples:
     static const vtyActionIdent s_knTriggerPrefixBegin = 18;
     static const vtyActionIdent s_knTriggerPrefixEnd = 19;
@@ -165,4 +174,34 @@ There are separate versions for UTF-8, UTF-16, and UTF-32 - necessarily.
 
 
 ## Conversion to NFA, DFA and optimized DFA:
-### To produce the lexical analyzer(s) (potentially one for each type of input character UTF-8, 16 or 32) the final productions are converted first to a NFA (non-discrete finite automata) then to a DFA (discrete finite automata) and then this DFA is optimized to most compact form, getting rid of redundancies. For the XML parser I produce 
+### To produce the lexical analyzer(s) (potentially one for each type of input character UTF-8, 16 or 32) the final productions are converted first to a NFA (non-discrete finite automata) then to a DFA (discrete finite automata) and then this DFA is optimized to most compact form, getting rid of redundancies. For the XML parser I produce an analyzer for each of the UTF-8, 16 and 32 character sets. Each analyzer may have multiple start positions. Exmmple:
+
+    typedef _dfa< _TyCTok, _TyAllocator >	_TyDfa;
+    typedef _TyDfa::_TyDfaCtxt _TyDfaCtxt;
+
+    // Separate XMLDecl out into its own DFA since it clashes with processing instruction (PI),
+    //  and also it can only occur in one position correctly. This generates a separate start
+    //  position for XMLDecl.
+    _TyDfa dfaXMLDecl;
+    _TyDfaCtxt dctxtXMLDecl(dfaXMLDecl);
+    gen_dfa(XMLDecl, dfaXMLDecl, dctxtXMLDecl);
+
+    _TyDfa dfaAll;
+    _TyDfaCtxt	dctxtAll(dfaAll);
+    gen_dfa(AllXmlTokens, dfaAll, dctxtAll);
+
+## Code generations: Generates the state machines used during actual lexical analysis. Example:
+
+    _l_generator< _TyDfa, char >
+      gen( _egfdFamilyDisp, "_xmlplex_utf8.h",
+        "XMLPLEX", true, "ns_xmlplex",
+        "stateUTF8", "char8_t", "u8'", "'");
+    gen.add_dfa( dfaAll, dctxtAll, "startUTF8All" );
+    gen.add_dfa( dfaXMLDecl, dctxtXMLDecl, "startUTF8XMLDecl" );
+    gen.add_dfa( dfaSpaces, dctxtSpaces, "startUTF8Spaces", ( 1ul << egdoDontTemplatizeStates ) );
+    gen.add_dfa( dfaCommentChars, dctxtCommentChars, "startUTF8CommentChars", 
+      ( 1ul << egdoDontTemplatizeStates ) );
+    ...
+    gen.generate();
+
+
