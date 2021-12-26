@@ -435,85 +435,92 @@ public:
         "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
     }//EB
 #endif //LEXOBJ_STRICT
-    _InitGetToken( _pspStart );
-    Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
-    _NextChar();
     LXOBJ_DOTRACE("At start.");
+    bool fIgnoredToken;
     do
     {
-      _CheckAcceptState();
-    } 
-    while ( _getnext() );
-
-    if ( m_pspLastAccept )
-    {
-      _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
-      m_pspLastAccept = 0; // Regardless.
-      Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
-      if ( !!pmfnAccept )
+      fIgnoredToken = false;
+      _InitGetToken( _pspStart );
+      Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
+      _NextChar();
+      do
       {
-        // See of the token wants to be accepted as the current action.
-        // This method will call SetToken() to set the current token.
-        Assert( !PGetToken() ); // Why should we have a token now.
-        AssertStatement( SetToken(nullptr) );
-        if ( (this->*pmfnAccept)() )
+        _CheckAcceptState();
+      } 
+      while ( _getnext() );
+
+      if ( m_pspLastAccept )
+      {
+        _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
+        m_pspLastAccept = 0; // Regardless.
+        Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
+        if ( !!pmfnAccept )
         {
-          VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
-          _TyAxnObjValueBase * paobCurToken = static_cast< _TyAxnObjValueBase * >( PGetToken() );
-          SetToken(nullptr);
-          // Check if this is one of the tokens we are to ignore, the process and potentially filter the token using the user object.
-          if ( ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) &&
-               !GetStream().GetUserObj().FProcessAndFilterToken( paobCurToken, GetStream(), m_posLastAccept ) )
+          // See of the token wants to be accepted as the current action.
+          // This method will call SetToken() to set the current token.
+          Assert( !PGetToken() ); // Why should we have a token now.
+          AssertStatement( SetToken(nullptr) );
+          if ( (this->*pmfnAccept)() )
           {
-            unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
-            // Delegate to the stream to obtain the token as it needs to get the context from the transport.
-            GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
-            // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
-#ifdef LEXOBJ_STRICT
-            vtyTokenIdent tidNonNull;
-            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
-              "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
-              "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
-#endif //LEXOBJ_STRICT
-            _rpuToken.swap( upToken );
-            return true;
+            VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
+            _TyAxnObjValueBase * paobCurToken = static_cast< _TyAxnObjValueBase * >( PGetToken() );
+            SetToken(nullptr);
+            // Check if this is one of the tokens we are to ignore, the process and potentially filter the token using the user object.
+            if ( ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) &&
+                 !GetStream().GetUserObj().FProcessAndFilterToken( paobCurToken, GetStream(), m_posLastAccept ) )
+            {
+              unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
+              // Delegate to the stream to obtain the token as it needs to get the context from the transport.
+              GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+              // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
+  #ifdef LEXOBJ_STRICT
+              vtyTokenIdent tidNonNull;
+              VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+                "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+                "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+  #endif //LEXOBJ_STRICT
+              _rpuToken.swap( upToken );
+              return true;
+            }
+            else
+            {
+              // Ignoring this token:
+              fIgnoredToken = true;
+              LXOBJ_DOTRACE("Ignoring token:[%u]", paobCurToken->VGetTokenId() );
+              // We only need clear this token - the rest of the action objects in the state machine should be clear (must be clear):
+              paobCurToken->Clear();
+  #ifdef LEXOBJ_STRICT
+              vtyTokenIdent tidNonNull;
+              VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+                "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
+                "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
+  #endif //LEXOBJ_STRICT
+              GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found.
+            }
           }
           else
           {
-            // Ignoring this token:
-            LXOBJ_DOTRACE("Ignoring token:[%u]", paobCurToken->VGetTokenId() );
-            // We only need clear this token - the rest of the action objects in the state machine should be clear (must be clear):
-            paobCurToken->Clear();
-#ifdef LEXOBJ_STRICT
+            Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
+            // We had hit a dead end. To continue from here we must return to the start state.
+            // If the token action didn't accept then it should have cleared all token data:
+  #ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
-            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
-              "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
-              "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
-#endif //LEXOBJ_STRICT
-            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found.
+            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+  #endif //LEXOBJ_STRICT
+            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
+            // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
           }
         }
-        else
-        {
-          Assert( !PGetToken() ); // If the accept method rejects the token then it shouldn't set one.
-          // We had hit a dead end. To continue from here we must return to the start state.
-          // If the token action didn't accept then it should have cleared all token data:
-#ifdef LEXOBJ_STRICT
-          vtyTokenIdent tidNonNull;
-          VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
-#endif //LEXOBJ_STRICT
-          GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
-          // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
-        }
+      }
+      // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
+      if ( !fIgnoredToken && ( !!m_ucCur || !GetStream().FAtTokenStart() ) && _fThrowOnNoToken )
+      {
+        _TyStdStr strCurToken;
+        GetStream().GetCurTokenString( strCurToken );
+        THROWNOTOKENFOUND(m_ucCur ? "Not at EOF, current token:[%s] m_ucCur[%c]" : "Not at EOF, current token:[%s]", strCurToken.c_str(), (char)m_ucCur );
       }
     }
-    // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
-    if ( ( !!m_ucCur || !GetStream().FAtTokenStart() ) && _fThrowOnNoToken )
-    {
-      _TyStdStr strCurToken;
-      GetStream().GetCurTokenString( strCurToken );
-      THROWNOTOKENFOUND(m_ucCur ? "Not at EOF, current token:[%s] m_ucCur[%c]" : "Not at EOF, current token:[%s]", strCurToken.c_str(), (char)m_ucCur );
-    }
+    while( fIgnoredToken );
     return false;
   }
 
