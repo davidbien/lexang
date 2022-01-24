@@ -276,7 +276,7 @@ public:
     typedef typename _TyUserContext::_TyUserObj _TyUserObj;
     static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
-    vtyDataPosition nLenToken = ( _kdpEndToken - m_frrFileDesBuffer.PosBase() );
+    size_t nLenToken = size_t( _kdpEndToken - m_frrFileDesBuffer.PosBase() );
     typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
     _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _TyBuffer( nLenToken ) );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
@@ -287,7 +287,7 @@ public:
   _TyTransportCtxt CtxtEatCurrentToken( const vtyDataPosition _kdpEndToken )
   {
     Assert( _kdpEndToken >= m_frrFileDesBuffer.PosBase() );
-    vtyDataPosition nLenToken = ( _kdpEndToken - m_frrFileDesBuffer.PosBase() );
+    size_t nLenToken = size_t( _kdpEndToken - m_frrFileDesBuffer.PosBase() );
     typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
     _TyTransportCtxt tcxt( m_frrFileDesBuffer.PosBase(), _TyBuffer( nLenToken ) );
     m_frrFileDesBuffer.ConsumeData( tcxt.GetTokenBuffer().begin(), tcxt.GetTokenBuffer().length() );
@@ -382,7 +382,7 @@ protected:
         THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%zx] failed.", (size_t)(m_file.HFileGet()) );
       }
       posEnd = nbySeekEnd / sizeof( _TyChar );
-      VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( _TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
+      VerifyThrowSz( _posEnd <= ( (uint64_t)nbySeekEnd / sizeof( _TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
       if ( !_posEnd )
         VerifyThrowSz( !( nbySeekEnd % sizeof( _TyChar ) ), "End of file position is not a multiple of a character byte length." );
       else
@@ -839,7 +839,7 @@ public:
       THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of handle[%llu] failed, u64SizeMapping[%llu].", (size_t)_rfoFile.HFileGet(), u64SizeMapping );
     uint64_t nbyLenMapping = u64SizeMapping - u64MapAtPosition;
     VerifyThrowSz( !( nbyLenMapping % sizeof( _TyChar ) ), "Mapping size[%llu] is not an integral multiple of character size.", nbyLenMapping );
-    m_bufFull.RLength() = nbyLenMapping / sizeof( _TyChar );
+    m_bufFull.RLength() = size_t( nbyLenMapping / sizeof( _TyChar ) );
     m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pby( (size_t)u64MapAtPosition ); // truncatable since MapReadOnlyHandle will leave this within a PAGE_SIZE.
     m_bufCurrentToken.RCharP() = m_bufFull.begin();
     Assert( !m_bufCurrentToken.length() );

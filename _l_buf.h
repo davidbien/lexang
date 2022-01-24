@@ -218,10 +218,10 @@ public:
     return second;
   }
   // Set the contents and length of the buffer.
-  void SetBuffer( const _TyChar * _pcBuf, uint64_t _nchLen )
+  void SetBuffer( const _TyChar * _pcBuf, size_t _nchLen )
   {
     Clear();
-    first = DBG_NEW _TyChar[ (size_t)_nchLen ]; // truncation is fine here.
+    first = DBG_NEW _TyChar[ _nchLen ];
     second = _nchLen;
     memcpy( first, _pcBuf, second * sizeof( _TyChar ) );
   }

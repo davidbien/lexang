@@ -299,7 +299,7 @@ protected:
       {
         Assert( **ppdpCur > posCur );
         _TyChar * pchBufBefore = pchBufCur;
-        const _TyCharCopy * pchCopyNext = PCConvertString( pchCopyCur, **ppdpCur - posCur, pchBufCur, ( pchBufEnd - pchBufCur ) );
+        const _TyCharCopy * pchCopyNext = PCConvertString( pchCopyCur, size_t( **ppdpCur - posCur ), pchBufCur, ( pchBufEnd - pchBufCur ) );
         VerifyThrowSz( !!pchCopyNext, "Error found during conversion of encodings." );
         offchCur += ( pchBufCur - pchBufBefore ) - ( pchCopyNext - pchCopyCur );
         posCur = **ppdpCur;
@@ -308,7 +308,7 @@ protected:
       **ppdpCur += offchCur;
     }
     // All positions converted in-place and prpptrDP.second[-1] is at the end of the converted buffer.
-    GetTransportCtxt().GetTokenBuffer().SetBuffer( pchBufBeg, *(prpptrDP.second[-1]) - _rtokCopy.GetTransportCtxt().PosTokenStart() );
+    GetTransportCtxt().GetTokenBuffer().SetBuffer( pchBufBeg, size_t( *(prpptrDP.second[-1]) - _rtokCopy.GetTransportCtxt().PosTokenStart() ) );
   }
   _TyUserContext m_scx; // The context for the stream which is passed to various _l_value methods.
   _TyValue m_value; // This value's context is in m_scx.
