@@ -22,7 +22,7 @@ typedef int32_t	vtyActionIdent;
 typedef int32_t	vtyTokenIdent; // allow negative numbers to signify something, not sure yet.
 typedef uint64_t vtyLookaheadVector;
 
-typedef size_t vtyDataPosition;
+typedef uint64_t vtyDataPosition; // We allow this to be 64bit even under 32bit as we could be indexing into a file larger than 4GB (very unlikely). At least for now.
 static constexpr vtyDataPosition vkdpNullDataPosition = (numeric_limits< vtyDataPosition >::max)();
 typedef uint32_t vtyDataType;
 typedef vtyTokenIdent vtyDataTriggerId;

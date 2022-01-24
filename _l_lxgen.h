@@ -73,7 +73,8 @@ struct _l_gen_dfa
 	{
 		m_rDfa._CreateRangeLookup();
 		m_rDfaCtxt.CreateAcceptPartLookup();
-		VerifyThrowSz( !FDontTemplatizeStates() || !m_rDfa.m_nTriggers, "Must have templatized states when triggers are present in the state machine. There are [%lu] triggers in the current DFA.", m_rDfa.m_nTriggers );
+		VerifyThrowSz( !FDontTemplatizeStates() || !m_rDfa.m_nTriggers, 
+			"Must have templatized states when triggers are present in the state machine. There are [%llu] triggers in the current DFA.", uint64_t(m_rDfa.m_nTriggers) );
 	}
 	bool FDontTemplatizeStates() const
 	{
@@ -540,7 +541,7 @@ enum EGeneratorDFAOptions : uint32_t
 		{
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
 			if ( !!pvtAction && !!pvtAction->second.m_pSdpAction )
-				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
+				Trace( "State[%zu] Action[%s] pvtAction[0x%zx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
 		_rfIsTriggerAction = ( pvtAction && ( pvtAction->second.m_eaatType & e_aatTrigger ) );		
 		// If this is an anti-accepting state then that status overrides all trigger out transitions 
@@ -565,7 +566,7 @@ enum EGeneratorDFAOptions : uint32_t
 					_TyRange r = m_pvtDfaCur->m_rDfa.LookupRange( *lpi );
 
 					typename _TyDfa::_TyMapTriggerTransitionToTokenId::const_iterator cit = m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.find( r.first );
-					VerifyThrowSz( cit != m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.end(), "Couldn't find trigger transition [0x%lx] in m_mapTriggerTransitionToTokenId.", size_t(r.first) );
+					VerifyThrowSz( cit != m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.end(), "Couldn't find trigger transition [0x%zx] in m_mapTriggerTransitionToTokenId.", size_t(r.first) );
 					_rtidTokenTrigger = cit->second;
 					_rrgelTrigger = r.first;
 
@@ -638,7 +639,7 @@ enum EGeneratorDFAOptions : uint32_t
 							typename _TyDfa::_TyMapTriggers::iterator itTrigger = m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( (vtyActionIdent)stTrigger );
 							if ( (*itTrigger->second.m_pSdpAction)->VGetTokenId() != _rtidTokenTrigger )
 							{
-								n_SysLog::Log( eslmtError, "%s: Filtering out token [%ld] since it doesn't match the input transition. This looks like a bug in NFA->DFA conversion.", 
+								n_SysLog::Log( eslmtError, "%s: Filtering out token [%d] since it doesn't match the input transition. This looks like a bug in NFA->DFA conversion.", 
 									FUNCTION_PRETTY_NAME, (*itTrigger->second.m_pSdpAction)->VGetTokenId() );
 								pvtAction->second.m_psrTriggers->clearbit( stTrigger );
 							}
@@ -694,7 +695,7 @@ enum EGeneratorDFAOptions : uint32_t
 			pvtAction = m_pvtDfaCur->m_rDfaCtxt.PVTGetAcceptPart( _pgn->RElConst() );
 			Assert( !!pvtAction );
 			if ( !!pvtAction->second.m_pSdpAction )
-				Trace( "State[%lu] Action[%s] pvtAction[0x%lx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
+				Trace( "State[%zu] Action[%s] pvtAction[0x%zx]", size_t(_pgn->RElConst()), (*pvtAction->second.m_pSdpAction)->VStrTypeName( m_sCharTypeName.c_str() ).c_str(), pvtAction );
 		}
 #ifndef LXGEN_OUTPUT_TRIGGERS
 		if ( fIsTriggerAction || fIsTriggerGateway )
@@ -868,7 +869,7 @@ enum EGeneratorDFAOptions : uint32_t
 				if ( fIsTrigger )
 				{
 					typename _TyDfa::_TyMapTriggerTransitionToTokenId::const_iterator cit = m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.find( r.first );
-					VerifyThrowSz( cit != m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.end(), "Couldn't find trigger transition [0x%lx] in m_mapTriggerTransitionToTokenId.", size_t(r.first) );
+					VerifyThrowSz( cit != m_pvtDfaCur->m_rDfa.m_mapTriggerTransitionToTokenId.end(), "Couldn't find trigger transition [0x%zx] in m_mapTriggerTransitionToTokenId.", size_t(r.first) );
 					_ros << " /* TokenId[" << cit->second << "] */";
 				}
 				_ros << "\n";
@@ -1027,7 +1028,7 @@ enum EGeneratorDFAOptions : uint32_t
 		{
 			_TyGraphNode *	pgn = static_cast< _TyGraphNode * >( *nit );
 			int	nOuts = pgn->UChildren();	// We could record this earlier - like during both creation and optimization.
-			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( pgn->RElConst() );
+			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( (size_t)pgn->RElConst() );// truncation ok here - we can't have a bitvector with > 4GB bits.
 			_GenHeaderState( _rosHeader, pgn, nOuts, fAccept );
 		}
 		_rosHeader << "\n";
@@ -1040,7 +1041,7 @@ enum EGeneratorDFAOptions : uint32_t
 		{
 			_TyGraphNode *	pgn = static_cast< _TyGraphNode * >( *nit );
 			int	nOuts = pgn->UChildren();	// We could record this earlier - like during both creation and optimization.
-			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( pgn->RElConst() );
+			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( (size_t)pgn->RElConst() ); // truncation ok here - we can't have a bitvector with > 4GB bits.
 			_GenImpState( _rosHeader, pgn, nOuts, fAccept );
 		}
 		_rosHeader << "\n";

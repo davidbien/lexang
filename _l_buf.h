@@ -18,13 +18,13 @@ __LEXOBJ_BEGIN_NAMESPACE
 
 // The fixed version.
 template < class t_TyChar >
-class _l_fixed_buf : public pair< const t_TyChar *, vtyDataPosition >
+class _l_fixed_buf : public pair< const t_TyChar *, size_t >
 {
   typedef _l_fixed_buf _TyThis;
-  typedef pair< const t_TyChar *, vtyDataPosition > _TyBase;
+  typedef pair< const t_TyChar *, size_t > _TyBase;
 public:
   typedef t_TyChar _TyChar;
-  _l_fixed_buf( const t_TyChar * _pc, vtyDataPosition _len )
+  _l_fixed_buf( const t_TyChar * _pc, size_t _len )
     : _TyBase( _pc, _len )
   {
   }
@@ -65,7 +65,7 @@ public:
   {
     return first + second;
   }
-  vtyDataPosition length() const
+  size_t length() const
   {
     return second;
   }
@@ -77,7 +77,7 @@ public:
   {
     return first;
   }
-  vtyDataPosition & RLength()
+  size_t & RLength()
   {
     return second;
   }
@@ -91,7 +91,7 @@ public:
     if ( _posEnd == _posBegin )
       return; // empty.
     Assert( _posEnd <= second );
-    _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type*)first + _posBegin, _posEnd - _posBegin );
+    _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type*)first + _posBegin, size_t( _posEnd - _posBegin ) );
   }
 protected:
   using _TyBase::first;
@@ -100,18 +100,18 @@ protected:
 
 // A very simple allocated buffer that only needs a pointer and a length.
 template < class t_TyChar >
-class _l_backing_buf : public pair< t_TyChar *, vtyDataPosition >
+class _l_backing_buf : public pair< t_TyChar *, size_t >
 {
   typedef _l_backing_buf _TyThis;
-  typedef pair< t_TyChar *, vtyDataPosition > _TyBase;
+  typedef pair< t_TyChar *, size_t > _TyBase;
 public:
   typedef t_TyChar _TyChar;
-  explicit _l_backing_buf( vtyDataPosition _len )
+  explicit _l_backing_buf( size_t _len )
   {
     first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
     second = _len;
   }
-  _l_backing_buf( const _TyChar * _pch, vtyDataPosition _len )
+  _l_backing_buf( const _TyChar * _pch, size_t _len )
   {
     first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
     second = _len;
@@ -213,15 +213,15 @@ public:
   {
     return first + second;
   }
-  vtyDataPosition length() const
+  size_t length() const
   {
     return second;
   }
   // Set the contents and length of the buffer.
-  void SetBuffer( const _TyChar * _pcBuf, size_t _nchLen )
+  void SetBuffer( const _TyChar * _pcBuf, uint64_t _nchLen )
   {
     Clear();
-    first = DBG_NEW _TyChar[ _nchLen ];
+    first = DBG_NEW _TyChar[ (size_t)_nchLen ]; // truncation is fine here.
     second = _nchLen;
     memcpy( first, _pcBuf, second * sizeof( _TyChar ) );
   }
@@ -235,7 +235,7 @@ public:
     if ( _posEnd == _posBegin )
       return; // empty.
     Assert( _posEnd <= second );
-    _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type *)first + _posBegin, _posEnd - _posBegin );
+    _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type *)first + _posBegin, size_t( _posEnd - _posBegin ) );
   }
 protected:
   using _TyBase::first;

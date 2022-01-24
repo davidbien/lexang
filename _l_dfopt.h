@@ -19,13 +19,13 @@ struct _partition_el
 private:
 	typedef _partition_el< t_TySwapSS >	_TyThis;
 public:
-	typedef ptrdiff_t _TyPartitionType;
+	typedef int64_t _TyPartitionType;
 	static constexpr _TyPartitionType s_kptNullPartition = (numeric_limits< _TyPartitionType >::max)();
 
 	_TyPartitionType first;
 	t_TySwapSS	second;
 
-	_partition_el(ptrdiff_t _first, t_TySwapSS const & _rss )
+	_partition_el( _TyPartitionType _first, t_TySwapSS const & _rss )
 		: first( _first ),
 			second( _rss )
 	{
@@ -50,7 +50,7 @@ public:
 template < class t_TyPartitionClass >
 struct _compare_partition_classes
 {
-	size_t	m_stAlphabet;	// The number of characters in the alphabet.
+	size_t m_stAlphabet;	// The number of characters in the alphabet.
 
 	_compare_partition_classes( size_t _stAlphabet )
 		: m_stAlphabet( _stAlphabet )
@@ -80,7 +80,7 @@ public:
 	t_TyPartitionEl **	m_pppelTransitions;
 
 	_partition_class(_TyState _nStates, _TyAllocator const & _rA )
-		: m_ssMembers(_nStates, _rA ),
+		: m_ssMembers( (size_t)_nStates, _rA ),
 			m_nSingleState( -1 )
 	{
 		m_ssMembers.clear();
@@ -115,7 +115,7 @@ public:
 	void	AddState( _TyState _iState )
 	{
 		m_nSingleState = ( -1 == m_nSingleState ) ? _iState : -2;
-		m_ssMembers.setbit( _iState );
+		m_ssMembers.setbit( (size_t)_iState );
 	}
 
 	bool	lessthan(	_TyThis const & _r,
@@ -232,7 +232,7 @@ public:
 			_TyAllocPartClass( _rDfa.get_allocator() ),
 			m_rDfa( _rDfa ),
 			m_rDfaCtxt( _rDfaCtxt ),
-			m_stDfaStatesOrig( m_rDfa.NStates() ),
+			m_stDfaStatesOrig( (size_t)m_rDfa.NStates() ),
 			m_partition( _TyCompPE(), _rDfa.get_allocator() ),
 			m_rgsmeMap( _rDfa.get_allocator() ),
 			m_cachePartClasses( 0 ),
@@ -337,7 +337,7 @@ public:
 	{
 		if ( _pel->first >= 0 )
 		{
-			m_rgsmeMap[ _pel->first ] = _pel;
+			m_rgsmeMap[ (typename _TySetStates::size_type)_pel->first ] = _pel;
 			_rss.clearbit( (typename _TySetStates::size_type)_pel->first );
 		}	
 		else
@@ -365,7 +365,7 @@ public:
 	_InsertNewSS( _TySetStates & _rssInsert,
 								_TyState _iSingleStateHint = -1 )
 	{
-		_TyPartitionEl	peInsert( _iSingleStateHint, _TySetStates( _rssInsert ) );
+		_TyPartitionEl peInsert( _iSingleStateHint, _TySetStates(_rssInsert));
 
 		_TyGcpPE	gcpPeInsert;
 		gcpPeInsert.template Create1< _TyPartitionEl const & >( peInsert, m_rDfa.get_allocator() );
@@ -401,7 +401,7 @@ public:
 		m_rDfaCtxt.CompressTriggerAcceptPartitions();
 
 		// Create the initial partition of accepting/non-accepting:
-		_TySetStates	ssUtil( m_rDfa.NStates(), m_rDfa.get_allocator() );
+		_TySetStates	ssUtil( (size_t)m_rDfa.NStates(), m_rDfa.get_allocator() );
 		m_rDfaCtxt.GetAcceptingNodeSet( ssUtil );
 		ssUtil.invert(); // Non-accepting states.
 		if ( t_fPartDeadImmed || !m_rDfa.m_nodeLookup[ 0 ]->FChildren() )
@@ -489,7 +489,7 @@ protected:
 			_TyState	iStateTest;
 			for ( iStateTest = (_TyState)_rssUtil.getclearfirstset();
 						_rssUtil.size() != iStateTest;
-						iStateTest = _rssUtil.getclearfirstset( iStateTest ) )
+						iStateTest = _rssUtil.getclearfirstset( (size_t)iStateTest ) )
 			{
 				// Since we know we have a transition on every state out of every node
 				//	we can just iterate the links of the node for this state:
@@ -509,7 +509,7 @@ protected:
 #if ASSERTSENABLED
 					++dbg_nLinksCur;
 #endif //ASSERTSENABLED
-					*pppelPartClass++ = m_rgsmeMap[ lpi.PGNChild()->REl() ];
+					*pppelPartClass++ = m_rgsmeMap[ (size_t)lpi.PGNChild()->REl() ];
 					lpi.NextChild();
 				}
 #if ASSERTSENABLED
@@ -592,9 +592,9 @@ protected:
 		_TyState	iTransState;
 		if ( !m_rgLookupRep[ (size_type)( iTransState = _pgl->PGNChild()->RElConst() ) ] )
 		{
-			Assert( !!m_rgsmeMap[ iTransState ] );
+			Assert( !!m_rgsmeMap[ (size_type)iTransState ] );
 			// Then determine the representative for this node:
-			if ( m_rgsmeMap[ iTransState ]->first >= 0 )
+			if ( m_rgsmeMap[ (size_type)iTransState ]->first >= 0 )
 			{
 				// singleton:
 				m_rgLookupRep[ (size_type)iTransState ] = _pgl->PGNChild();
@@ -602,7 +602,7 @@ protected:
 			else
 			{
 				m_rgLookupRep[ (size_type)iTransState ] = m_rDfa.PGNGetNode( 
-					m_rgsmeMap[ iTransState ]->second.RObject().getfirstset() );
+					m_rgsmeMap[ (size_type)iTransState ]->second.RObject().getfirstset() );
 			}
 		}
 
@@ -674,10 +674,10 @@ protected:
 			}
 
 			// Now need to process the non-reps for this rep:
-			_TyState	iStateNonRep;
-			for ( iStateNonRep = _rssUtil.getclearfirstset( iStateRep );
+			_TyState iStateNonRep;
+			for ( iStateNonRep = _rssUtil.getclearfirstset( (size_t)iStateRep );
 						_rssUtil.size() != iStateNonRep;
-						iStateNonRep = _rssUtil.getclearfirstset( iStateNonRep ) )
+						iStateNonRep = _rssUtil.getclearfirstset( (size_t)iStateNonRep ) )
 			{
 				stNonReps++;
 
@@ -722,9 +722,9 @@ protected:
 			_TyGraphNode *	pgnRep = m_rDfa.PGNGetNode( iStateRep = _rssUtil.getclearfirstset() );
 			
 			_TyState	iStateNonRep;
-			for ( iStateNonRep = _rssUtil.getclearfirstset( iStateRep );
+			for ( iStateNonRep = _rssUtil.getclearfirstset( (size_t)iStateRep );
 						_rssUtil.size() != iStateNonRep;
-						iStateNonRep = _rssUtil.getclearfirstset( iStateNonRep ) )
+						iStateNonRep = _rssUtil.getclearfirstset( (size_t)iStateNonRep ) )
 			{
 				_TyGraphNode *	pgnNonRep = m_rDfa.PGNGetNode( iStateNonRep );
 
@@ -753,13 +753,13 @@ protected:
 			_rssUtil = ppelCur->second;	// Copy the set of states - we will modify below.
 
 			_TyState	iStateNonRep = _rssUtil.getclearfirstset();	// skip the representative state.
-			while ( _rssUtil.size() != ( iStateNonRep = _rssUtil.getclearfirstset( iStateNonRep ) ) )
+			while ( _rssUtil.size() != ( iStateNonRep = _rssUtil.getclearfirstset( (size_t)iStateNonRep ) ) )
 			{
 				_TyGraphNode *	pgnNonRep = m_rDfa.PGNGetNode( iStateNonRep );
 				Assert( !pgnNonRep->FParents() );
 				Assert( !pgnNonRep->FChildren() );
         m_rDfa.m_gDfa.destroy_node( pgnNonRep );
-				m_rDfa.m_nodeLookup[ iStateNonRep ] = 0;
+				m_rDfa.m_nodeLookup[ (size_t)iStateNonRep ] = 0;
 			}
 		}
 		while( m_partition.end() != ++itCur );

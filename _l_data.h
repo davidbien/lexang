@@ -65,10 +65,10 @@ public:
   {
     return m_posEnd;
   }
-  vtyDataPosition length() const
+  size_t length() const
   {
     AssertValid();
-    return m_posEnd - m_posBegin;
+    return (size_t)( m_posEnd - m_posBegin );
   }
 // Make these accessible.
   vtyDataPosition m_posBegin{ (numeric_limits< vtyDataPosition >::max)() };

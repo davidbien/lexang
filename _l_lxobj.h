@@ -240,7 +240,7 @@ public:
   {
     return m_stream.GetUserObjPtr();
   }
-  size_t GetCurrentPosition() const
+  vtyDataPosition GetCurrentPosition() const
   {
     return GetStream().PosCurrent() - !!m_ucCur;
   }
@@ -277,9 +277,9 @@ public:
     if ( !!m_ucCur )
     {
       if ((m_ucCur > 32) && (m_ucCur < 127))
-        (void)FPrintfStdStrNoThrow(strCur, "%c (%lu)", (char)m_ucCur, uint64_t(m_ucCur) );
+        (void)FPrintfStdStrNoThrow(strCur, "%c (%llu)", (char)m_ucCur, uint64_t(m_ucCur) );
       else
-        (void)FPrintfStdStrNoThrow(strCur, "%lu", uint64_t(m_ucCur));
+        (void)FPrintfStdStrNoThrow(strCur, "%llu", uint64_t(m_ucCur));
     }
 
     std::string strMesg;

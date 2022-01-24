@@ -448,7 +448,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		return true;
 	}
 };
@@ -527,7 +527,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		return true;
 	}
 	void swap( _TyThis & _r )
@@ -615,7 +615,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		m_f = true;
 		return true;
 	}
@@ -705,7 +705,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		m_tpPos = _rA.GetCurrentPosition(); // We know that the lex has already read the next character 
 		return true;
 	}
@@ -885,7 +885,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
@@ -1013,7 +1013,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
@@ -1126,7 +1126,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
@@ -1233,7 +1233,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		bool fRet = _TyBase::action( _rA );
 		if ( fRet )
 		{
@@ -1377,7 +1377,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		// We copy data from all constituent triggers regardless if that trigger fired. We may change this later.
 		Assert( FIsNull() ); // Should be left in a null state because should have been "eaten" by the parser, or by another token, etc.
 		std::apply
@@ -1543,7 +1543,7 @@ public:
 	template < class t_TyAnalyzer >
 	bool action( t_TyAnalyzer & _rA )
 	{
-		Trace( "Trigger[%d], Position[%ld].", s_kiTrigger, _rA.GetCurrentPosition() );
+		Trace( "Trigger[%d], Position[%llu].", s_kiTrigger, _rA.GetCurrentPosition() );
 		// We copy data from all constituent triggers regardless if that trigger fired. We may change this later.
 		// We add data to the SegArray when this trigger/token fires.
 		// Get a new element at the end of the segarray:

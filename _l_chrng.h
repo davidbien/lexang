@@ -141,7 +141,7 @@ public:
 	}
 	void DumpToString( string & _rstr ) const
 	{
-		PrintfStdStr( _rstr, "[%lu-%lu]", first, second );
+		PrintfStdStr( _rstr, "[%llu-%llu]", uint64_t(first), uint64_t(second) );
 	}
 
 	template < class t_TyJsonValueLife >
@@ -154,7 +154,7 @@ public:
 				_jvl.WriteNullValue();
 			else
 			if ( ( first > 254/* _l_char_type_map< _TyChar >::ms_kcMax */ ) || ( first < 32 ) ) // filter out unprintable characters.
-				_jvl.PrintfStringValue( "0x%lx", size_t((_TyUnsignedChar)first) );
+				_jvl.PrintfStringValue( "0x%llx", uint64_t((_TyUnsignedChar)first) );
 			else
 			{
 				_TyChar ch = (_TyChar)first;
@@ -164,7 +164,7 @@ public:
 				_jvl.WriteNullValue();
 			else
 			if ( ( second > 254/* )_l_char_type_map< _TyChar >::ms_kcMax */ ) || ( second < 32 ) ) // filter out unprintable characters.
-				_jvl.PrintfStringValue( "0x%lx", size_t((_TyUnsignedChar)second) );
+				_jvl.PrintfStringValue( "0x%llx", uint64_t((_TyUnsignedChar)second) );
 			else
 			{
 				_TyChar ch = (_TyChar)second;

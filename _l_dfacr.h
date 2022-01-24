@@ -290,7 +290,7 @@ public:
 			if ( ++m_sCur != m_rDfa.NStates() )
 			{
 				// Then we need to update m_pssCur:
-				pssInLookup = m_mapStateToSS[ m_sCur ];
+				pssInLookup = m_mapStateToSS[ (size_t)m_sCur ];
 				Assert( !pssInLookup->empty() );
 				*m_pssCur = *pssInLookup;
 				pgnCurDfa = m_rDfa.PGNGetNode( m_sCur );
@@ -607,7 +607,7 @@ public:
 					Assert( pvtFirstAccept->first == m_rNfa.m_pLookupActionID->find( aiActionMin )->second->first );
 					// No need for a special diambiguating accepting state - just competition
 					//	among normal accepting states and lookahead states:
-					stFirst = pvtFirstAccept->first;
+					stFirst = (size_t)pvtFirstAccept->first;
 				}
 
 				if ( m_fAllowReject )
@@ -664,7 +664,7 @@ public:
 					itL != itLEnd;
 					++itL )
 		{
-			m_rDfaCtxt.m_pssAccept->setbit( itL->second );
+			m_rDfaCtxt.m_pssAccept->setbit( (size_t)itL->second );
 
 			if ( mapNfaState.end() == ( itNfaState = mapNfaState.find( itL->first ) ) )
 			{
@@ -675,7 +675,7 @@ public:
 				_TySetStatesDfa	ssDfa(	static_cast< size_t >( m_rDfa.NStates() ), 
 																m_rDfa.get_allocator() );
 				ssDfa.clear();
-				ssDfa.setbit( itL->second );
+				ssDfa.setbit( (size_t)itL->second );
 				typename _TyLocalMap::value_type	vt( itL->first, _TyLMapEl( ssDfa, itNfaAccept->second ) );
 				itNfaState = mapNfaState.insert( vt ).first;
 			}
@@ -683,7 +683,7 @@ public:
 			{
 				// Action object already copied for this NFA state - set the bit for the next associated
 				//	DFA state:
-				itNfaState->second.first.RObject().setbit( itL->second );
+				itNfaState->second.first.RObject().setbit( (size_t)itL->second );
 			}
 			
 			// If we have ambiguous anti-accepting states then we may have a trigger transition
@@ -767,7 +767,7 @@ public:
 				typename _TySetLDStates::iterator itAssocEnd = rvtAmbig.second.first.end();
 				for ( ; itAssoc != itAssocEnd; ++itAssoc )
 				{
-					ssDfa.setbit( *itAssoc );
+					ssDfa.setbit( (size_t)*itAssoc);
 				}
 
 				// Update accepting state vector:

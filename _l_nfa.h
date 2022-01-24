@@ -190,22 +190,22 @@ public:
 	}
 	void	AllocClosureCache()
 	{
-		_TySetStates	ssComputed( NStates(), get_allocator() );
+		_TySetStates	ssComputed( (size_t)NStates(), get_allocator() );
 		m_ssClosureComputed.swap( ssComputed );
 		m_ssClosureComputed.clear();
 
 		Assert( !m_cpClosureCache );
 
 		_TyCharAllocBase::allocate_n( m_cpClosureCache, 
-																	m_ssClosureComputed.size_bytes() * NStates() );
-		memset( m_cpClosureCache, 0, m_ssClosureComputed.size_bytes() * NStates() );
+																	m_ssClosureComputed.size_bytes() * (size_t)NStates() );
+		memset( m_cpClosureCache, 0, m_ssClosureComputed.size_bytes() * (size_t)NStates() );
 	}
 
 	void	DeallocClosureCache()
 	{
 		if ( m_cpClosureCache )
 		{
-			_TyCharAllocBase::deallocate_n( m_cpClosureCache, m_ssClosureComputed.size_bytes() * NStates() );
+			_TyCharAllocBase::deallocate_n( m_cpClosureCache, m_ssClosureComputed.size_bytes() * (size_t)NStates() );
 			m_cpClosureCache = 0;
 		}
 		_TySetStates	ssComputed( 0, get_allocator() );
@@ -219,7 +219,7 @@ public:
 
 	_TyGraphNode *	PGNGetNode( _TyState _iState )
 	{
-		return static_cast< _TyGraphNode * >( m_nodeLookup[ _iState ] );
+		return static_cast< _TyGraphNode * >( m_nodeLookup[ (size_t)_iState ] );
 	}
 
 	// Attempt to match the passed null terminated string:
@@ -365,13 +365,13 @@ protected:	// accessed by _nfa_context:
 			{//B
 				typename _TyString::const_iterator citDupe;
 				VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
-					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+					"Found duplicate character with value [%zu] in literal-not-in-set specification.", size_t( *citDupe ) );
 			}//EB
 			// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
 			{//B
 				typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
 				VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
-					"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+					"Found character with value [%zu] beyond the maximum value of [%zu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
 			}//EB
 
 			const _TyUnsignedChar * pcCur = str.c_str();
@@ -419,13 +419,13 @@ protected:	// accessed by _nfa_context:
 			{//B
 				typename _TyString::const_iterator citDupe;
 				VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
-					"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+					"Found duplicate character with value [%zu] in literal-not-in-set specification.", size_t( *citDupe ) );
 			}//EB
 			// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
 			{//B
 				typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
 				VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
-					"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+					"Found character with value [%zu] beyond the maximum value of [%zu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
 			}//EB
 
 			const _TyUnsignedChar * pcCur = str.c_str();
@@ -500,13 +500,13 @@ protected:	// accessed by _nfa_context:
 		{//B
 			typename _TyString::const_iterator citDupe;
 			VerifyThrowSz( str.end() == ( citDupe = adjacent_find( str.begin(), str.end() ) ), 
-				"Found duplicate character with value [%lu] in literal-not-in-set specification.", size_t( *citDupe ) );
+				"Found duplicate character with value [%zu] in literal-not-in-set specification.", size_t( *citDupe ) );
 		}//EB
 		// Make sure that we don't have any bogus characters that are above the maximum because that messes with the algorithm below:
 		{//B
 			typename _TyString::const_iterator citMax = max_element( str.begin(), str.end() );
 			VerifyThrowSz( *citMax <= _l_char_type_map< _TyUnsignedChar >::ms_kcMax, 
-				"Found character with value [%lu] beyond the maximum value of [%lu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
+				"Found character with value [%zu] beyond the maximum value of [%zu].", size_t( *citMax ), size_t( _l_char_type_map< _TyUnsignedChar >::ms_kcMax ) );
 		}//EB
 
 		const _TyUnsignedChar * pcCur = str.c_str();
@@ -877,20 +877,20 @@ protected:	// accessed by _nfa_context:
 		_TyState nState;
 		for ( nState = (_TyState)_rsetStart.getclearfirstset();
 					_rsetStart.size() != nState;
-					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
+					nState = (_TyState)_rsetStart.getclearfirstset( (size_t)nState ) )
 		{
 			Assert( nState < (_TyState)m_nodeLookup.size() );
 
 			// We may have already computed the closure for this state:
-			if ( m_ssClosureComputed.isbitset( nState ) )
+			if ( m_ssClosureComputed.isbitset( (size_t)nState ) )
 			{
-				_rsetResult.or_equals( (typename _TySetStates::_TyEl*)PCGetClosureCache( nState ) );
+				_rsetResult.or_equals( (typename _TySetStates::_TyEl*)PCGetClosureCache( (size_t)nState ) );
 			}
 			else
 			{
 				// Then we are going to compute the closure cache for this state:
-				m_ssClosureComputed.setbit( nState );
-				typename _TySetStates::_TyEl * pssVector = (typename _TySetStates::_TyEl*)PCGetClosureCache( nState );
+				m_ssClosureComputed.setbit( (size_t)nState );
+				typename _TySetStates::_TyEl * pssVector = (typename _TySetStates::_TyEl*)PCGetClosureCache( (size_t)nState );
 				pssCur->swap_vector( pssVector );
 				CMFDtor1_void< _TySetStates, typename _TySetStates::_TyEl *& >
 					swapBack( pssCur, &_TySetStates::swap_vector, pssVector );
@@ -900,7 +900,7 @@ protected:	// accessed by _nfa_context:
 				m_selit.SetPGNBCur( const_cast< _TyGraphNode * >( PGNGetNode( nState ) ) );
 				m_selit.Reset();
 
-				pssCur->setbit( nState );	// add initial state.
+				pssCur->setbit( (size_t)nState );	// add initial state.
 
 				++m_selit;
 				while( !m_selit.FAtEnd() )
@@ -910,17 +910,17 @@ protected:	// accessed by _nfa_context:
 					{
 						const _TyGraphNode * _pgnCur = m_selit.PGNCur();
 						// Check to see if we have computed the closure for this state already:
-						if ( m_ssClosureComputed.isbitset( _pgnCur->RElConst() ) )
+						if ( m_ssClosureComputed.isbitset( (size_t)_pgnCur->RElConst() ) )
 						{
 							// Then closure already computed for this node:
-							pssCur->or_equals( (typename _TySetStates::_TyEl*)PCGetClosureCache( _pgnCur->RElConst() ) );
+							pssCur->or_equals( (typename _TySetStates::_TyEl*)PCGetClosureCache( (size_t)_pgnCur->RElConst() ) );
 							// Instruct the graph iterator not to iterate below this node:
 							m_selit.SkipContext();
 							continue;
 						}
 						else
 						{
-							pssCur->setbit( _pgnCur->RElConst() );
+							pssCur->setbit( (size_t)_pgnCur->RElConst() );
 						}
 					}
 					++m_selit;
@@ -948,7 +948,7 @@ protected:	// accessed by _nfa_context:
 		_TyState nState;
 		for ( nState = (_TyState)_rsetStart.getclearfirstset();
 					_rsetStart.size() != nState;
-					nState = (_TyState)_rsetStart.getclearfirstset( nState ) )
+					nState = (_TyState)_rsetStart.getclearfirstset( (size_t)nState ) )
 		{
 			Assert( nState < (_TyState)m_nodeLookup.size() );
 			pssCur->clear();
@@ -970,7 +970,7 @@ protected:	// accessed by _nfa_context:
 		m_selit.SetPGNBCur( const_cast< _TyGraphNode * >( _pgnStart ) );
 		m_selit.Reset();
 
-		_rsetResult.setbit( _pgnStart->RElConst() );	// add initial state.
+		_rsetResult.setbit( (size_t)_pgnStart->RElConst() );	// add initial state.
 
 		while( !(++m_selit).FAtEnd() )
 		{
@@ -978,14 +978,14 @@ protected:	// accessed by _nfa_context:
 			if ( !m_selit.PGLCur() )
 			{
 				const _TyGraphNode * _pgnCur = m_selit.PGNCur();
-				_rsetResult.setbit( _pgnCur->RElConst() );
+				_rsetResult.setbit( (size_t)_pgnCur->RElConst() );
 			}
 		}
 
 		if ( _fUseClosureCache )
 		{
 			// Copy the result into the closure cache:
-			memcpy( PCGetClosureCache( _pgnStart->RElConst() ), 
+			memcpy( PCGetClosureCache( (size_t)_pgnStart->RElConst() ), 
 							_rsetResult.begin(), _rsetResult.size_bytes() );
 		}
 	}
@@ -1002,7 +1002,7 @@ protected:	// accessed by _nfa_context:
 		{
 			if ( (*lpi).intersects( _rInput ) )
 			{
-				_rsetResult.setbit( lpi.PGNChild()->REl() );
+				_rsetResult.setbit( (size_t)lpi.PGNChild()->REl() );
 			}
 			lpi.NextChild();
 		}
@@ -1191,7 +1191,7 @@ protected:	// accessed by _nfa_context:
 		}
 #if 0 /* TRACESENABLED */
 		static size_t nRep = 0;
-		Trace( "m_setAlphabet.size()[%lu] after [%lu] reps.", m_setAlphabet.size(), nRep++ );
+		Trace( "m_setAlphabet.size()[%zu] after [%zu] reps.", m_setAlphabet.size(), nRep++ );
 		string strAlphabet;
 		_DumpAlphabetToString( strAlphabet );
 		Trace( "Alphabet:{%s}", strAlphabet.c_str() );
@@ -1410,7 +1410,7 @@ public:
 
 	void _CreateAcceptingNodeSet()
 	{
-		m_pssAccept.template emplace< _TyState, const t_TyAllocator & >( RNfa().NStates(), RNfa().get_allocator() );
+		m_pssAccept.template emplace< size_t, const t_TyAllocator & >( (size_t)RNfa().NStates(), RNfa().get_allocator() );
 		m_pssAccept->clear();
 
 		// Copy the accepting states to the bit vector:
@@ -1419,7 +1419,7 @@ public:
 					it != itEnd;
 					++it )
 		{
-			m_pssAccept->setbit( it->first );
+			m_pssAccept->setbit( (size_t)it->first );
 		}					
 	}
 };

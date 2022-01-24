@@ -152,7 +152,7 @@ public:
 
 	_TyGraphNode *	PGNGetNode( _TyState _iState )
 	{
-		return static_cast< _TyGraphNode * >( m_nodeLookup[ _iState ] );
+		return static_cast< _TyGraphNode * >( m_nodeLookup[ (size_t)_iState ] );
 	}
 
 	_TyRange	LookupRange( _TyAlphaIndex _ai ) const
@@ -160,7 +160,7 @@ public:
 		if ( _ai < 0 )
 		{
 			// Then a compressed range:
-			return (*m_pCCRIndex)[ -( _ai + 1 ) ]->first;
+			return (*m_pCCRIndex)[  (size_t)( -(_ai + 1) ) ]->first;
 		}
 		else
 		{
@@ -578,8 +578,8 @@ public:
 
 	void	CreateAcceptingNodeSet()
 	{
-		m_pssAccept.template emplace< _TyState, const t_TyAllocator & >
-			( RDfa().NStates(), RDfa().get_allocator() );
+		m_pssAccept.template emplace< size_t, const t_TyAllocator & >
+			( (size_t)RDfa().NStates(), RDfa().get_allocator() );
 		m_pssAccept->clear();
 	}
 
@@ -657,7 +657,7 @@ public:
 		{
 			size_t stRemoved;
 			 // We should have no orphaned portions of the graphs.
-			VerifyThrowSz( !( stRemoved = _STCheckPruneAlternateRoots( false ) ), "Found orphaned portion(s) or alternate roots and removed them ([%lu] nodes removed), but didn't expect to find orphaned portions.", stRemoved );
+			VerifyThrowSz( !( stRemoved = _STCheckPruneAlternateRoots( false ) ), "Found orphaned portion(s) or alternate roots and removed them ([%zu] nodes removed), but didn't expect to find orphaned portions.", stRemoved );
 			return;
 		}
 
@@ -681,7 +681,7 @@ public:
 
     typename _TySetStates::size_type stRemoved = 0;
 
-		_TySetStates ssFoundNodes( RDfa().NStates(), RDfa().get_allocator() );
+		_TySetStates ssFoundNodes( (size_t)RDfa().NStates(), RDfa().get_allocator() );
 		ssFoundNodes.clear();
 
 		// If we have trigger transitions then they are first.
@@ -713,7 +713,7 @@ public:
 							//	update the link:
 							pglEntered = gfit.PGLCur();
 							++gfit;
-							if ( ssFoundNodes.isbitset( pglEntered->PGNParent()->RElConst() ) )
+							if ( ssFoundNodes.isbitset( (size_t)pglEntered->PGNParent()->RElConst() ) )
 							{
 								pglEntered->RemoveParent();
 								pglEntered->InsertParent( pgnReconnect->PPGLParentHead() );
@@ -735,10 +735,10 @@ public:
 							{
 								// We don't expect to encounter any other unsatisfiables and we want to know even in release whether or not we do:
 								VerifySz( ( ( pglFirst->RElConst() == pglUnsat->RElConst()-1 ) || ( pglFirst->RElConst() == pglUnsat->RElConst() ) ), 
-									"pglFirst->RElConst()[%lu] pglUnsat->RElConst()[%lu]", size_t(pglFirst->RElConst()), size_t(pglUnsat->RElConst()) );
+									"pglFirst->RElConst()[%zu] pglUnsat->RElConst()[%zu]", size_t(pglFirst->RElConst()), size_t(pglUnsat->RElConst()) );
 								// Then found one - this node to be deleted.
 								Assert( !!stRemoved || ( gfit.PGNCur() == pgn ) ); // First time through we should remove the root.
-								RDfa().m_nodeLookup[ gfit.PGNCur()->RElConst() ] = 0;
+								RDfa().m_nodeLookup[ (size_t)gfit.PGNCur()->RElConst() ] = 0;
 								_TyGraphNode * pgnRemoved = gfit.PGNCur();
 								++gfit;	// Move to next node or link.
 								++stRemoved;
@@ -752,7 +752,7 @@ public:
 									for (; !!pglNext; pglNext = *pglNext->PPGLGetNextChild())
 									{
 										_TyGraphNode * pgnCheck = pglNext->PGNChild();
-										if ( !RDfa().m_nodeLookup[ pgnCheck->RElConst() ] )
+										if ( !RDfa().m_nodeLookup[ (size_t)pgnCheck->RElConst() ] )
 										{
 											// points at already removed node - leave the link because we need the to-be-removed subgraph to be connected for deletion purposes.
 											continue;
@@ -781,7 +781,7 @@ public:
 								Assert( pglEntered->PGNParent() == gfit.PGNCur() );
 
 								// This node to remain in graph - record the state:
-								ssFoundNodes.setbit( gfit.PGNCur()->RElConst() );
+								ssFoundNodes.setbit( (size_t)gfit.PGNCur()->RElConst() );
 								gfit.SkipContext();	// Skip to next context.
 								// We can safely move the link:
 								pglEntered->RemoveParent();
@@ -794,7 +794,7 @@ public:
 					pglUnsat->RemoveParent();
 					pglUnsat->SetChildNode( 0 );
 					
-					Assert( !RDfa().m_nodeLookup[ pgn->RElConst() ] ); // If not then when would we zero it? We're deleting the node below.
+					Assert( !RDfa().m_nodeLookup[ (size_t)pgn->RElConst() ] ); // If not then when would we zero it? We're deleting the node below.
 					RDfa().m_gDfa.destroy_node( pgn );
 				}
 			}
@@ -818,7 +818,7 @@ public:
 		for ( ; !gfit.FAtEnd(); ++gfit )
 		{
 			if ( !gfit.PGLCur() ) // We want scearios where we are at a node and not at any link of that node.
-				_bvConnected.setbit( gfit.PGNCur()->RElConst() );
+				_bvConnected.setbit( (size_t)gfit.PGNCur()->RElConst() );
 		}
 	}
 
@@ -835,7 +835,7 @@ public:
 		// 2) Then start with the first disconnected node and do essentially the same thing - move through and accumulate a bitvector of nodes connected to it.
 		//	a) Zero this set of nodes and then delete destroy the subgraph at the first disconnected node.
 		//	b) If there are more disconnected nodes left then go to (2) and repeat until there are no disconnected nodes left.
-		_TySetStates bvDisconnected( RDfa().NStates(), RDfa().get_allocator() );
+		_TySetStates bvDisconnected( (size_t)RDfa().NStates(), RDfa().get_allocator() );
 		bvDisconnected.clear();
 		// We will iterate both parents and children to find connected nodes, however we should
 		//	be able to just iterate down. Iterating both directions correctly detects multiple roots - even though
@@ -863,7 +863,7 @@ public:
 				Assert( pgnRootSG );
 			}//EB
 			VerifyThrow( !!pgnRootSG );
-			_TySetStates bvConnectedSG( RDfa().NStates(), RDfa().get_allocator() );
+			_TySetStates bvConnectedSG( (size_t)RDfa().NStates(), RDfa().get_allocator() );
 			bvConnectedSG.clear();
 			_GetConnectedSet( pgnRootSG, bvConnectedSG, false, true );
 			bvDisconnected.and_not_equals( bvConnectedSG );
@@ -894,7 +894,7 @@ public:
 		//	a) All nodes not such marked are not required in the resultant DFA. They won't hurt anything but they are detritus.
 		// 3) Then move through all detritus nodes and remove any children connecting to nodes which are not detritus.
 		// 4) Then perform "removal procedure" which we used in _STCheckRemoveOrphanedSubgraphs() to detroy connected subgraphs among the nodes to be removed.
-		_TySetStates bvDetritus( RDfa().NStates(), RDfa().get_allocator() );
+		_TySetStates bvDetritus( (size_t)RDfa().NStates(), RDfa().get_allocator() );
 		bvDetritus.clear();
 		{ //B
 			_TyGraphNode *	pgnRoot = RDfa().PGNGetNode( 0 );
@@ -918,7 +918,7 @@ public:
 					for ( ; !!pglCur; pglCur = *pglCur->PPGLGetNextChild() )
 					{
 						_TyGraphNode * pgnCheck = pglCur->PGNChild();
-						if ( !bvDetritus.isbitset( pgnCheck->RElConst() ) ) // yes bvDetritus.
+						if ( !bvDetritus.isbitset( (size_t)pgnCheck->RElConst() ) ) // yes bvDetritus.
 						{
 							// pruning shears...
 							pglCur->RemoveParent();
@@ -963,7 +963,7 @@ public:
 
 	void CompressNodeLookup( typename _TySetStates::size_type _stNonReps )
 	{
-    typename _TySetStates::size_type	stNewStates = RDfa().NStates() - _stNonReps;
+    typename _TySetStates::size_type	stNewStates = (size_t)RDfa().NStates() - _stNonReps;
 
 		// We should compress the state numbers and the node lookup in the DFA.
 		// At the same time set up the new accepting state set.
@@ -1001,21 +1001,21 @@ public:
 		_TyState iState;
 		for ( iState = 0; iState < RDfa().NStates(); iState++ )
 		{
-			if ( RDfa().m_nodeLookup[ iState - iProcessedEmpty ] )
+			if ( RDfa().m_nodeLookup[ size_t( iState - iProcessedEmpty ) ] )
 			{
 				if ( iStartNS < 0 && iStartSpace >= 0 )
 				{
 					iStartNS = iState;
 				}
-				if ( m_pssAccept->isbitset( iState ) )
+				if ( m_pssAccept->isbitset( (size_t)iState ) )
 				{
-					ssNewAccept.setbit( iState - iEmptyNodes );
+					ssNewAccept.setbit( size_t( iState - iEmptyNodes ) );
 
 					// Set the state in the appropriate accept partition:
 					typename _TyMapToNewAccept::iterator itPart = mapToNewAccept.find( 
 																									PVTGetAcceptPart( iState ) );
 					Assert( mapToNewAccept.end() != itPart );
-					itPart->second.RObject().setbit( iState - iEmptyNodes );
+					itPart->second.RObject().setbit( size_t( iState - iEmptyNodes ) );
 				}
 				if ( iEmptyNodes )
 				{
@@ -1033,8 +1033,8 @@ public:
 					if ( iStartNS > 0 )
 					{
 						// Then we need to process empty space:
-						RDfa().m_nodeLookup.erase(	RDfa().m_nodeLookup.begin() + ( iStartSpace - iProcessedEmpty ),
-																				RDfa().m_nodeLookup.begin() + ( iStartNS - iProcessedEmpty ) );
+						RDfa().m_nodeLookup.erase(	RDfa().m_nodeLookup.begin() + size_t( iStartSpace - iProcessedEmpty ),
+																				RDfa().m_nodeLookup.begin() + size_t( iStartNS - iProcessedEmpty ) );
 						iStartNS = -1;
 						iProcessedEmpty = iEmptyNodes;
 						iStartSpace = iState;
@@ -1047,14 +1047,14 @@ public:
 		// If we didn't process the last non-space:
 		if ( ( iStartSpace >= 0 ) && ( iStartNS > 0 ) )
 		{
-			RDfa().m_nodeLookup.erase(	RDfa().m_nodeLookup.begin() + ( iStartSpace - iProcessedEmpty ),
-																	RDfa().m_nodeLookup.begin() + ( iStartNS - iProcessedEmpty ) );
+			RDfa().m_nodeLookup.erase(	RDfa().m_nodeLookup.begin() + size_t( iStartSpace - iProcessedEmpty ),
+																	RDfa().m_nodeLookup.begin() + size_t( iStartNS - iProcessedEmpty ) );
 		}
 		else
 		// If there was empty space at the end:
 		if ( ( iStartNS < 0 ) && ( iStartSpace >= 0 ) )
 		{
-			RDfa().m_nodeLookup.erase(	RDfa().m_nodeLookup.begin() + ( iStartSpace - iProcessedEmpty ),
+			RDfa().m_nodeLookup.erase(	RDfa().m_nodeLookup.begin() + size_t( iStartSpace - iProcessedEmpty ),
 																	RDfa().m_nodeLookup.end() );
 		}
 

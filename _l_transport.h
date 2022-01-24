@@ -227,7 +227,7 @@ public:
     _InitNonTty();
   }
   // Attach to an hFile like STDIN - in which case you would set _fOwnFd to false.
-  _l_transport_file( vtyFileHandle _hFile, size_t _posEnd /*= 0*/, bool _fOwnFd = false )
+  _l_transport_file( vtyFileHandle _hFile, uint64_t _posEnd /*= 0*/, bool _fOwnFd = false )
     : m_file( _hFile, _fOwnFd )
   {
     m_fisatty = FIsConsoleFileHandle( m_file.HFileGet() );
@@ -345,12 +345,12 @@ protected:
   {
     m_frrFileDesBuffer.Init( m_file.HFileGet(), 0, false, (numeric_limits< vtyDataPosition >::max)() );
   }
-  void _InitNonTty( size_t _posEnd = 0 )
+  void _InitNonTty( uint64_t _posEnd = 0 )
   {
     bool fReadAhead = false;
-    size_t posInit = 0;
-    size_t posEnd = 0;
-    size_t stchLenRead = (std::numeric_limits<size_t>::max)();
+    uint64_t posInit = 0;
+    uint64_t posEnd = 0;
+    uint64_t stchLenRead = (std::numeric_limits<uint64_t>::max)();
 
     // Then stat will return meaningful info:
     vtyHandleAttr attrHandle;
@@ -358,7 +358,7 @@ protected:
     if ( !!iGetAttrRtn )
     {
       Assert( -1 == iGetAttrRtn );
-      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "GetHandleAttrs() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "GetHandleAttrs() of hFile[0x%zx] failed.", (size_t)(m_file.HFileGet()) );
     }
     // We will support any hFile type here but we will only use read ahead on regular files.
     fReadAhead = FIsRegularFile_HandleAttr( attrHandle );
@@ -369,7 +369,7 @@ protected:
       if ( !!iSeekResult )
       {
         Assert( -1 == iSeekResult );
-        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%zx] failed.", (size_t)(m_file.HFileGet()) );
       }
       VerifyThrowSz( !( nbySeekCur % sizeof( _TyChar ) ), "Current offset in file is not a multiple of a character byte length." );
       posInit = nbySeekCur / sizeof( _TyChar );
@@ -379,7 +379,7 @@ protected:
       if ( !!iSeekResult )
       {
         Assert( -1 == iSeekResult );
-        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%lx] failed.", (uint64_t)(m_file.HFileGet()) );
+        THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "::seek() of hFile[0x%zx] failed.", (size_t)(m_file.HFileGet()) );
       }
       posEnd = nbySeekEnd / sizeof( _TyChar );
       VerifyThrowSz( _posEnd <= ( nbySeekEnd / sizeof( _TyChar ) ), "Passed an _posEnd that is beyond the EOF." );
@@ -545,7 +545,7 @@ public:
   _TyThis & operator = ( _TyThis const & _r ) = default;
   _l_transport_fixedmem( _l_transport_fixedmem && _rr ) = default;
   _TyThis & operator = ( _TyThis && _r ) = default;
-  _l_transport_fixedmem( const _TyChar * _pcBase, vtyDataPosition _nLenChars )
+  _l_transport_fixedmem( const _TyChar * _pcBase, size_t _nLenChars )
     : m_bufFull( _pcBase, _nLenChars ),
       m_bufCurrentToken( _pcBase, 0 )
   {
@@ -611,7 +611,7 @@ public:
     static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
     Assert( _kdpEndToken >= _PosTokenStart() );
     Assert( _kdpEndToken <= _PosTokenEnd() );
-    vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
+    size_t nLenToken = size_t( _kdpEndToken - _PosTokenStart() );
     Assert( nLenToken <= m_bufCurrentToken.length() );
     typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
     _TyUserContext ucxt( _ruoUserObj, _PosTokenStart(), _TyBuffer( m_bufCurrentToken.begin(), nLenToken ) );
@@ -626,7 +626,7 @@ public:
   {
     Assert( _kdpEndToken >= _PosTokenStart() );
     Assert( _kdpEndToken <= _PosTokenEnd() );
-    vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
+    size_t nLenToken = size_t( _kdpEndToken - _PosTokenStart() );
     typedef typename _TyTransportCtxt::_TyBuffer _TyBuffer;
     _TyBuffer bufToken( m_bufCurrentToken.begin(), nLenToken );
     if ( s_kfSwitchEndian )
@@ -640,7 +640,7 @@ public:
   {
     Assert( _kdpEndToken >= _PosTokenStart() );
     Assert( _kdpEndToken <= _PosTokenEnd() );
-    vtyDataPosition nLenToken = ( _kdpEndToken - _PosTokenStart() );
+    size_t nLenToken = size_t( _kdpEndToken - _PosTokenStart() );
     m_bufCurrentToken.RCharP() += nLenToken;
     m_bufCurrentToken.RLength() = 0;
   }
@@ -815,12 +815,12 @@ public:
     FileObj foFile( OpenReadOnlyFile( _pszFileName ) );
     if ( !foFile.FIsOpen() )
       THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "OpenReadOnlyFile() of [%s] failed.", _pszFileName );
-    size_t stSizeMapping;
-    FileMappingObj fmoFile( MapReadOnlyHandle( foFile.HFileGet(), &stSizeMapping ) );
+    uint64_t u64SizeMapping;
+    FileMappingObj fmoFile( MapReadOnlyHandle( foFile.HFileGet(), &u64SizeMapping ) );
     if ( !fmoFile.FIsOpen() )
-      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of [%s] failed, stSizeMapping[%lu].", _pszFileName, stSizeMapping );
-    VerifyThrowSz( !( stSizeMapping % sizeof( _TyChar ) ), "File size[%lu] is not an integral multiple of character size.", stSizeMapping );
-    m_bufFull.RLength() = stSizeMapping / sizeof( _TyChar );
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of [%s] failed, u64SizeMapping[%llu].", _pszFileName, u64SizeMapping );
+    VerifyThrowSz( !( u64SizeMapping % sizeof( _TyChar ) ), "File size[%llu] is not an integral multiple of character size.", u64SizeMapping );
+    m_bufFull.RLength() = u64SizeMapping / sizeof( _TyChar );
     m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pv();
     m_bufCurrentToken.RCharP() = m_bufFull.begin();
     Assert( !m_bufCurrentToken.length() );
@@ -832,15 +832,15 @@ public:
     : _TyBase( (const _TyChar*)vkpvNullMapping, 0 )// in case of throw so we don't call munmap with some random number in ~_l_transport_mapped().
   {
     VerifyThrowSz( _rfoFile.FIsOpen(), "Caller should pass an open file..." );
-	  size_t stMapAtPosition = (size_t)NFileSeekAndThrow(_rfoFile.HFileGet(), 0, vkSeekCur);
-    size_t stSizeMapping;
-    FileMappingObj fmoFile( MapReadOnlyHandle( _rfoFile.HFileGet(), &stSizeMapping, &stMapAtPosition ) );
+    uint64_t u64MapAtPosition = (uint64_t)NFileSeekAndThrow(_rfoFile.HFileGet(), 0, vkSeekCur);
+    uint64_t u64SizeMapping;
+    FileMappingObj fmoFile( MapReadOnlyHandle( _rfoFile.HFileGet(), &u64SizeMapping, &u64MapAtPosition ) );
     if ( !fmoFile.FIsOpen() )
-      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of handle[%lu] failed, stSizeMapping[%lu].", (size_t)_rfoFile.HFileGet(), stSizeMapping );
-    size_t nbyLenMapping = stSizeMapping - stMapAtPosition;
-    VerifyThrowSz( !( nbyLenMapping % sizeof( _TyChar ) ), "Mapping size[%lu] is not an integral multiple of character size.", nbyLenMapping );
+      THROWNAMEDEXCEPTIONERRNO( GetLastErrNo(), "MapReadOnlyHandle() of handle[%llu] failed, u64SizeMapping[%llu].", (size_t)_rfoFile.HFileGet(), u64SizeMapping );
+    uint64_t nbyLenMapping = u64SizeMapping - u64MapAtPosition;
+    VerifyThrowSz( !( nbyLenMapping % sizeof( _TyChar ) ), "Mapping size[%llu] is not an integral multiple of character size.", nbyLenMapping );
     m_bufFull.RLength() = nbyLenMapping / sizeof( _TyChar );
-    m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pby(stMapAtPosition);
+    m_bufFull.RCharP() = (const _TyChar*)fmoFile.Pby( (size_t)u64MapAtPosition ); // truncatable since MapReadOnlyHandle will leave this within a PAGE_SIZE.
     m_bufCurrentToken.RCharP() = m_bufFull.begin();
     Assert( !m_bufCurrentToken.length() );
     m_fmoMappedFile.swap( fmoFile ); // We now own the mapped file.

@@ -27,9 +27,9 @@ struct _l_transition
   {
     std::string str;
     if ((_uc > 32) && (_uc < 127))
-      (void)FPrintfStdStrNoThrow(str, "%c (%lu)", (char)_uc, (uint64_t)_uc);
+      (void)FPrintfStdStrNoThrow(str, "%c (%llu)", (char)_uc, (uint64_t)_uc);
     else
-      (void)FPrintfStdStrNoThrow(str, "%lu", (uint64_t)_uc);
+      (void)FPrintfStdStrNoThrow(str, "%llu", (uint64_t)_uc);
     return str;
   }
   n_SysLog::vtyJsoValueSysLog GetJsonValue() const
