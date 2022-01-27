@@ -317,8 +317,8 @@ public:
       return;
     _rcxt.AssertValidDataRange( kdtr );
     // Then we must back with a string:
-    vtyDataPosition nCharsCount = kdtr.CountChars();
-    vtyDataPosition nCharsRemaining = nCharsCount;
+    size_t nCharsCount = kdtr.CountChars();
+    size_t nCharsRemaining = nCharsCount;
     t_TyString strBacking( nCharsRemaining, 0 ); // Return the type the caller asked for.
     if ( kdtr.FContainsSingleDataRange() )
     {
@@ -335,7 +335,7 @@ public:
           for ( ; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )
           {
             Assert( nCharsRemaining >= pdtrCur->length() );
-            vtyDataPosition nCharsCopy = min( nCharsRemaining, pdtrCur->length() );
+            size_t nCharsCopy = min( nCharsRemaining, pdtrCur->length() );
             Assert( nCharsCopy == pdtrCur->length() ); // should have reserved enough.
             memcpy( pcCur, _rcxt.GetTokenBuffer().begin() + pdtrCur->begin() - _rcxt.PosTokenStart(), nCharsCopy * sizeof( _TyChar ) );
             pcCur += nCharsCopy;
@@ -364,8 +364,8 @@ public:
     // Then we must back with a converted string, attempt to use an alloca() buffer:
     static size_t knchMaxAllocaSize = vknbyMaxAllocaSize / sizeof( _TyChar );
     typename t_TyToken::_TyValue::template get_string_type< _TyChar > strTempBuf; // For when we have more than knchMaxAllocaSize.
-    vtyDataPosition nCharsCount = kdtr.CountChars();
-    vtyDataPosition nCharsRemaining = nCharsCount;
+    size_t nCharsCount = kdtr.CountChars();
+    size_t nCharsRemaining = nCharsCount;
     _TyChar * pcBuf;
     if ( nCharsCount > knchMaxAllocaSize )
     {
@@ -390,7 +390,7 @@ public:
           for ( ; nCharsRemaining && ( _pdtrEnd != pdtrCur ); ++pdtrCur )
           {
             Assert( nCharsRemaining >= pdtrCur->length() );
-            vtyDataPosition nCharsCopy = min( nCharsRemaining, pdtrCur->length() );
+            size_t nCharsCopy = min( nCharsRemaining, pdtrCur->length() );
             Assert( nCharsCopy == pdtrCur->length() ); // should have reserved enough.
             memcpy( pcCur, _rcxt.GetTokenBuffer().begin() + pdtrCur->begin() - _rcxt.PosTokenStart(), nCharsCopy * sizeof( _TyChar ) );
             pcCur += nCharsCopy;
