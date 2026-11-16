@@ -10,7 +10,7 @@
 // dbien : 26DEC2020 - moved from _l_strm.h cuz it was getting biggish.
 
 #include <variant>
-#include "_assert.h"
+#include "bien_assert.h"
 #include "fdrotbuf.h"
 #include "_l_buf.h"
 #include "_l_user.h"

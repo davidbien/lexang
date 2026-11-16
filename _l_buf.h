@@ -88,9 +88,10 @@ public:
     AssertValid();
     Assert( _rsvDest.empty() );
     Assert( _posEnd >= _posBegin );
-    if ( _posEnd == _posBegin )
-      return; // empty.
     Assert( _posEnd <= second );
+    if ( !first )
+      return; // empty buffer - leave the view empty.
+    // Even for an empty range return a view with a non-null pointer - callers pass data() to APIs that reject null.
     _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type*)first + _posBegin, size_t( _posEnd - _posBegin ) );
   }
 protected:
@@ -108,12 +109,12 @@ public:
   typedef t_TyChar _TyChar;
   explicit _l_backing_buf( size_t _len )
   {
-    first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
+    first = DBG_NEW _TyChar[ _len ];
     second = _len;
   }
   _l_backing_buf( const _TyChar * _pch, size_t _len )
   {
-    first = DBG_NEW _TyChar[ _len * sizeof( _TyChar ) ];
+    first = DBG_NEW _TyChar[ _len ];
     second = _len;
     if ( _pch )
       memcpy( first, _pch, _len * sizeof( _TyChar ) );
@@ -232,9 +233,10 @@ public:
     AssertValid();
     Assert( _rsvDest.empty() );
     Assert( _posEnd >= _posBegin );
-    if ( _posEnd == _posBegin )
-      return; // empty.
     Assert( _posEnd <= second );
+    if ( !first )
+      return; // empty buffer - leave the view empty.
+    // Even for an empty range return a view with a non-null pointer - callers pass data() to APIs that reject null.
     _rsvDest = t_TyStringView( (const typename t_TyStringView::value_type *)first + _posBegin, size_t( _posEnd - _posBegin ) );
   }
 protected:

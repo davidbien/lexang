@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 #include <stddef.h>
-#include "_assert.h"
+#include "bien_assert.h"
 #include <wchar.h>
 #include <unordered_set>
 #include <typeinfo>
@@ -416,6 +416,8 @@ public:
   void _InitGetToken( const _TyStateProto *_pspStart )
   {
     m_pspCur = !_pspStart ? m_pspStart : _pspStart; // Start at the beginning again...
+    // A generated analyzer containing multiple DFAs has no default start state - the caller must then pass one.
+    VerifyThrowSz( !!m_pspCur, "No start state: this analyzer has no default start state so one must be passed in." );
     m_pspLastAccept = 0; // Regardless.
     if (t_fSupportLookahead)
       m_pspLookaheadAccept = 0;
@@ -517,7 +519,7 @@ public:
       {
         _TyStdStr strCurToken;
         GetStream().GetCurTokenString( strCurToken );
-        THROWNOTOKENFOUND(m_ucCur ? "Not at EOF, current token:[%s] m_ucCur[%c]" : "Not at EOF, current token:[%s]", strCurToken.c_str(), (char)m_ucCur );
+        THROWNOTOKENFOUND(m_ucCur ? "Not at EOF, current token:[%s] m_ucCur[%c]" : "Not at EOF, current token:[%s]", StrConvertString<char>( strCurToken ).c_str(), (char)m_ucCur );
       }
     }
     while( fIgnoredToken );
@@ -558,7 +560,7 @@ public:
           {
             VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
             unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
-            _TyAxnObjBase * paobCurToken = PGetToken();
+            _TyAxnObjValueBase * paobCurToken = static_cast< _TyAxnObjValueBase * >( PGetToken() );
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
 #ifdef LEXOBJ_STRICT
@@ -592,11 +594,12 @@ public:
         {
           _TyStdStr strCurToken;
           GetStream().GetCurTokenString( strCurToken );
-          THROWNOTOKENFOUND("Not at EOF, m_ucCur[%c] current token:[%s]", (char)m_ucCur, strCurToken.c_str() );
+          THROWNOTOKENFOUND("Not at EOF, m_ucCur[%c] current token:[%s]", (char)m_ucCur, StrConvertString<char>( strCurToken ).c_str() );
         }
         return false;
       }
     } while (m_ucCur);
+    return true; // Hit EOF having processed everything.
   }
 
 protected:
@@ -778,7 +781,9 @@ protected:
             lower_bound(m_pspCur->m_rgt,
                         m_pspCur->m_rgt + m_pspCur->m_nt,
                         m_ucCur, m_compSearch);
-        if ((m_ucCur >= ptLwr->m_first) &&
+        // lower_bound() returns the end of the table when m_ucCur is beyond every range - don't dereference it then.
+        if ((ptLwr != m_pspCur->m_rgt + m_pspCur->m_nt) &&
+            (m_ucCur >= ptLwr->m_first) &&
             (m_ucCur <= ptLwr->m_last))
         {
           m_pspCur = ptLwr->m_psp;

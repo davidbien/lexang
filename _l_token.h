@@ -183,7 +183,9 @@ public:
   template < class t_tyStringView >
   void GetStringView( t_tyStringView & _rsvDest )
   {
-    m_scx.GetStringView( _rsvDest, *this, GetValue() );
+    // Go through the value: it may already hold a string or string view from a previous call, in which case
+    //  there is no longer any _TyData for the user context to translate. The value delegates back to us if it still holds _TyData.
+    GetValue().GetStringView( *this, _rsvDest );
   }
   template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest, _TyValue const & _rval ) const
@@ -198,7 +200,7 @@ public:
   template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest ) const
   {
-    m_scx.KGetStringView( _rsvDest, *this, GetValue() );
+    GetValue().KGetStringView( *this, _rsvDest ); // See GetStringView() above.
   }
   template < class t_tyStringView, class t_tyString >
   bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval ) const
@@ -218,7 +220,7 @@ public:
   template < class t_tyString >
   void GetString( t_tyString & _rstrDest ) const
   {
-    m_scx.GetString( _rstrDest, *this, GetValue() );
+    GetValue().GetString( *this, _rstrDest ); // See GetStringView() above.
   }
   // Return the beginning and ending positions of the token in the stream.
   void GetTokenDataRange( _l_data_range & _rdr ) const

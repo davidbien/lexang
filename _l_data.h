@@ -15,7 +15,7 @@
 // That's it. No translation is performed from input data as that process is beyond the scope of the token data itself.
 
 #include <stdint.h>
-#include "_assert.h"
+#include "bien_assert.h"
 #include "segarray.h"
 #include "_logarray.h"
 
