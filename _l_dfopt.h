@@ -619,7 +619,19 @@ protected:
 													_TySetStates & _rssUtil )
 	{
 		// Compress the graph in place.
-		m_rDfaCtxt.RemoveDeadState( );
+		// When the dead state is not partitioned immediately ( !t_fPartDeadImmed ) it may be grouped with other states
+		//	from which no accepting state can be reached. It is then the representative of that group ( it is state 0 )
+		//	so we must compress that group into it before removing it - which then removes those states' in-transitions as well.
+		// Otherwise we remove it first - this leaves fewer transitions to process below.
+		const bool kfDeadStateInGroup = !!m_rgsmeMap[ 0 ] && ( m_rgsmeMap[ 0 ]->first < 0 );
+		if ( kfDeadStateInGroup )
+		{
+			// If the start state is equivalent to the dead state then the DFA accepts nothing at all.
+			VerifyThrowSz( m_rgsmeMap[ (size_type)m_rDfaCtxt.m_pgnStart->RElConst() ] != m_rgsmeMap[ 0 ],
+				"The start state is equivalent to the dead state: the DFA cannot accept any input." );
+		}
+		else
+			m_rDfaCtxt.RemoveDeadState( );
 
 		// Now start compressing partition groups.
 		// We will always choose the first member of each partition group as the
@@ -763,6 +775,9 @@ protected:
 			}
 		}
 		while( m_partition.end() != ++itCur );
+
+		if ( kfDeadStateInGroup )
+			m_rDfaCtxt.RemoveDeadState( ); // Now holds the in-transitions of every state that was equivalent to it.
 
 		m_rDfaCtxt.CompressNodeLookup( stNonReps );
 	

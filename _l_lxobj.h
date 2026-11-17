@@ -354,6 +354,13 @@ public:
           // We haven't seen the lookahead accept - ignore.
         }
         break;
+        case kucAntiAccepting:
+        {
+          // An explicitly excluded match - see _FFoundAcceptState().
+          m_pspLastAccept = m_pspCur;
+          m_posLastAccept = GetCurrentPosition();
+        }
+        break;
         case kucLookaheadAccept:
         {
           m_pspLookaheadAccept = m_pspCur;
@@ -413,6 +420,19 @@ public:
     }
   }
 
+  // Return whether we found an accepting state for the current token. Call when no further transitions are possible.
+  // An anti-accepting state is the result of the excludes operator: it is entered when the input matches that which is to
+  //  be excluded. As with _l_match<>::PszMatch(), if the last "accepting" state we encountered was anti-accepting then the
+  //  input was explicitly excluded and there is no token - we do not fall back to an earlier, shorter, match. If we passed
+  //  through an anti-accepting state to a later accepting state then we have a token as usual.
+  // An anti-accepting state has no action - we must not attempt to obtain one from it.
+  bool _FFoundAcceptState()
+  {
+    if ( !!m_pspLastAccept && m_pspLastAccept->FIsAntiAcceptingState() )
+      m_pspLastAccept = 0;
+    return !!m_pspLastAccept;
+  }
+
   void _InitGetToken( const _TyStateProto *_pspStart )
   {
     m_pspCur = !_pspStart ? m_pspStart : _pspStart; // Start at the beginning again...
@@ -451,7 +471,7 @@ public:
       } 
       while ( _getnext() );
 
-      if ( m_pspLastAccept )
+      if ( _FFoundAcceptState() )
       {
         _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
         m_pspLastAccept = 0; // Regardless.
@@ -545,7 +565,7 @@ public:
       } 
       while ( _getnext() );
 
-      if ( m_pspLastAccept )
+      if ( _FFoundAcceptState() )
       {
         _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
         m_pspLastAccept = 0; // Regardless.

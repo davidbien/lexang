@@ -55,17 +55,31 @@ protected:
   typedef pair< _TySetLDStates, _TyAcceptAction > _TyPairStatesAction;
   typedef _swap_object< typename _TyAcceptAction::_TySetActionIds > _TySwapSetActionIds;
   typedef pair< _TySwapSetActionIds, _TySwapSetActionIds > _TyPairSSActionIds;
-  typedef less< _TyPairSSActionIds > _TyCompareAmbigKey;
-  typedef typename _Alloc_traits< typename map< _TyPairSSActionIds, _TyPairStatesAction, _TyCompareAmbigKey >::value_type, _TyAllocatorNfa >::allocator_type
+  // The key of a disambiguating action: ( the action id of the first accepting/lookahead state or -1 if none,
+  //	( the set of related lookahead actions, the set of trigger actions ) ).
+  // The action id must be part of the key since the disambiguating action is created from that accepting state:
+  //	two DFA states with the same lookahead relations and triggers but different accepting states must not share an action.
+  typedef pair< vtyActionIdent, _TyPairSSActionIds > _TyAmbigKey;
+  typedef less< _TyAmbigKey > _TyCompareAmbigKey;
+  typedef typename _Alloc_traits< typename map< _TyAmbigKey, _TyPairStatesAction, _TyCompareAmbigKey >::value_type, _TyAllocatorNfa >::allocator_type
       _TyAmbigAcceptAlloc;
-  typedef map< _TyPairSSActionIds, _TyPairStatesAction, _TyCompareAmbigKey, _TyAmbigAcceptAlloc > _TyAmbigAccept;
+  typedef map< _TyAmbigKey, _TyPairStatesAction, _TyCompareAmbigKey, _TyAmbigAcceptAlloc > _TyAmbigAccept;
 
   _TyLookupSS m_ssLookup;
   _TyMapStateToSS m_mapStateToSS;
 
   _TyState m_sCur; // The state of the DFA that we are currently processing.
 
-  bool m_fCreateDeadState; // Should we create a dead state.
+  // Should we create a dead state.
+  // The dead state is the state entered when no transition exists on the current input. Creating it gives every DFA
+  //	state a transition on every element of the alphabet, which is what allows _optimize_dfa to compare states
+  //	transition by transition - so it is required for optimization, which then removes it again.
+  // The only reason not to create it is that the DFA will not be optimized: the result is then the raw DFA as
+  //	produced from the NFA. That is useful for looking at the unoptimized DFA and for ruling out the optimizer when
+  //	debugging the generator, but it is not something a generated lexical analyzer normally wants: the unoptimized
+  //	state tables are several times larger. So in practice this mirrors "are we optimizing" - see gen_dfa() in xmlpgen.h.
+  // The code paths taken when there is no dead state are thus seldom exercised.
+  bool m_fCreateDeadState;
 
   // managed solely by create():
   _TySetStatesNfa * m_pssAcceptingNfa;
@@ -251,19 +265,20 @@ public:
       {
         // Remove all trigger and unsatisfiable transition from the end of the child list
         //	and place at the beginning - this eases further processing.
+        // The links are in ascending order with pglFirstAdded the last of them, so moving the last link to the head
+        //	until we find a satisfiable link keeps the triggers and unsatisfiables in order.
+        // If the head is itself a trigger or unsatisfiable then every link is and the list is already as we want it -
+        //	this happens only when there is no dead state. Moving the links in that case would rotate the list forever.
         typename _TyDfa::_TyAlphaIndex aiLimit = aiStart - ( m_rNfa.m_nTriggers + m_rNfa.m_nUnsatisfiableTransitions );
-        while ( pglFirstAdded->RElConst() > aiLimit )
+        if ( ( *pgnCurDfa->PPGLChildHead() )->RElConst() <= aiLimit )
         {
-          _TyGraphLinkDfa * pglMove = pglFirstAdded;
-          if ( pglFirstAdded != *pgnCurDfa->PPGLChildHead() )
+          while ( pglFirstAdded->RElConst() > aiLimit )
           {
+            // We stop at the satisfiable head at the latest so there is always a previous link here.
+            _TyGraphLinkDfa * pglMove = pglFirstAdded;
             pglFirstAdded = pglFirstAdded->PGLGetPrevChild();
             pglMove->RemoveChild();
             pglMove->InsertChild( pgnCurDfa->PPGLChildHead() );
-          }
-          else
-          {
-            break;
           }
         }
       }
@@ -488,11 +503,16 @@ public:
           // It could be that other DFA states have this same completion criteria - if so
           //	we will group this state and those states in the same partition - this allows potential
           //	optimization of these states.
-          // The completion criteria are embodied in ( srFoundLARelations, srFoundTriggers ).
-          typename _TyAmbigAccept::key_type ktFind( srFoundLARelations, srFoundTriggers );
-          itAmbig = m_mapAmbigAccept.find( ktFind );
-          srFoundLARelations.swap( ktFind.first );
-          srFoundTriggers.swap( ktFind.second );
+          // The completion criteria are embodied in ( srFoundLARelations, srFoundTriggers ) - and the action is that
+          //	of the first accepting state, if any, so that is part of the key as well.
+          const vtyActionIdent kaiFirstAccept = pvtFirstAccept ? pvtFirstAccept->second.m_aiAction : -1;
+          { // BLOCK
+            _TyPairSSActionIds prFind( srFoundLARelations, srFoundTriggers ); // Takes possession of the sets.
+            typename _TyAmbigAccept::key_type ktFind( kaiFirstAccept, prFind );
+            itAmbig = m_mapAmbigAccept.find( ktFind );
+            srFoundLARelations.swap( ktFind.second.first ); // Swap back.
+            srFoundTriggers.swap( ktFind.second.second );
+          }
 
           if ( m_mapAmbigAccept.end() == itAmbig )
           {
@@ -533,7 +553,8 @@ public:
             _TySetLDStates setAssoc( less< _TyState >(), m_rNfa.get_allocator() );
 
             { // BLOCK // gcc doesn't like the inline temporaries:
-              typename _TyAmbigAccept::key_type ktTemp( srFoundLARelations, srFoundTriggers );
+              _TyPairSSActionIds prTemp( srFoundLARelations, srFoundTriggers );
+              typename _TyAmbigAccept::key_type ktTemp( kaiFirstAccept, prTemp );
               typename _TyAmbigAccept::mapped_type mtTemp( setAssoc, aaNew );
               typename _TyAmbigAccept::value_type vtTemp( ktTemp, mtTemp );
               itAmbig = m_mapAmbigAccept.insert( vtTemp ).first;
@@ -660,7 +681,6 @@ public:
           for ( ; !!*ppgl && ( ( *ppgl )->RElConst() >= praiTriggers.first ) && ( ( *ppgl )->RElConst() < praiTriggers.second ); )
           {
             _TyGraphLinkDfa * pglCur = *ppgl;
-            ppgl = ( *ppgl )->PPGLGetNextChild(); // Advance this here since we will be modifying it below.
             if ( m_fCreateDeadState )
             {
               // Ensure any triggers go to dead state:
@@ -671,10 +691,13 @@ public:
                 pglCur->InsertParent( pgnDead->PPGLParentHead() );
                 pglCur->SetChildNode( pgnDead );
               }
+              ppgl = pglCur->PPGLGetNextChild(); // The link remains in the child list - move to the next.
             }
             else
             {
               // Remove all trigger transitions:
+              // We don't advance ppgl: it would point into the link we are destroying - instead removing
+              //	the link leaves *ppgl referring to the next link.
               Assert( pglCur->PGNChild()->UParents() > 1 );
               m_rDfa._RemoveLink( pglCur );
             }
@@ -733,13 +756,13 @@ public:
         // Get the related action id vector from the key:
         if ( rvtAmbig.second.second.m_psrRelated )
         {
-          pib.first->second.m_psrRelated->swap( const_cast< typename _TyAcceptAction::_TySetActionIds & >( rvtAmbig.first.first.RObject() ) );
+          pib.first->second.m_psrRelated->swap( const_cast< typename _TyAcceptAction::_TySetActionIds & >( rvtAmbig.first.second.first.RObject() ) );
         }
 
         // Get the trigger vector from the key:
         if ( rvtAmbig.second.second.m_psrTriggers )
         {
-          pib.first->second.m_psrTriggers->swap( const_cast< typename _TyAcceptAction::_TySetActionIds & >( rvtAmbig.first.second.RObject() ) );
+          pib.first->second.m_psrTriggers->swap( const_cast< typename _TyAcceptAction::_TySetActionIds & >( rvtAmbig.first.second.second.RObject() ) );
         }
       }
     }

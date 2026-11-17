@@ -229,25 +229,26 @@ public:
 				*ppglChildHead = 0;	// Clear list.
 				_TyGraphLink ** pppglEnd = pppglCur;
 				_TyGraphLink ** pppglBeg = rgpgl.begin();
+				// Find the first trigger or unsatisfiable transition - they sort to the end. Every link may be one.
 				_TyGraphLink ** pppglUnsat = pppglEnd;
 				if ( fCheckUnsat )
 				{
-					while(	( pppglCur-1 != pppglBeg ) && 
-									( (*(pppglCur-1))->RElConst() > aiLimit ) )
+					while(	( pppglUnsat != pppglBeg ) &&
+									( (*(pppglUnsat-1))->RElConst() > aiLimit ) )
 					{
-						pppglUnsat = --pppglCur;
+						--pppglUnsat;
 					}
 				}
 
-				(*--pppglCur)->InsertChild( ppglChildHead );
-				for ( ; pppglCur-- != pppglBeg; )
+				// We insert at the head so insert in reverse: the satisfiable transitions and then
+				//	the triggers and unsatisfiables which thus end up first, each group in ascending order.
+				for ( pppglCur = pppglUnsat; pppglCur != pppglBeg; )
 				{
-					(*pppglCur)->InsertChildAssume( ppglChildHead );
+					(*--pppglCur)->InsertChild( ppglChildHead );
 				}
-
-				while( pppglUnsat != pppglEnd )
+				for ( pppglCur = pppglEnd; pppglCur != pppglUnsat; )
 				{
-					(*--pppglEnd)->InsertChild( ppglChildHead );
+					(*--pppglCur)->InsertChild( ppglChildHead );
 				}
 			}
 			else
