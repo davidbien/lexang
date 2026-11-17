@@ -100,6 +100,22 @@ _TyFinal Mixed = MixedBegin * ~( --S * l(L'|') * --S * Name ) * --S * ls(L")*") 
 ## Actions and triggers.
 ### Actions: Are associated with final productions.
 ### Triggers: Triggers are placed inline within a regular expression.
+A trigger fires its action when the lexical analyzer crosses it while matching a token: this is how the positions of
+the parts of a token are recorded.
+
+By default a trigger is a transition of the DFA which the lexical analyzer takes when no transition on the current
+character exists. This is as fast as can be but the lexical analyzer decides where a trigger is crossed without
+knowing what follows it: for `a* <trigger> a b` and the input `aab` the trigger must be crossed after the first `a`
+but the lexical analyzer consumes both and then fails. Nor can more than one trigger leave a state or a trigger
+leave an accepting state.
+
+For rules like that a *tagged DFA* is created instead ( see `_l_dfatag.h` ): the lexical analyzer records the
+triggers crossed for each of the ways in which the input read so far might yet be matched and fires the triggers of
+the way in which the token was matched once the token has been found. `_l_create_dfa()` creates the DFA for a set of
+rules and decides which kind is required: rules which don't need a tagged DFA get the usual DFA and pay nothing.
+The generator gives the lexical analyzer the cheapest kind of record that the DFAs added to it require ( see
+`_l_tag.h` ): none, a position for each trigger, or - when a trigger may be crossed any number of times - the
+history of the triggers crossed.
 
 
   

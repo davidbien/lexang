@@ -44,6 +44,46 @@ struct _l_transition
   }
 };
 
+// _l_tag_op: An operation upon the registers of the lexical analyzer for a tagged DFA - see _l_tag.h.
+// A tag operation state ( _l_state_tagops<> ) has an array of these.
+template <class t_TyChar>
+struct _l_tag_op
+{
+  typedef typename _l_an_mostbase<t_TyChar>::_TyPMFnAccept _TyPMFnAccept;
+  // kusTagOpCopy: Copy the register m_nSrc to the register m_nDst.
+  // kusTagOpTrigger: Record that the trigger m_pmfnTrigger was crossed, at the position before the character just
+  //  consumed, in the register m_nDst. m_nSlot is the trigger's position in an order in which the triggers are always
+  //  crossed or -1 if there is no such order.
+  // kusTagOpStart: This is the start state of a tagged DFA: m_nDst is the number of registers required and m_nSrc
+  //  the number of slots. m_pmfnTrigger refers to a method which is present only in a lexical analyzer having the
+  //  kind of registers that the DFA requires.
+  unsigned short m_nDst;
+  unsigned short m_nSrc;
+  short m_nSlot;
+  unsigned short m_usKind;
+  _TyPMFnAccept m_pmfnTrigger;
+};
+
+// _l_state_tagops: A tag operation state of a tagged DFA.
+// A transition which requires operations upon the registers enters such a state: the lexical analyzer performs the
+//  operations and moves to m_pspTrigger without consuming any input. This has the same initial members as each
+//  _l_state<> ( and so of _l_state_proto<> ): m_nTriggers is the number of operations.
+template <class t_TyChar, int t_iTagOps>
+struct _l_state_tagops
+{
+#ifdef LXOBJ_STATENUMBERS
+  vTyStateNumber m_nState;
+#endif //LXOBJ_STATENUMBERS
+  vTyNTransitions m_nt; // Zero.
+  vTyNTriggers m_nTriggers; // The number of operations.
+  vTyStateFlags m_flAccept; // Zero.
+  _l_state_proto<t_TyChar> *m_pspTrigger; // The state we move to after performing the operations.
+  unsigned short m_usOffsetAccept; // kusOffsetTagOps.
+  unsigned short m_usOffsetTriggers; // The offset of m_rgops.
+  vtyTokenIdent m_tidAccept;
+  _l_tag_op<t_TyChar> m_rgops[t_iTagOps];
+};
+
 // prototype struct - never gets instantiated - only cast to:
 // don't ever use this as arg to sizeof().
 template <class t_TyChar>
@@ -132,6 +172,16 @@ public:
   _TyPMFnAccept *PPMFnGetTriggerBegin() const
   {
     return (_TyPMFnAccept *)((char *)this + m_usOffsetTriggers);
+  }
+  // Is this a tag operation state of a tagged DFA: a _l_state_tagops<>.
+  bool FIsTagOpState() const
+  {
+    return kusOffsetTagOps == m_usOffsetAccept;
+  }
+  const _l_tag_op<t_TyChar> *PTagOpsBegin() const
+  {
+    Assert( FIsTagOpState() );
+    return (const _l_tag_op<t_TyChar> *)((const char *)this + m_usOffsetTriggers);
   }
   n_SysLog::vtyJsoValueSysLog GetJsonValue( bool _fLookahead ) const
   {

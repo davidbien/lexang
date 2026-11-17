@@ -79,7 +79,8 @@ public:
     const _TyChar * const pchEnd = pchCur + _nchLen;
     const _TyStateProto * pspLastAccept = _pspStart->m_flAccept ? _pspStart : nullptr;
     const _TyChar * pchLastAccept = pspLastAccept ? pchCur : nullptr;
-    for( const _TyStateProto * pspCur = _pspStart; pchEnd != pchCur;  ) 
+    const _TyStateProto * pspCur = _pspStart;
+    for( ; pchEnd != pchCur;  )
     {
       // I'm just gonna do a simple for loop here and then expect the optimizer to so it's work instead of trying to optimize - or even do a
       //  simple binary search.
@@ -100,6 +101,18 @@ public:
         ++pchCur; // we ate a char.
         pspCur = ptrCur->m_psp;
       }
+      if ( pspCur->m_flAccept )
+      {
+        pspLastAccept = pspCur;
+        pchLastAccept = pchCur;
+      }
+    }
+    // We have consumed the input: an accepting state may yet be beyond trigger transitions - as it is when a trigger
+    //  ends a rule and, for a tagged DFA ( see _l_dfatag.h ), when the last transition entered a tag operation state.
+    // We bound this merely so that we cannot loop.
+    for ( size_t nFollowed = 0; ( pchEnd == pchCur ) && !!pspCur->m_pspTrigger && ( nFollowed < 256 ); ++nFollowed )
+    {
+      pspCur = pspCur->m_pspTrigger;
       if ( pspCur->m_flAccept )
       {
         pspLastAccept = pspCur;

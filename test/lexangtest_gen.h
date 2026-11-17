@@ -59,25 +59,13 @@ typedef _TyNfa::_TyNfaCtxt _TyNfaCtxt;
 // _fOptimizeDfa: When true a dead state is created and the DFA is optimized, otherwise we produce the DFA as
 //	created directly from the NFA.
 // _fCompressTransitions: Compress the transitions as is done before generating a lexical analyzer.
-inline void
+// _etdk: How to deal with triggers: by default a tagged DFA is created only when the rules require it.
+// Returns whether a tagged DFA was created.
+inline bool
 GenDfa( _TyFinal const & _rFinal, _TyDfa & _rDfa, _TyDfaCtxt & _rDfaCtxt, bool _fOptimizeDfa = true,
-				bool _fCompressTransitions = true, uint32_t _grfNFACreationOptions = 0 )
+				bool _fCompressTransitions = true, uint32_t _grfNFACreationOptions = 0, ETriggerDfaKind _etdk = etdkAuto )
 {
-	{//B
-		_TyNfa nfa( _grfNFACreationOptions, _rDfa.get_allocator() );
-		_TyNfaCtxt nfaCtxt( nfa );
-		_rFinal.ConstructNFA( nfaCtxt );
-		_create_dfa< _TyNfa, _TyDfa >	cdfa( nfa, nfaCtxt, _rDfa, _rDfaCtxt, _fOptimizeDfa );
-		cdfa.create();
-	}//EB
-	if ( _fOptimizeDfa )
-	{
-		_optimize_dfa< _TyDfa >	optdfa( _rDfa, _rDfaCtxt );
-		(void)optdfa.optimize();
-	}
-  _rDfaCtxt.ProcessUnsatisfiableTranstitions();
-	if ( _fCompressTransitions )
-  	_rDfa.CompressTransitions();
+	return _l_create_dfa( _rFinal, _rDfa, _rDfaCtxt, _fOptimizeDfa, _fCompressTransitions, _grfNFACreationOptions, _etdk );
 }
 
 } // namespace ns_lexangtest

@@ -29,6 +29,7 @@
 #include "_l_axion.h"
 #include "_l_state.h"
 #include "_l_strm.h"
+#include "_l_tag.h"
 
 #ifndef NDEBUG
 #define LEXOBJ_STRICT
@@ -198,7 +199,9 @@ public:
   }
 };
 
-template < class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace >
+// t_TyTagPolicy: The kind of registers for the tagged DFAs of the lexical analyzer: _l_tag_none when there are no
+//  tagged DFAs, _l_tag_registers<> or _l_tag_history<> - see _l_tag.h. The generator chooses this.
+template < class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace, class t_TyTagPolicy >
 struct _l_analyzer : public _l_an_lookaheadbase< t_TyTraits, t_fSupportLookahead >
 {
 private:
@@ -227,8 +230,12 @@ public:
   static constexpr bool s_kfSupportLookahead = t_fSupportLookahead;
   static constexpr bool s_kfSupportTriggers = t_fSupportTriggers;
   static constexpr bool s_kfTrace = t_fTrace;
+  typedef t_TyTagPolicy _TyTagPolicy;
+  static constexpr int s_knTagPolicy = t_TyTagPolicy::s_knTagPolicy;
+  static constexpr bool s_kfTagged = ( s_knTagPolicy > 0 ); // Does this lexical analyzer support tagged DFAs.
 
   _TyStream m_stream; // the stream within which is the transport object and user context, etc.
+  _TyTagPolicy m_tag; // The registers for tagged DFAs - empty when there are none.
 
   _TyAxnObjValueBase * m_paobActionListHead{nullptr};
 private: // Not sure why I made this private but it must have been very important!!! (j/k) so I am going to leave it.
@@ -295,9 +302,38 @@ public:
   {
     return m_stream.GetUserObjPtr();
   }
+  // The triggers of a tagged DFA are fired once the token has been found: the current position is then the position
+  //  at which the trigger being fired was crossed.
   vtyDataPosition GetCurrentPosition() const
   {
+    if constexpr ( s_kfTagged )
+    {
+      if ( m_tag.m_fFiring )
+        return m_tag.m_posFiring;
+    }
+    return _PosCurrent();
+  }
+  // The position of the current character - that at which the lexical analyzer is: for use while moving through the input.
+  vtyDataPosition _PosCurrent() const
+  {
     return GetStream().PosCurrent() - !!m_ucCur;
+  }
+  _TyTagPolicy & GetTagPolicy()
+  {
+    return m_tag;
+  }
+  // The start state of a tagged DFA refers to one of these methods according to the kind of registers that the DFA
+  //  requires: thus the states of a tagged DFA can only be used with a lexical analyzer which has such registers.
+  // These are never called.
+  bool TagRequireRegisters()
+  {
+    static_assert( s_knTagPolicy >= 1, "The DFA is a tagged DFA: the lexical analyzer must be generated with the DFA or with _l_generator<>::set_min_tag_policy( 1 )." );
+    return true;
+  }
+  bool TagRequireHistory()
+  {
+    static_assert( s_knTagPolicy >= 2, "The DFA is a tagged DFA which requires the history of its triggers: the lexical analyzer must be generated with the DFA or with _l_generator<>::set_min_tag_policy( 2 )." );
+    return true;
   }
   // This clear the data out of all triggers and tokens. This should be used after input is given to the lex which it fails
   //  to regognize as a token. In that case the various triggers tha may have fired along the way will still contain data.
@@ -364,7 +400,7 @@ public:
     {
       if constexpr (t_fSupportLookahead)
       {
-        const vtyDataPosition posCur = GetCurrentPosition();
+        const vtyDataPosition posCur = _PosCurrent();
         // Record that the token of some lookahead rule(s) may end here.
         if ( m_pspCur->FIsLookaheadAcceptState() )
           this->m_rgLookaheadAccepts.push_back( { posCur, m_pspCur } );
@@ -379,6 +415,7 @@ public:
           m_pspLastAccept = m_pspCur;
           m_posLastAccept = posCur;
           this->m_fLastAcceptIsLookahead = true;
+          _TagSnapshotPending( false );
         }
         break;
         case kucAccept:
@@ -388,6 +425,7 @@ public:
           m_pspLastAccept = this->m_pspLastNonLookaheadAccept = m_pspCur;
           m_posLastAccept = this->m_posLastNonLookaheadAccept = posCur;
           this->m_fLastAcceptIsLookahead = false;
+          _TagSnapshotPending( true );
         }
         break;
         default: // kucLookaheadAccept: recorded above.
@@ -398,7 +436,53 @@ public:
       {
         LXOBJ_DOTRACE( "Accept found.");
         m_pspLastAccept = m_pspCur;
-        m_posLastAccept = GetCurrentPosition();
+        m_posLastAccept = _PosCurrent();
+        _TagSnapshotPending( false );
+      }
+    }
+  }
+
+  // Tagged DFAs: in an accepting state register zero is the register for the way in which the token is matched.
+  // We need it as it is here should this be the last accepting state: but it only changes in a tag operation state so
+  //  we just note that a snapshot is pending - see _l_tag_base<> and _execute_tag_ops().
+  // _fNonLookahead: this is also the last accepting state which is not a lookahead state.
+  void _TagSnapshotPending( bool _fNonLookahead )
+  {
+    if constexpr ( s_kfTagged )
+    {
+      m_tag.m_rgfSnapshotPending[ 0 ] = true;
+      if ( _fNonLookahead )
+        m_tag.m_rgfSnapshotPending[ 1 ] = true;
+    }
+  }
+  // Tagged DFAs: the token has been found - m_pspLastAccept is its accepting state. Fire the triggers that were
+  //  crossed in matching it: those recorded as we moved through the input and then those crossed at the end of the
+  //  token - which are those of the accepting state. Each fires with the current position being that at which it was crossed.
+  void _TagFireTriggers()
+  {
+    if constexpr ( s_kfTagged )
+    {
+      if ( !m_tag.m_fTagDfa )
+        return;
+      struct _TyFiring
+      {
+        _TyTagPolicy & m_rtag;
+        _TyFiring( _TyTagPolicy & _rtag ) : m_rtag( _rtag ) { m_rtag.m_fFiring = true; }
+        ~_TyFiring() { m_rtag.m_fFiring = false; }
+      } firing( m_tag );
+      const size_t knSnapshot = m_tag.m_nSnapshotFire;
+      m_tag.Fire( knSnapshot, m_tag.m_rgfSnapshotPending[ knSnapshot ], [this]( _TyPMFnAccept _pmfnTrigger, vtyDataPosition _pos )
+      {
+        m_tag.m_posFiring = _pos;
+        (void)(this->*_pmfnTrigger)();
+      } );
+      if ( !!m_pspLastAccept->m_nTriggers && !m_pspLastAccept->m_pspTrigger )
+      {
+        m_tag.m_posFiring = m_tag.m_posFinish;
+        _TyPMFnAccept *ppmfnTrigger = m_pspLastAccept->PPMFnGetTriggerBegin();
+        _TyPMFnAccept * const ppmfnTriggerEnd = ppmfnTrigger + m_pspLastAccept->m_nTriggers;
+        for ( ; ppmfnTrigger != ppmfnTriggerEnd; ++ppmfnTrigger )
+          (void)(this->**ppmfnTrigger)();
       }
     }
   }
@@ -413,6 +497,8 @@ public:
   //  where the token ends. If there is no non-empty token then we use the last accepting state that was not a lookahead state.
   bool _FFoundAcceptState()
   {
+    if constexpr ( s_kfTagged )
+      m_tag.m_posFinish = m_posLastAccept; // The triggers crossed at the end of the token fire at the end of the match.
     if constexpr ( t_fSupportLookahead )
     {
       if ( !!m_pspLastAccept && this->m_fLastAcceptIsLookahead )
@@ -424,6 +510,11 @@ public:
         {
           m_pspLastAccept = this->m_pspLastNonLookaheadAccept;
           m_posLastAccept = this->m_posLastNonLookaheadAccept;
+          if constexpr ( s_kfTagged )
+          {
+            m_tag.m_nSnapshotFire = 1; // The triggers are then those of that accepting state.
+            m_tag.m_posFinish = m_posLastAccept;
+          }
         }
         this->m_fLastAcceptIsLookahead = false;
       }
@@ -442,6 +533,12 @@ public:
     if constexpr (t_fSupportLookahead)
       this->_InitLookahead( GetStream().PosTokenStart() );
     m_posLastAccept = vkdpNullDataPosition;
+    if constexpr ( s_kfTagged )
+    {
+      m_tag.m_fTagDfa = false; // The start state of a tagged DFA will tell us if this is one.
+      m_tag.m_nSnapshotFire = 0;
+      m_tag.m_rgfSnapshotPending[ 0 ] = m_tag.m_rgfSnapshotPending[ 1 ] = false;
+    }
   }
 
   // Just return a single token. Return false if one isn't found.
@@ -476,6 +573,7 @@ public:
 
       if ( _FFoundAcceptState() )
       {
+        _TagFireTriggers();
         _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
         m_pspLastAccept = 0; // Regardless.
         Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
@@ -576,6 +674,7 @@ public:
 
       if ( _FFoundAcceptState() )
       {
+        _TagFireTriggers();
         _TyPMFnAccept pmfnAccept = m_pspLastAccept->PMFnGetAction();
         m_pspLastAccept = 0; // Regardless.
         Assert( !!pmfnAccept ); // Without an accept action we don't even know what token we found.
@@ -653,6 +752,49 @@ protected:
     for (; ppmfnTrigger != ppmfnTriggerEnd; ++ppmfnTrigger)
     {
       (void)(this->**ppmfnTrigger)();
+    }
+  }
+
+  // Tagged DFAs: perform the operations of a tag operation state and move to the state it leads to.
+  void _execute_tag_ops()
+  {
+    typedef _l_tag_op< _TyChar > _TyTagOp;
+    const _TyTagOp *pop = m_pspCur->PTagOpsBegin();
+    const _TyTagOp * const popEnd = pop + m_pspCur->m_nTriggers;
+    m_pspCur = m_pspCur->m_pspTrigger;
+    // The registers are about to change: take any snapshot of register zero that is pending for an accepting state.
+    if ( m_tag.m_rgfSnapshotPending[ 0 ] )
+    {
+      m_tag.Snapshot( 0 );
+      m_tag.m_rgfSnapshotPending[ 0 ] = false;
+    }
+    if constexpr ( t_fSupportLookahead )
+    {
+      if ( m_tag.m_rgfSnapshotPending[ 1 ] )
+      {
+        m_tag.Snapshot( 1 );
+        m_tag.m_rgfSnapshotPending[ 1 ] = false;
+      }
+    }
+    // We enter a tag operation state having consumed the character of the transition - the triggers were crossed before it.
+    const vtyDataPosition kposBefore = _PosCurrent() - 1;
+    for ( ; pop != popEnd; ++pop )
+    {
+      switch ( pop->m_usKind )
+      {
+        case kusTagOpCopy:
+          m_tag.Copy( pop->m_nDst, pop->m_nSrc );
+        break;
+        case kusTagOpTrigger:
+          m_tag.Trigger( pop->m_nDst, *pop, kposBefore );
+        break;
+        default:
+          Assert( kusTagOpStart == pop->m_usKind );
+          // The start state of a tagged DFA: we have yet to consume anything.
+          m_tag.Start( pop->m_nDst, pop->m_nSrc );
+          m_tag.m_fTagDfa = true;
+        break;
+      }
     }
   }
 
@@ -833,6 +975,19 @@ protected:
       // Then must check for a trigger transition:
       if (m_pspCur->m_nTriggers)
       {
+        if constexpr ( s_kfTagged )
+        {
+          if ( m_pspCur->FIsTagOpState() )
+          {
+            _execute_tag_ops();
+            LXOBJ_DOTRACE( "Executed tag operations." );
+            return true; // advanced the state.
+          }
+          // The triggers of an accepting state of a tagged DFA are those crossed at the end of its token - they
+          //  don't lead anywhere: we fire them if this turns out to be the token - see _TagFireTriggers().
+          if ( !m_pspCur->m_pspTrigger )
+            return false;
+        }
         // Then have one - execute the triggers:
         Assert( !!m_pspCur->m_pspTrigger );
         _execute_triggers();

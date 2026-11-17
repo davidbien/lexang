@@ -21,6 +21,10 @@ __REGEXP_BEGIN_NAMESPACE
 template < class t__TyNfa, class t__TyDfa > 
 struct _create_dfa;
 
+// Creates a tagged DFA from an NFA - see _l_dfatag.h.
+template < class t__TyNfa, class t__TyDfa > 
+struct _create_dfa_tagged;
+
 template < class t_TyDfa, bool f_tPartDeadImmed = true >
 struct _optimize_dfa;
 
@@ -65,6 +69,9 @@ public:
 	t_TyActionIdent m_aiRelated;
 	_sdpd< _TySetActionIds, t_TyAllocator >	m_psrRelated;	// If this is non-null then a bit-vector of related action identifiers.
 	_sdpd< _TySetActionIds, t_TyAllocator >	m_psrTriggers;	// If this is non-null then a bit-vector of trigger action identifiers.
+	// For an accepting state of a tagged DFA ( see _l_dfatag.h ): the index in _dfa<>::m_rgTagFinishes of the triggers which
+	//	are crossed between the last character of the token and the end of the rule, or -1 if there are none.
+	int m_iTagFinish{ -1 };
 
 	_fa_accept_action() = delete;
 	_fa_accept_action(	t_TyActionIdent _aiAction, 
@@ -87,7 +94,8 @@ public:
 			m_aiAction( _r.m_aiAction ),
 			m_aiRelated( _r.m_aiRelated ),
 			m_psrRelated( _r.get_allocator() ),
-			m_psrTriggers( _r.get_allocator() )
+			m_psrTriggers( _r.get_allocator() ),
+			m_iTagFinish( _r.m_iTagFinish )
 	{
 		if ( !!_r.m_pSdpAction )
 			_r.m_pSdpAction->clone( &m_pSdpAction.PtrRef() );
@@ -175,6 +183,8 @@ public:
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa > 
 	friend struct _create_dfa;
+	template < class t__TyNfa, class t__TyDfa > 
+	friend struct _create_dfa_tagged;
 	template < class t_TyDfa, bool f_tPartDeadImmed >
 	friend struct _optimize_dfa;
 

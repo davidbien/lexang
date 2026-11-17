@@ -12,6 +12,7 @@
 
 #include <unordered_map>
 #include <algorithm>
+#include <vector>
 #include "_l_ns.h"
 
 __REGEXP_BEGIN_NAMESPACE
@@ -65,6 +66,8 @@ public:
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
 	friend struct _create_dfa;
+	template < class t__TyNfa, class t__TyDfa >
+	friend struct _create_dfa_tagged;
 	template < class t_TyDfa, bool f_tPartDeadImmed >
 	friend struct _optimize_dfa;
 	friend class _dfa_context< t_TyChar, t_TyAllocator >;
@@ -127,6 +130,58 @@ public:
   typedef typename _Alloc_traits< typename map< vtyActionIdent, _TyAcceptAction, _TyCompareAI >::value_type, t_TyAllocator >::allocator_type _TyMapTriggersAllocator;
   typedef map< vtyActionIdent, _TyAcceptAction, _TyCompareAI, _TyMapTriggersAllocator >	_TyMapTriggers;
 	_sdpd< _TyMapTriggers, t_TyAllocator >	m_pMapTriggers;
+
+	// Tagged DFA - see _l_dfatag.h for an overview.
+	// In a tagged DFA the triggers are not transitions between states: the lexical analyzer instead records the
+	//	positions at which triggers are crossed in "registers" as it moves through the input, one register for each
+	//	of the ways that the input read thus far might yet be matched. The triggers of the way in which the token was
+	//	actually matched are then fired once the token has been found.
+	// The transitions of a tagged DFA are all on characters with the exception of those leaving the "tag operation
+	//	states": such a state has a single transition, on one of m_nTriggers pseudo-triggers, each of which corresponds
+	//	to a list of operations upon the registers in m_rgTagOpLists. A transition on a character which requires
+	//	operations to be performed enters such a state and its single transition leads to the destination.
+	bool m_fTagged{false};
+	// An operation on the registers. When m_iTag is negative: copy the register m_nSrc to m_nDst.
+	// Otherwise record that the trigger m_iTag ( an index into m_rgTags ) was crossed at the current position
+	//	in the register m_nDst.
+	struct _TyTagOp
+	{
+		unsigned short m_nDst;
+		unsigned short m_nSrc;
+		int m_iTag;
+		bool operator < ( _TyTagOp const & _r ) const
+		{
+			return ( m_nDst != _r.m_nDst ) ? ( m_nDst < _r.m_nDst ) : ( m_nSrc != _r.m_nSrc ) ? ( m_nSrc < _r.m_nSrc ) : ( m_iTag < _r.m_iTag );
+		}
+		bool operator == ( _TyTagOp const & _r ) const
+		{
+			return ( m_nDst == _r.m_nDst ) && ( m_nSrc == _r.m_nSrc ) && ( m_iTag == _r.m_iTag );
+		}
+	};
+	// A temporary register is needed when registers are exchanged: this is its number within the operations - it
+	//	becomes the last register: the register m_nTagRegisters-1.
+	static constexpr unsigned short s_knTagRegisterTemp = 0xffff;
+	typedef std::vector< _TyTagOp > _TyTagOpList;
+	// The lists of operations - the list at index n is performed on the transition ms_kreTriggerStart + n.
+	std::vector< _TyTagOpList > m_rgTagOpLists;
+	// The triggers ( as indices into m_rgTags ) crossed between the last character of a token and the end of its rule
+	//	for the accepting states that have such - indexed by _fa_accept_action<>::m_iTagFinish.
+	std::vector< std::vector< int > > m_rgTagFinishes;
+	// The tags: a tag is a trigger - all of the uses of a trigger within the rules are the same tag.
+	struct _TyTag
+	{
+		vtyTokenIdent m_tidTrigger; // The token id of the trigger's action object.
+		vtyActionIdent m_aiTrigger; // The action id in m_pMapTriggers of ( one of the uses of ) the trigger.
+		// The position of this trigger in an order of the triggers in which they are always crossed, each at most once,
+		//	however a token is matched. When there is no such order - a trigger may be crossed more than once, or two
+		//	triggers may be crossed in either order - this is -1 for every tag. See m_fTagSlots.
+		int m_nSlot;
+	};
+	std::vector< _TyTag > m_rgTags;
+	// When true each trigger is crossed at most once and in a known order: the positions of the triggers may then be
+	//	kept in a fixed set of registers. Otherwise the lexical analyzer must record the history of the triggers crossed.
+	bool m_fTagSlots{false};
+	size_t m_nTagRegisters{0}; // The number of registers required - including the temporary.
 
 	_dfa( t_TyAllocator const & _rAlloc = t_TyAllocator() )
 		: _TyBase( _rAlloc ),
@@ -1274,6 +1329,80 @@ public:
 				}
 			}
 		}
+	}
+
+	// Return whether the triggers of this ( untagged ) DFA are transitions that the lexical analyzer is able to take:
+	//	at most a single trigger leaves any state, a trigger doesn't leave an accepting state, etc.
+	// These are the conditions that _l_generator<> requires of an untagged DFA. If not then _rstrWhy describes the
+	//	first problem found. The transitions must not have been compressed.
+	bool FCheckTriggerStructure( std::string & _rstrWhy )
+	{
+		_TyDfa & rDfa = RDfa();
+		if ( !rDfa.m_nTriggers )
+			return true;
+		rDfa._CreateRangeLookup();
+		const size_t knStates = (size_t)rDfa.NStates();
+		typename _TyDfa::_TyPrAI praiTriggers;
+		rDfa.GetTriggerUnsatAIRanges( &praiTriggers, nullptr );
+		auto fIsTrigger = [&praiTriggers]( typename _TyDfa::_TyAlphaIndex _ai ) { return ( _ai >= praiTriggers.first ) && ( _ai < praiTriggers.second ); };
+		std::vector< const typename _TyPartAcceptStates::value_type * > rgpvtAccept( knStates, nullptr );
+		for ( auto itPart = m_partAccept.begin(); itPart != m_partAccept.end(); ++itPart )
+		{
+			_TySetStates const & rss = itPart->first.RObject();
+			for ( size_t st = rss.getfirstset(); rss.size() != st; st = rss.getnextset( st ) )
+				if ( st < knStates )
+					rgpvtAccept[ st ] = &*itPart;
+		}
+		for ( size_t st = 0; st < knStates; ++st )
+		{
+			_TyGraphNode * pgn = rDfa.PGNGetNode( (_TyState)st );
+			if ( !pgn )
+				continue;
+			typename _TyGraph::_TyLinkPosIterConst lpi( pgn->PPGLChildHead() );
+			if ( lpi.FIsLast() || !fIsTrigger( *lpi ) )
+				continue; // Any triggers are first.
+			const typename _TyPartAcceptStates::value_type * pvtAccept = rgpvtAccept[ st ];
+			const bool kfAccept = m_pssAccept->isbitset( st );
+			const bool kfIsTriggerAction = !!pvtAccept && !!( pvtAccept->second.m_eaatType & e_aatTrigger );
+			const bool kfIsAntiAccepting = !!pvtAccept && ( e_aatAntiAccepting == ( pvtAccept->second.m_eaatType & ~e_aatTrigger ) );
+			const bool kfIsTriggerGateway = !( rDfa.LookupRange( *lpi ).first % 2 );
+			const char * pszWhy = nullptr;
+			if ( kfIsTriggerAction == kfIsTriggerGateway )
+				pszWhy = "a trigger is crossed while another trigger is in the midst of being crossed";
+			else
+			if ( !kfIsTriggerAction && kfAccept && !kfIsAntiAccepting )
+				pszWhy = "a trigger leaves an accepting state";
+			else
+			if ( kfIsAntiAccepting && !kfIsTriggerGateway )
+				pszWhy = "a trigger is ambiguous with an excluded pattern";
+			else
+			if ( lpi.NextChild(), ( !lpi.FIsLast() && fIsTrigger( *lpi ) ) )
+				pszWhy = "more than one trigger leaves a state";
+			if ( pszWhy )
+			{
+				PrintfStdStr( _rstrWhy, "state %zu: %s", st, pszWhy );
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// Return whether the lexical analyzer finds the same tokens, firing the triggers where the rules have them, by
+	//	crossing the triggers of this ( untagged ) DFA as transitions. If not then a tagged DFA is required - see
+	//	_l_dfatag.h - and _rstrWhy describes the first problem found. The transitions must not have been compressed.
+	bool FTriggersUnambiguous( std::string & _rstrWhy )
+	{
+		if ( !RDfa().m_nTriggers )
+			return true;
+		if ( !FCheckTriggerStructure( _rstrWhy ) )
+			return false;
+		std::vector< _TyTriggerAmbiguity > rgta;
+		GetTriggerAmbiguities( rgta );
+		if ( rgta.empty() )
+			return true;
+		PrintfStdStr( _rstrWhy, "state %zu: the characters 0x%llx-0x%llx may be consumed before or after the trigger with token id %d and consuming them before it loses a match",
+			(size_t)rgta[0].m_stState, (unsigned long long)rgta[0].m_rngChar.first, (unsigned long long)rgta[0].m_rngChar.second, (int)rgta[0].m_tidTrigger );
+		return false;
 	}
 
 	// Compress accept paritions that correspond to the same trigger actions.

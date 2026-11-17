@@ -9,30 +9,28 @@
 // Each test tokenizes a string and compares the tokens found - the token id, the range of characters and any strings
 //	recorded by triggers - against those expected.
 
-#ifdef WIN32
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
-#endif //WIN32
-#define DBG_NEW new
+// We include that which creates DFAs from rules as well: the tests of the tagged DFAs check the generated lexical
+//	analyzers against a reference which is created from the same rules - see lexangtest_tag.h.
+#include "lexangtest_gen.h"
+#include "lexangtest_tag.h"
+// The shorthand for the regular expressions is not for use here.
+#undef l
+#undef ls
+#undef lr
+#undef lanyof
+#undef lnot
+#undef t
 
-#include <memory>
 #include <exception>
-typedef std::allocator< char >	_TyDefaultAllocator;
-
-#include "_compat.h"
-#include "_heapchk.h"
-
 #include <string>
 #include <vector>
 #include <random>
 #include <iostream>
-#include "syslogmgr.inl"
-#include "_compat.inl"
-#include "lexangtest_types.h"
 #include "_l_match.h"
 #include "_lexangtest_basic.h"
 #include "_lexangtest_triggers.h"
+#include "_lexangtest_triggerstagged.h"
+#include "_lexangtest_triggershistory.h"
 #include "_lexangtest_excludes.h"
 #include "_lexangtest_completes.h"
 #include "_lexangtest_lookahead.h"
@@ -41,11 +39,17 @@ typedef std::allocator< char >	_TyDefaultAllocator;
 #include "_lexangtest_lookaheadoverlap.h"
 #include "_lexangtest_lookaheadsplit.h"
 #include "_lexangtest_lookaheadvar.h"
+#include "_lexangtest_lookaheadvartagged.h"
 #include "_lexangtest_lookaheadrandom.h"
 #include "_lexangtest_lookaheadprecfwd.h"
 #include "_lexangtest_lookaheadprecrev.h"
 #include "_lexangtest_reject.h"
 #include "_lexangtest_multi.h"
+#include "_lexangtest_tagregisters.h"
+#include "_lexangtest_taghistory.h"
+#include "_lexangtest_tagmixed.h"
+#include "_lexangtest_xmlish.h"
+#include "_lexangtest_xmlishtagged.h"
 #include "gtest/gtest.h"
 
 std::string g_strProgramName;
@@ -221,39 +225,77 @@ TEST( LexangBasic, NoTokenFound )
 }
 
 typedef ns_lttriggers::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerTriggers;
+typedef ns_lttriggerstagged::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerTriggersTagged;
+typedef ns_lttriggershistory::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerTriggersHistory;
+// The kind of registers for tagged DFAs that each lexical analyzer was generated with - see _l_tag.h.
+static_assert( 0 == TyAnalyzerTriggers::s_knTagPolicy );
+static_assert( 1 == TyAnalyzerTriggersTagged::s_knTagPolicy );
+static_assert( 2 == TyAnalyzerTriggersHistory::s_knTagPolicy );
+
+// The names of the kinds of lexical analyzer for the tests which run against more than one of them.
+struct TagPolicyNames
+{
+	template < class t_TyAnalyzer >
+	static std::string GetName( int )
+	{
+		return ( 0 == t_TyAnalyzer::s_knTagPolicy ) ? "Untagged" : ( 1 == t_TyAnalyzer::s_knTagPolicy ) ? "TaggedRegisters" : "TaggedHistory";
+	}
+};
 
 // triggers: Token0: quoted string with the string as its value, Token1: <name> or <name=digits> with the name and digits
 //	as its values, Token2: spaces, Token3: word.
-TEST( LexangTriggers, StringRecordedBetweenTriggers )
+// The same rules as an untagged DFA, a tagged DFA and a tagged DFA whose lexical analyzer keeps the history of the
+//	triggers: all must find the same tokens with the same values.
+template < class t_TyAnalyzer >
+class LexangTriggers : public ::testing::Test
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "\"abc\"" ), Expect( { { s_ktidToken0, "\"abc\"", { "abc" } } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "\"a b c\"" ), Expect( { { s_ktidToken0, "\"a b c\"", { "a b c" } } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "\"\"" ), Expect( { { s_ktidToken0, "\"\"", { "" } } } ) );
+};
+typedef ::testing::Types< TyAnalyzerTriggers, TyAnalyzerTriggersTagged, TyAnalyzerTriggersHistory > TyTypesAnalyzersTriggers;
+TYPED_TEST_SUITE( LexangTriggers, TyTypesAnalyzersTriggers, TagPolicyNames );
+TYPED_TEST( LexangTriggers, StringRecordedBetweenTriggers )
+{
+	EXPECT_EQ( Tokenize< TypeParam >( "\"abc\"" ), Expect( { { s_ktidToken0, "\"abc\"", { "abc" } } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "\"a b c\"" ), Expect( { { s_ktidToken0, "\"a b c\"", { "a b c" } } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "\"\"" ), Expect( { { s_ktidToken0, "\"\"", { "" } } } ) );
 }
 
-TEST( LexangTriggers, TwoStringsOneOptional )
+TYPED_TEST( LexangTriggers, TwoStringsOneOptional )
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "<abc=123>" ), Expect( { { s_ktidToken1, "<abc=123>", { "abc", "123" } } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "<abc>" ), Expect( { { s_ktidToken1, "<abc>", { "abc", "" } } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "<a=1>" ), Expect( { { s_ktidToken1, "<a=1>", { "a", "1" } } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "<abc=123>" ), Expect( { { s_ktidToken1, "<abc=123>", { "abc", "123" } } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "<abc>" ), Expect( { { s_ktidToken1, "<abc>", { "abc", "" } } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "<a=1>" ), Expect( { { s_ktidToken1, "<a=1>", { "a", "1" } } } ) );
 }
 
 // The trigger data must be per token: nothing recorded for one token may leak into the next.
-TEST( LexangTriggers, TriggerDataDoesNotLeakBetweenTokens )
+TYPED_TEST( LexangTriggers, TriggerDataDoesNotLeakBetweenTokens )
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "<abc=123> <de> \"xy\" word <f=4>" ),
+	EXPECT_EQ( Tokenize< TypeParam >( "<abc=123> <de> \"xy\" word <f=4>" ),
 		Expect( { { s_ktidToken1, "<abc=123>", { "abc", "123" } }, { s_ktidToken2, " " }, { s_ktidToken1, "<de>", { "de", "" } }, { s_ktidToken2, " " },
 							{ s_ktidToken0, "\"xy\"", { "xy" } }, { s_ktidToken2, " " }, { s_ktidToken3, "word" }, { s_ktidToken2, " " },
 							{ s_ktidToken1, "<f=4>", { "f", "4" } } } ) );
 }
 
 // Triggers fire along the way in a token which is then not completed: no token results.
-TEST( LexangTriggers, IncompleteTokens )
+TYPED_TEST( LexangTriggers, IncompleteTokens )
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "<abc" ), Expect( {}, "<abc" ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "<abc=>" ), Expect( {}, "<abc=>" ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "\"abc" ), Expect( {}, "\"abc" ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerTriggers >( "word <abc" ), Expect( { { s_ktidToken3, "word" }, { s_ktidToken2, " " } }, "<abc" ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "<abc" ), Expect( {}, "<abc" ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "<abc=>" ), Expect( {}, "<abc=>" ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "\"abc" ), Expect( {}, "\"abc" ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "word <abc" ), Expect( { { s_ktidToken3, "word" }, { s_ktidToken2, " " } }, "<abc" ) );
+}
+
+// With a tagged DFA the triggers fire only once a token has been found: nothing is recorded for a token which is not
+//	completed - whereas with an untagged DFA the data of the triggers which fired along the way remains and must be cleared.
+TYPED_TEST( LexangTriggers, IncompleteTokenLeavesNoTriggerData )
+{
+	if ( !TypeParam::s_kfTagged )
+		return;
+	std::basic_string< TyTestChar > strInput( u8"<abc=12" );
+	TypeParam analyzer;
+	analyzer.emplaceTransport( strInput.c_str(), strInput.length() );
+	std::unique_ptr< typename TypeParam::_TyToken > upToken;
+	EXPECT_FALSE( analyzer.FGetToken( upToken ) );
+	EXPECT_TRUE( analyzer.FIsClearOfTokenData() );
 }
 
 typedef ns_ltexcludes::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerExcludes;
@@ -392,33 +434,42 @@ TEST( LexangLookaheadSplit, LongestTokenWithMatchingTrailingContext )
 }
 
 typedef ns_ltlookaheadvar::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadVar;
+typedef ns_ltlookaheadvartagged::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadVarTagged;
+static_assert( 0 == TyAnalyzerLookaheadVar::s_knTagPolicy );
+static_assert( 1 == TyAnalyzerLookaheadVarTagged::s_knTagPolicy );
+template < class t_TyAnalyzer >
+class LexangLookaheadVar : public ::testing::Test
+{
+};
+typedef ::testing::Types< TyAnalyzerLookaheadVar, TyAnalyzerLookaheadVarTagged > TyTypesAnalyzersLookaheadVar;
+TYPED_TEST_SUITE( LexangLookaheadVar, TyTypesAnalyzersLookaheadVar, TagPolicyNames );
 
 // lookaheadvar: Token0: a name when followed by any number of spaces and '=', Token1: "<name" when followed by '>' with
 //	the name as its value, Token2: digits when followed by "em" or '%', Token3: name, Token4: digits, Token5: spaces,
 //	Token6: one of "=>%".
-TEST( LexangLookaheadVar, VariableLengthTrailingContext )
+TYPED_TEST( LexangLookaheadVar, VariableLengthTrailingContext )
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "key=" ), Expect( { { s_ktidToken0, "key" }, { s_ktidToken6, "=" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "key   =" ), Expect( { { s_ktidToken0, "key" }, { s_ktidToken5, "   " }, { s_ktidToken6, "=" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "key   x" ), Expect( { { s_ktidToken3, "key" }, { s_ktidToken5, "   " }, { s_ktidToken3, "x" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "a = b" ),
+	EXPECT_EQ( Tokenize< TypeParam >( "key=" ), Expect( { { s_ktidToken0, "key" }, { s_ktidToken6, "=" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "key   =" ), Expect( { { s_ktidToken0, "key" }, { s_ktidToken5, "   " }, { s_ktidToken6, "=" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "key   x" ), Expect( { { s_ktidToken3, "key" }, { s_ktidToken5, "   " }, { s_ktidToken3, "x" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "a = b" ),
 		Expect( { { s_ktidToken0, "a" }, { s_ktidToken5, " " }, { s_ktidToken6, "=" }, { s_ktidToken5, " " }, { s_ktidToken3, "b" } } ) );
 }
 
-TEST( LexangLookaheadVar, AlternativesInTrailingContext )
+TYPED_TEST( LexangLookaheadVar, AlternativesInTrailingContext )
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12em" ), Expect( { { s_ktidToken2, "12" }, { s_ktidToken3, "em" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12%" ), Expect( { { s_ktidToken2, "12" }, { s_ktidToken6, "%" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12px" ), Expect( { { s_ktidToken4, "12" }, { s_ktidToken3, "px" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12e" ), Expect( { { s_ktidToken4, "12" }, { s_ktidToken3, "e" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12" ), Expect( { { s_ktidToken4, "12" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "12em" ), Expect( { { s_ktidToken2, "12" }, { s_ktidToken3, "em" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "12%" ), Expect( { { s_ktidToken2, "12" }, { s_ktidToken6, "%" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "12px" ), Expect( { { s_ktidToken4, "12" }, { s_ktidToken3, "px" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "12e" ), Expect( { { s_ktidToken4, "12" }, { s_ktidToken3, "e" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "12" ), Expect( { { s_ktidToken4, "12" } } ) );
 }
 
 // Triggers within the token of a lookahead rule record their data as usual.
-TEST( LexangLookaheadVar, TriggersInLookaheadRule )
+TYPED_TEST( LexangLookaheadVar, TriggersInLookaheadRule )
 {
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "<abc>" ), Expect( { { s_ktidToken1, "<abc", { "abc" } }, { s_ktidToken6, ">" } } ) );
-	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "<a><bc>" ),
+	EXPECT_EQ( Tokenize< TypeParam >( "<abc>" ), Expect( { { s_ktidToken1, "<abc", { "abc" } }, { s_ktidToken6, ">" } } ) );
+	EXPECT_EQ( Tokenize< TypeParam >( "<a><bc>" ),
 		Expect( { { s_ktidToken1, "<a", { "a" } }, { s_ktidToken6, ">" }, { s_ktidToken1, "<bc", { "bc" } }, { s_ktidToken6, ">" } } ) );
 }
 
@@ -705,6 +756,411 @@ TEST( LexangMatch, MatchAgainstStartState )
 	EXPECT_EQ( nMatch( pspExcludes, u8"xml" ), -1 );
 	EXPECT_EQ( nMatch( pspExcludes, u8"xmlx" ), 4 );
 	EXPECT_EQ( nMatch( pspExcludes, u8"xml " ), -1 );
+}
+
+// Tagged DFAs - see _l_dfatag.h and _l_tag.h.
+// The triggers of these grammars append to a log when they fire: we compare the tokens found and, for each, the triggers
+//	fired and their positions with those of the reference of lexangtest_tag.h for the same rules.
+
+// A token and the triggers which fired for it, with their positions, in the order fired.
+struct TagToken
+{
+	vtyTokenIdent m_tid{ 0 };
+	size_t m_posBegin{ 0 };
+	size_t m_posEnd{ 0 };
+	TyRgTagEvents m_rgEvents;
+	bool operator == ( TagToken const & _r ) const
+	{
+		return ( m_tid == _r.m_tid ) && ( m_posBegin == _r.m_posBegin ) && ( m_posEnd == _r.m_posEnd ) && ( m_rgEvents == _r.m_rgEvents );
+	}
+};
+typedef std::vector< TagToken > TyRgTagTokens;
+inline std::ostream & operator << ( std::ostream & _ros, TagToken const & _r )
+{
+	_ros << "{" << _r.m_tid << ",[" << _r.m_posBegin << "," << _r.m_posEnd << ")";
+	for ( TagEvent const & rev : _r.m_rgEvents )
+		_ros << ",(" << rev.m_nTrigger << "@" << rev.m_pos << ")";
+	return _ros << "}";
+}
+inline TagToken ExpectTagToken( vtyTokenIdent _tid, size_t _posBegin, size_t _posEnd, std::initializer_list< TagEvent > _ilEvents = {} )
+{
+	TagToken tt;
+	tt.m_tid = _tid;
+	tt.m_posBegin = _posBegin;
+	tt.m_posEnd = _posEnd;
+	tt.m_rgEvents.assign( _ilEvents );
+	return tt;
+}
+
+// Tokenize the string using the reference until we reach the end or no ( non-empty ) token is found.
+inline TyRgTagTokens TagTokenizeReference( TagReference & _rref, std::string const & _rstr )
+{
+	TyRgTagTokens rgTokens;
+	for ( size_t pos = 0; pos < _rstr.length(); )
+	{
+		const TagMatch tm = _rref.Match( _rstr.c_str() + pos );
+		if ( ( tm.m_nToken < 0 ) || !tm.m_nLength )
+			break;
+		TagToken tt;
+		tt.m_tid = tm.m_nToken;
+		tt.m_posBegin = pos;
+		tt.m_posEnd = pos + tm.m_nLength;
+		for ( TagEvent const & rev : tm.m_rgEvents )
+		{
+			TagEvent ev = { rev.m_nTrigger, pos + rev.m_pos };
+			tt.m_rgEvents.push_back( ev );
+		}
+		rgTokens.push_back( tt );
+		pos = tt.m_posEnd;
+	}
+	return rgTokens;
+}
+
+// Tokenize the string using the given lexical analyzer type until we reach the end or no token is found.
+// _nCompactMin: If non-zero and the lexical analyzer keeps the history of the triggers then the history is compacted
+//	when it reaches this size - see _l_tag_history<>.
+template < class t_TyAnalyzer >
+TyRgTagTokens TagTokenize( std::string const & _rstr, const typename t_TyAnalyzer::_TyStateProto * _pspStart = nullptr, size_t _nCompactMin = 0,
+														size_t * _pnMaxHistory = nullptr )
+{
+	typedef typename t_TyAnalyzer::_TyToken _TyToken;
+	std::basic_string< TyTestChar > strInputChar8( _rstr.begin(), _rstr.end() );
+	t_TyAnalyzer analyzer;
+	analyzer.emplaceTransport( strInputChar8.c_str(), strInputChar8.length() );
+	if constexpr ( 2 == t_TyAnalyzer::s_knTagPolicy )
+	{
+		if ( _nCompactMin )
+			analyzer.GetTagPolicy().SetCompactMin( _nCompactMin );
+	}
+	TyRgTagTokens rgTokens;
+	std::unique_ptr< _TyToken > upToken;
+	for ( ;; )
+	{
+		RgTestTriggerLog().clear();
+		if ( !analyzer.FGetToken( upToken, nullptr, nullptr, _pspStart ) )
+			break;
+		_l_data_range drToken;
+		upToken->GetTokenDataRange( drToken );
+		TagToken tt;
+		tt.m_tid = upToken->GetTokenId();
+		tt.m_posBegin = (size_t)drToken.begin();
+		tt.m_posEnd = (size_t)drToken.end();
+		for ( TestTriggerEvent const & rtte : RgTestTriggerLog() )
+		{
+			TagEvent ev = { (int)rtte.m_tid, (size_t)rtte.m_pos };
+			tt.m_rgEvents.push_back( ev );
+		}
+		rgTokens.push_back( tt );
+		if constexpr ( 2 == t_TyAnalyzer::s_knTagPolicy )
+		{
+			if ( _pnMaxHistory )
+				*_pnMaxHistory = (std::max)( *_pnMaxHistory, analyzer.GetTagPolicy().NEntries() );
+		}
+		if ( rgTokens.size() > _rstr.length() + 1 )
+		{
+			ADD_FAILURE() << "The lexical analyzer is returning empty tokens endlessly.";
+			break;
+		}
+	}
+	RgTestTriggerLog().clear();
+	return rgTokens;
+}
+
+// Tokenize random strings over the alphabet with the lexical analyzer and with the reference: they must agree.
+// Returns the number of triggers fired in total.
+template < class t_TyAnalyzer >
+size_t NRandomStringsAgreeWithReference( _TyFinal const & _rRules, const char * _pszAlphabet, size_t _nStrings, size_t _nMaxLen, unsigned _uSeed,
+																				 const typename t_TyAnalyzer::_TyStateProto * _pspStart = nullptr, size_t _nCompactMin = 0 )
+{
+	TagReference ref( _rRules );
+	std::mt19937 rng( _uSeed );
+	const size_t nAlpha = strlen( _pszAlphabet );
+	size_t nTokens = 0, nEvents = 0;
+	for ( size_t n = 0; n < _nStrings; ++n )
+	{
+		std::string str( rng() % ( _nMaxLen + 1 ), ' ' );
+		for ( char & rc : str )
+			rc = _pszAlphabet[ rng() % nAlpha ];
+		const TyRgTagTokens rgRef = TagTokenizeReference( ref, str );
+		const TyRgTagTokens rgLex = TagTokenize< t_TyAnalyzer >( str, _pspStart, _nCompactMin );
+		if ( !( rgLex == rgRef ) )
+		{
+			ADD_FAILURE() << "On [" << str << "]: the lexical analyzer found " << ::testing::PrintToString( rgLex ) << " but the reference found " << ::testing::PrintToString( rgRef );
+			return 0;
+		}
+		nTokens += rgRef.size();
+		for ( TagToken const & rtt : rgRef )
+			nEvents += rtt.m_rgEvents.size();
+	}
+	EXPECT_GT( nTokens, size_t(0) );
+	return nEvents;
+}
+
+typedef ns_lttagregisters::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerTagRegisters;
+// The generator found that a position for each trigger suffices for the registers.
+static_assert( 1 == TyAnalyzerTagRegisters::s_knTagPolicy );
+
+// tagregisters: see GetTagRegistersRules() in lexangtest_tag.h.
+// The trigger is crossed where the match requires it - which an untagged DFA cannot do.
+TEST( LexangTagRegisters, TriggerCrossedWhereTheMatchRequires )
+{
+	typedef TyRgTagTokens T;
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "<ab>" ), ( T{ ExpectTagToken( s_ktidToken0, 0, 4, { { s_ktidTrigger1, 1 } } ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "<aaaab>" ), ( T{ ExpectTagToken( s_ktidToken0, 0, 7, { { s_ktidTrigger1, 4 } } ) } ) );
+	// The same input but for the last character is a different rule with its triggers elsewhere: each is as late as it can be.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "<aaaab]" ),
+		( T{ ExpectTagToken( s_ktidToken1, 0, 7, { { s_ktidTrigger1, 5 }, { s_ktidTrigger2, 6 }, { s_ktidTrigger3, 6 } } ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "<aaba]" ),
+		( T{ ExpectTagToken( s_ktidToken1, 0, 6, { { s_ktidTrigger1, 3 }, { s_ktidTrigger2, 5 }, { s_ktidTrigger3, 5 } } ) } ) );
+}
+
+// Triggers that an untagged DFA cannot represent at all.
+TEST( LexangTagRegisters, TriggersNotRepresentableUntagged )
+{
+	typedef TyRgTagTokens T;
+	// Two triggers leaving a state: the character which follows decides.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "xay" ), ( T{ ExpectTagToken( s_ktidToken2, 0, 3, { { s_ktidTrigger1, 1 } } ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "xby" ), ( T{ ExpectTagToken( s_ktidToken2, 0, 3, { { s_ktidTrigger2, 1 } } ) } ) );
+	// A trigger leaving an accepting state and a trigger at the very end of a token.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "aa" ), ( T{ ExpectTagToken( s_ktidToken3, 0, 2 ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "aabbb" ), ( T{ ExpectTagToken( s_ktidToken4, 0, 5, { { s_ktidTrigger1, 2 }, { s_ktidTrigger2, 5 } } ) } ) );
+}
+
+// The triggers of each token are its own: those crossed for a way of matching that was abandoned never fire.
+TEST( LexangTagRegisters, OnlyTheTriggersOfTheTokenFire )
+{
+	typedef TyRgTagTokens T;
+	// "<aab" could yet be either of the first two rules - both cross triggers - but neither completes: "<" is no token.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "<aab" ), T() );
+	// "aa" then "x": the triggers crossed while "aab.." was still possible don't fire for the token "aa".
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "aa xay" ),
+		( T{ ExpectTagToken( s_ktidToken3, 0, 2 ), ExpectTagToken( s_ktidToken5, 2, 3 ), ExpectTagToken( s_ktidToken2, 3, 6, { { s_ktidTrigger1, 4 } } ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagRegisters >( "aab <ab> <ab]" ),
+		( T{ ExpectTagToken( s_ktidToken4, 0, 3, { { s_ktidTrigger1, 2 }, { s_ktidTrigger2, 3 } } ), ExpectTagToken( s_ktidToken5, 3, 4 ),
+				 ExpectTagToken( s_ktidToken0, 4, 8, { { s_ktidTrigger1, 5 } } ), ExpectTagToken( s_ktidToken5, 8, 9 ),
+				 ExpectTagToken( s_ktidToken1, 9, 13, { { s_ktidTrigger1, 11 }, { s_ktidTrigger2, 12 }, { s_ktidTrigger3, 12 } } ) } ) );
+}
+
+TEST( LexangTagRegisters, MatchesReference )
+{
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagRegisters >( GetTagRegistersRules(), "<>]abxy ", 40000, 14, 101 ), size_t(1000) );
+	// Fewer characters: longer tokens.
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagRegisters >( GetTagRegistersRules(), "<>]ab", 40000, 20, 102 ), size_t(1000) );
+}
+
+typedef ns_lttaghistory::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerTagHistory;
+// The generator found that the history of the triggers is required.
+static_assert( 2 == TyAnalyzerTagHistory::s_knTagPolicy );
+
+// taghistory: see GetTagHistoryRules() in lexangtest_tag.h.
+TEST( LexangTagHistory, TriggersInLoops )
+{
+	typedef TyRgTagTokens T;
+	// Each crossing is where the match requires it.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( "aaabaabc" ), ( T{ ExpectTagToken( s_ktidToken0, 0, 8, { { s_ktidTrigger1, 2 }, { s_ktidTrigger1, 5 } } ) } ) );
+	// As the XML CharData: once after each run of characters.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( "<ab&a;b&a;>" ), ( T{ ExpectTagToken( s_ktidToken1, 0, 11, { { s_ktidTrigger2, 3 }, { s_ktidTrigger2, 7 } } ) } ) );
+	// In any order, any number of times.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( "[abba]" ),
+		( T{ ExpectTagToken( s_ktidToken2, 0, 6, { { s_ktidTrigger1, 2 }, { s_ktidTrigger2, 3 }, { s_ktidTrigger2, 4 }, { s_ktidTrigger1, 5 } } ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( "[]" ), ( T{ ExpectTagToken( s_ktidToken2, 0, 2 ) } ) );
+}
+
+TEST( LexangTagHistory, OnlyTheTriggersOfTheTokenFire )
+{
+	typedef TyRgTagTokens T;
+	// "aab" without the 'c': the single characters are the tokens and the triggers crossed along the way don't fire.
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( "aab" ),
+		( T{ ExpectTagToken( s_ktidToken4, 0, 1 ), ExpectTagToken( s_ktidToken4, 1, 2 ), ExpectTagToken( s_ktidToken4, 2, 3 ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( "abc [ab] abc" ),
+		( T{ ExpectTagToken( s_ktidToken0, 0, 3, { { s_ktidTrigger1, 0 } } ), ExpectTagToken( s_ktidToken3, 3, 4 ),
+				 ExpectTagToken( s_ktidToken2, 4, 8, { { s_ktidTrigger1, 6 }, { s_ktidTrigger2, 7 } } ), ExpectTagToken( s_ktidToken3, 8, 9 ),
+				 ExpectTagToken( s_ktidToken0, 9, 12, { { s_ktidTrigger1, 9 } } ) } ) );
+}
+
+TEST( LexangTagHistory, MatchesReference )
+{
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagHistory >( GetTagHistoryRules(), "abc<>&;[] ", 40000, 14, 103 ), size_t(100) );
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagHistory >( GetTagHistoryRules(), "abc", 40000, 24, 104 ), size_t(1000) );
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagHistory >( GetTagHistoryRules(), "[ab]", 40000, 24, 105 ), size_t(1000) );
+}
+
+// The history is compacted as it grows: the entries of the ways of matching which were abandoned are removed.
+TEST( LexangTagHistory, HistoryIsCompacted )
+{
+	// Compacting at a very small size: the results are the same.
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagHistory >( GetTagHistoryRules(), "abc<>&;[] ", 20000, 14, 106, nullptr, 2 ), size_t(100) );
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagHistory >( GetTagHistoryRules(), "abc", 20000, 30, 107, nullptr, 3 ), size_t(1000) );
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagHistory >( GetTagHistoryRules(), "[ab]", 20000, 30, 108, nullptr, 1 ), size_t(1000) );
+
+	// A long token for which most of the triggers crossed are for ways of matching that are abandoned: a long run of
+	//	'a's then "bc". Each 'a' may be the last before the 'b' so a trigger is recorded for each - and all but the last
+	//	are abandoned. The history remains small when compacted.
+	std::string strLong( 10000, 'a' );
+	strLong += "bc";
+	TyRgTagTokens rgExpect{ ExpectTagToken( s_ktidToken0, 0, 10002, { { s_ktidTrigger1, 9999 } } ) };
+	size_t nMaxHistoryCompacted = 0;
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( strLong, nullptr, 8, &nMaxHistoryCompacted ), rgExpect );
+	EXPECT_LT( nMaxHistoryCompacted, size_t(64) );
+	// By default the history is not compacted until it is much larger than this.
+	size_t nMaxHistory = 0;
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagHistory >( strLong, nullptr, 1000000, &nMaxHistory ), rgExpect );
+	EXPECT_GT( nMaxHistory, size_t(5000) );
+}
+
+typedef ns_lttagmixed::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerTagMixed;
+typedef TyAnalyzerTagMixed::_TyStateProto TyStateProtoTagMixed;
+// One of the DFAs requires the history of the triggers so the lexical analyzer keeps that for all.
+static_assert( 2 == TyAnalyzerTagMixed::s_knTagPolicy );
+
+// tagmixed: a lexical analyzer with an untagged DFA - whose triggers fire as they are crossed - and both kinds of tagged DFA.
+TEST( LexangTagMixed, UntaggedAndTaggedDfasInOneAnalyzer )
+{
+	const TyStateProtoTagMixed * pspUntagged = (const TyStateProtoTagMixed *)&ns_lttagmixed::startUntagged< TyTestLexTraits >;
+	const TyStateProtoTagMixed * pspRegisters = (const TyStateProtoTagMixed *)&ns_lttagmixed::startRegisters< TyTestLexTraits >;
+	const TyStateProtoTagMixed * pspHistory = (const TyStateProtoTagMixed *)&ns_lttagmixed::startHistory< TyTestLexTraits >;
+	// The untagged DFA: Token7: a quoted string with the string as its value, Token8: digits.
+	EXPECT_EQ( Tokenize< TyAnalyzerTagMixed >( "\"ab c\"12\"\"", pspUntagged ),
+		Expect( { { s_ktidToken7, "\"ab c\"", { "ab c" } }, { s_ktidToken8, "12" }, { s_ktidToken7, "\"\"", { "" } } } ) );
+	typedef TyRgTagTokens T;
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagMixed >( "<aaaab>", pspRegisters ), ( T{ ExpectTagToken( s_ktidToken0, 0, 7, { { s_ktidTrigger1, 4 } } ) } ) );
+	EXPECT_EQ( TagTokenize< TyAnalyzerTagMixed >( "aaabaabc", pspHistory ), ( T{ ExpectTagToken( s_ktidToken0, 0, 8, { { s_ktidTrigger1, 2 }, { s_ktidTrigger1, 5 } } ) } ) );
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagMixed >( GetTagRegistersRules(), "<>]abxy ", 20000, 14, 109, pspRegisters ), size_t(1000) );
+	EXPECT_GT( NRandomStringsAgreeWithReference< TyAnalyzerTagMixed >( GetTagHistoryRules(), "abc<>&;[] ", 20000, 14, 110, pspHistory ), size_t(100) );
+}
+
+// Using each of the DFAs in turn with the one analyzer object: the state for one must not affect another.
+TEST( LexangTagMixed, AlternatingDfas )
+{
+	typedef TyAnalyzerTagMixed::_TyToken _TyToken;
+	const TyStateProtoTagMixed * pspUntagged = (const TyStateProtoTagMixed *)&ns_lttagmixed::startUntagged< TyTestLexTraits >;
+	const TyStateProtoTagMixed * pspRegisters = (const TyStateProtoTagMixed *)&ns_lttagmixed::startRegisters< TyTestLexTraits >;
+	const TyStateProtoTagMixed * pspHistory = (const TyStateProtoTagMixed *)&ns_lttagmixed::startHistory< TyTestLexTraits >;
+	std::basic_string< TyTestChar > strInput( u8"<aab>\"xy\"aabc12xay[ab]\"z\"" );
+	TyAnalyzerTagMixed analyzer;
+	analyzer.emplaceTransport( strInput.c_str(), strInput.length() );
+	struct Step
+	{
+		const TyStateProtoTagMixed * m_pspStart;
+		vtyTokenIdent m_tid;
+		size_t m_posEnd;
+		TyRgTagEvents m_rgEvents;
+	};
+	const Step rgSteps[] = {
+		{ pspRegisters, s_ktidToken0, 5, { { s_ktidTrigger1, 2 } } },
+		{ pspUntagged, s_ktidToken7, 9, {} },
+		{ pspHistory, s_ktidToken0, 13, { { s_ktidTrigger1, 10 } } },
+		{ pspUntagged, s_ktidToken8, 15, {} },
+		{ pspRegisters, s_ktidToken2, 18, { { s_ktidTrigger1, 16 } } },
+		{ pspHistory, s_ktidToken2, 22, { { s_ktidTrigger1, 20 }, { s_ktidTrigger2, 21 } } },
+		{ pspUntagged, s_ktidToken7, 25, {} },
+	};
+	std::unique_ptr< _TyToken > upToken;
+	for ( Step const & rstep : rgSteps )
+	{
+		RgTestTriggerLog().clear();
+		ASSERT_TRUE( analyzer.FGetToken( upToken, nullptr, nullptr, rstep.m_pspStart ) );
+		_l_data_range drToken;
+		upToken->GetTokenDataRange( drToken );
+		EXPECT_EQ( upToken->GetTokenId(), rstep.m_tid );
+		EXPECT_EQ( (size_t)drToken.end(), rstep.m_posEnd );
+		TyRgTagEvents rgEvents;
+		for ( TestTriggerEvent const & rtte : RgTestTriggerLog() )
+		{
+			TagEvent ev = { (int)rtte.m_tid, (size_t)rtte.m_pos };
+			rgEvents.push_back( ev );
+		}
+		EXPECT_EQ( rgEvents, rstep.m_rgEvents ) << "Token ending at " << rstep.m_posEnd;
+		if ( s_ktidToken7 == rstep.m_tid )
+		{
+			// The value of the quoted string: recorded by the triggers of the untagged DFA as they were crossed.
+			std::basic_string< TyTestChar > strValue;
+			upToken->GetString( strValue, upToken->GetValue() );
+			EXPECT_EQ( strValue, ( 9 == rstep.m_posEnd ) ? std::basic_string< TyTestChar >( u8"xy" ) : std::basic_string< TyTestChar >( u8"z" ) );
+		}
+	}
+	RgTestTriggerLog().clear();
+}
+
+typedef ns_ltxmlish::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerXmlish;
+typedef ns_ltxmlishtagged::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerXmlishTagged;
+static_assert( 0 == TyAnalyzerXmlish::s_knTagPolicy );
+static_assert( 2 == TyAnalyzerXmlishTagged::s_knTagPolicy ); // Triggers within loops: the history of the triggers is kept.
+
+// xmlish: see GetXmlishRules() in lexangtest_tag.h. Pattern exclusion, "completed by" and triggers within loops.
+TEST( LexangTagXmlish, Tokens )
+{
+	typedef TyRgTagTokens T;
+	// The tag with its name, the name of its attribute and the two runs of characters of the attribute's value. Then
+	//	character data: two runs of characters around a reference. A comment - which ends at the first "-->" so the
+	//	second is character data - and a tag.
+	const T rgExpect{
+		ExpectTagToken( s_ktidToken0, 0, 16, { { s_ktidTrigger1, 1 }, { s_ktidTrigger2, 2 }, { s_ktidTrigger3, 3 }, { s_ktidTrigger4, 5 },
+																						{ s_ktidTrigger1, 7 }, { s_ktidTrigger2, 9 }, { s_ktidTrigger1, 12 }, { s_ktidTrigger2, 14 } } ),
+		ExpectTagToken( s_ktidToken1, 16, 25, { { s_ktidTrigger3, 18 }, { s_ktidTrigger3, 25 } } ),
+		ExpectTagToken( s_ktidToken2, 25, 33 ),
+		ExpectTagToken( s_ktidToken1, 33, 36, { { s_ktidTrigger3, 36 } } ),
+		ExpectTagToken( s_ktidToken0, 36, 39, { { s_ktidTrigger1, 37 }, { s_ktidTrigger2, 38 } } ) };
+	const std::string strInput( "<a bc=\"x]&a;]>\">xy&c;]] ><!--a-->--><b>" );
+	EXPECT_EQ( TagTokenize< TyAnalyzerXmlish >( strInput ), rgExpect );
+	EXPECT_EQ( TagTokenize< TyAnalyzerXmlishTagged >( strInput ), rgExpect );
+	// Character data containing "]]>" is excluded - however it might be divided into runs of characters.
+	EXPECT_EQ( TagTokenize< TyAnalyzerXmlish >( "ab]]>c" ), T() );
+	EXPECT_EQ( TagTokenize< TyAnalyzerXmlishTagged >( "ab]]>c" ), T() );
+}
+
+// The lexical analyzers generated from the untagged and from the tagged DFA must agree for any input.
+TEST( LexangTagXmlish, TaggedAgreesWithUntagged )
+{
+	std::mt19937 rng( 111 );
+	const std::string strAlphabet( "<>abc &;=\"]-!" );
+	size_t nTokens = 0, nEvents = 0;
+	for ( size_t n = 0; n < 60000; ++n )
+	{
+		// Begin with something likely to be the start of a token so that enough of the strings have tokens.
+		static const char * const s_rgpszBegin[] = { "", "<a", "<a b=\"", "ab", "<!--", "<b c=\"a\" a=\"" };
+		std::string str( s_rgpszBegin[ rng() % 6 ] );
+		for ( size_t nLen = rng() % 16; nLen--; )
+			str += strAlphabet[ rng() % strAlphabet.length() ];
+		const TyRgTagTokens rgUntagged = TagTokenize< TyAnalyzerXmlish >( str );
+		const TyRgTagTokens rgTagged = TagTokenize< TyAnalyzerXmlishTagged >( str );
+		if ( !( rgTagged == rgUntagged ) )
+		{
+			ADD_FAILURE() << "On [" << str << "]: with the tagged DFA " << ::testing::PrintToString( rgTagged ) << " but with the untagged DFA " << ::testing::PrintToString( rgUntagged );
+			return;
+		}
+		nTokens += rgUntagged.size();
+		for ( TagToken const & rtt : rgUntagged )
+			nEvents += rtt.m_rgEvents.size();
+	}
+	EXPECT_GT( nTokens, size_t(10000) );
+	EXPECT_GT( nEvents, size_t(10000) );
+}
+
+// _l_match<> with a tagged DFA: the triggers are followed, without being fired, as they are for an untagged DFA.
+TEST( LexangMatch, MatchAgainstTaggedDfa )
+{
+	typedef _l_match< TyTestChar, true > TyMatch;
+	typedef _l_state_proto< TyTestChar > TyStateProto;
+	auto nMatch = []( const TyStateProto * _pspStart, const char8_t * _psz ) -> ptrdiff_t
+	{
+		const size_t nLen = std::char_traits< char8_t >::length( _psz );
+		const char8_t * pszEnd = TyMatch::PszMatch( _pspStart, _psz, nLen );
+		return !pszEnd ? -1 : ( pszEnd - _psz );
+	};
+	const TyStateProto * pspRegisters = (const TyStateProto *)&ns_lttagregisters::start< TyTestLexTraits >;
+	EXPECT_EQ( nMatch( pspRegisters, u8"<aaaab>" ), 7 );
+	EXPECT_EQ( nMatch( pspRegisters, u8"<aaaab>x" ), 7 );
+	EXPECT_EQ( nMatch( pspRegisters, u8"aabb" ), 4 );
+	EXPECT_EQ( nMatch( pspRegisters, u8"xay" ), 3 );
+	EXPECT_EQ( nMatch( pspRegisters, u8"<aab" ), -1 );
+	// The untagged triggers grammar: a trigger precedes the closing quote.
+	const TyStateProto * pspTriggers = (const TyStateProto *)&ns_lttriggers::start< TyTestLexTraits >;
+	EXPECT_EQ( nMatch( pspTriggers, u8"\"abc\"" ), 5 );
+	EXPECT_EQ( nMatch( pspTriggers, u8"<abc=12>" ), 8 );
+	const TyStateProto * pspTriggersTagged = (const TyStateProto *)&ns_lttriggerstagged::start< TyTestLexTraits >;
+	EXPECT_EQ( nMatch( pspTriggersTagged, u8"\"abc\"" ), 5 );
+	EXPECT_EQ( nMatch( pspTriggersTagged, u8"<abc=12>" ), 8 );
 }
 
 } // namespace ns_lexangtest

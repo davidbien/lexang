@@ -350,6 +350,14 @@ public:
     _TySetStatesNfa const * pssInLookup;
     m_mapStateToSS.push_back( pssInLookup = &( *pibInserted.first ).first.RObject() );
     Assert( m_mapStateToSS.size() == m_rDfa.NStates() );
+    _ClassifyNewDfaState( _pgn );
+    return pssInLookup;
+  }
+
+  // Determine whether the new DFA state _pgn, which corresponds to the set of NFA states *m_pssCur, is an accepting
+  //	state of some kind and if so record it for the construction of the accepting state partition.
+  void _ClassifyNewDfaState( _TyGraphNodeDfa * _pgn )
+  {
     typename _TySetStatesNfa::size_type stFirst = m_pssAcceptingNfa->FirstIntersection( *m_pssCur );
     if ( m_pssAcceptingNfa->size() != stFirst )
     {
@@ -495,7 +503,7 @@ public:
               vtyActionIdent aiMin = (vtyActionIdent)srFoundTriggers.getfirstset();
               typename _TyNfa::_TySetASByActionID::value_type & rvtMin = *m_rNfa.m_pLookupActionID->find( aiMin );
               m_lDfaAccepting.push_front( typename _TyDfaAcceptingList::value_type( rvtMin.second->first, _pgn->RElConst() ) );
-              return pssInLookup;
+              return;
             }
           }
 
@@ -579,7 +587,7 @@ public:
           // Relate the current state to the ambiguous state created or found:
           itAmbig->second.first.insert( _pgn->RElConst() );
 
-          return pssInLookup;
+          return;
         }
         else
         {
@@ -620,7 +628,6 @@ public:
 
       m_lDfaAccepting.push_front( typename _TyDfaAcceptingList::value_type( stFirst, _pgn->RElConst() ) );
     }
-    return pssInLookup;
   }
 
   void _ConstructAcceptPartition()

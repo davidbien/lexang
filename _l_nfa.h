@@ -101,6 +101,8 @@ public:
 	// Friends:
 	template < class t__TyNfa, class t__TyDfa >
 	friend struct _create_dfa;
+	template < class t__TyNfa, class t__TyDfa >
+	friend struct _create_dfa_tagged;
 	friend class _nfa_context< t_TyChar, t_TyAllocator >;
 
 	typedef t_TyChar _TyChar;

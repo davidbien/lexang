@@ -89,11 +89,76 @@ struct TestRejectNoop : public _l_trigger_noop< t_TyTraits, t_ktid, t_fInLexGen 
 template < vtyTokenIdent t_ktid, bool t_fInLexGen = true >
 using TyTestTokenReject = _l_action_token< TestRejectNoop< TyTestLexTraits, t_ktid, t_fInLexGen > >;
 
+// A trigger which appends its id and the position at which it fired to a log - see RgTestTriggerLog().
+// The tests of the tagged DFAs use this to check exactly which triggers fired, where and in which order.
+struct TestTriggerEvent
+{
+	vtyTokenIdent m_tid;
+	vtyDataPosition m_pos;
+	bool operator == ( TestTriggerEvent const & _r ) const
+	{
+		return ( m_tid == _r.m_tid ) && ( m_pos == _r.m_pos );
+	}
+};
+inline std::vector< TestTriggerEvent > & RgTestTriggerLog()
+{
+	static std::vector< TestTriggerEvent > s_rgLog;
+	return s_rgLog;
+}
+template < class t_TyTraits, vtyTokenIdent t_ktid, bool t_fInLexGen >
+struct TestTriggerLog : public _l_trigger_noop< t_TyTraits, t_ktid, t_fInLexGen >
+{
+	typedef _l_trigger_noop< t_TyTraits, t_ktid, t_fInLexGen > _TyBase;
+	using typename _TyBase::_TyActionObjectBase;
+	TestTriggerLog() = default;
+	TestTriggerLog( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
+	void RenderActionType( ostream & _ros, const char * _pcTraitsName ) const
+	{
+		return StaticRenderActionType( _ros, _pcTraitsName );
+	}
+	void RenderActionType( stringstream & _ros, const char * _pcTraitsName ) const
+	{
+		return StaticRenderActionType( _ros, _pcTraitsName );
+	}
+	template < class t_TyOStream >
+	static void StaticRenderActionType( t_TyOStream & _ros, const char * _pcTraitsName )
+	{
+		_ros << "ns_lexangtest::TestTriggerLog< " << _pcTraitsName << ", " << t_ktid << ", false >";
+	}
+	string VStrTypeName( const char * _pcTraitsName ) const
+	{
+		return StaticStrTypeName( _pcTraitsName );
+	}
+	static string StaticStrTypeName( const char * _pcTraitsName )
+	{
+		std::stringstream ss;
+		StaticRenderActionType( ss, _pcTraitsName );
+		return ss.str();
+	}
+	template < class t_TyAnalyzer >
+	bool action( t_TyAnalyzer & _rA )
+	{
+		TestTriggerEvent tte = { t_ktid, _rA.GetCurrentPosition() };
+		RgTestTriggerLog().push_back( tte );
+		return true;
+	}
+};
+template < vtyTokenIdent t_ktid, bool t_fInLexGen = true >
+using TyTestTriggerLog = TestTriggerLog< TyTestLexTraits, t_ktid, t_fInLexGen >;
+
 // Trigger identifiers: these are shared by all of the grammars.
 static const vtyTokenIdent s_ktidTriggerABegin = 1;
 static const vtyTokenIdent s_ktidTriggerAEnd = 2;
 static const vtyTokenIdent s_ktidTriggerBBegin = 3;
 static const vtyTokenIdent s_ktidTriggerBEnd = 4;
+// Further triggers used by the tests of the tagged DFAs.
+static const vtyTokenIdent s_ktidTrigger1 = 11;
+static const vtyTokenIdent s_ktidTrigger2 = 12;
+static const vtyTokenIdent s_ktidTrigger3 = 13;
+static const vtyTokenIdent s_ktidTrigger4 = 14;
 
 // Token identifiers: each grammar uses some subset of these, the meaning of each is given by the grammar.
 static const vtyTokenIdent s_ktidToken0 = 1000;
@@ -107,3 +172,12 @@ static const vtyTokenIdent s_ktidToken7 = 1007;
 static const vtyTokenIdent s_ktidToken8 = 1008;
 
 } // namespace ns_lexangtest
+
+__BIENUTIL_BEGIN_NAMESPACE
+// The base class of our trigger type - as is declared for each type of action object in _l_axion.h.
+template < class t_TyTraits, __REGEXP_NAMESPACE vtyTokenIdent t_ktid, bool t_fInLexGen >
+struct __map_to_base_class< ns_lexangtest::TestTriggerLog< t_TyTraits, t_ktid, t_fInLexGen > >
+{
+	typedef __REGEXP_NAMESPACE _l_action_object_base< typename t_TyTraits::_TyChar, t_fInLexGen > _TyBase;
+};
+__BIENUTIL_END_NAMESPACE

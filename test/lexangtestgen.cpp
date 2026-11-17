@@ -9,6 +9,7 @@
 // Each grammar is generated into its own header and namespace: _lexangtest_<grammar>.h, ns_lt<grammar>.
 
 #include "lexangtest_gen.h"
+#include "lexangtest_tag.h"
 
 std::string g_strProgramName;
 
@@ -17,8 +18,9 @@ namespace ns_lexangtest
 __REGEXP_OP_USING_NAMESPACE
 
 // Generate the header for a single DFA.
+// _nMinTagPolicy: The least kind of registers for tagged DFAs to give the lexical analyzer - see _l_generator<>::set_min_tag_policy().
 void
-GenerateHeader( _TyDfa & _rDfa, _TyDfaCtxt & _rDfaCtxt, const char * _pszName )
+GenerateHeader( _TyDfa & _rDfa, _TyDfaCtxt & _rDfaCtxt, const char * _pszName, int _nMinTagPolicy = 0 )
 {
 	std::string strHeader = std::string( "_lexangtest_" ) + _pszName + ".h";
 	std::string strPpBase = std::string( "LT" ) + _pszName;
@@ -27,6 +29,7 @@ GenerateHeader( _TyDfa & _rDfa, _TyDfaCtxt & _rDfaCtxt, const char * _pszName )
 	std::string strState = std::string( "state" ) + _pszName;
   _l_generator< _TyDfa, char >
     gen( egfdStandaloneGenerator, strHeader.c_str(), strPpBase.c_str(), true, strNamespace.c_str(), strState.c_str(), "char8_t", "u8'", "'");
+  gen.set_min_tag_policy( _nMinTagPolicy );
   gen.add_dfa( _rDfa, _rDfaCtxt, "start" );
   gen.generate();
 }
@@ -63,8 +66,13 @@ GenerateBasic()
 }
 
 // triggers: positions and strings recorded by triggers and saved in the token's value.
+// We generate lexical analyzers from these rules thrice:
+//	triggers: the usual, untagged, DFA - which is all these rules need.
+//	triggerstagged: a tagged DFA - see _l_dfatag.h. A position for each trigger suffices for the registers.
+//	triggershistory: a tagged DFA with the lexical analyzer instead keeping the history of the triggers crossed.
+// Each must find the same tokens with the same values.
 void
-GenerateTriggers()
+GenerateTriggers( const char * _pszName, ETriggerDfaKind _etdk, int _nMinTagPolicy )
 {
 	_TyFinal Name = ++lr(u8'a',u8'z');
 	_TyFinal Digits = ++lr(u8'0',u8'9');
@@ -89,8 +97,10 @@ GenerateTriggers()
 
 	_TyDfa dfa;
 	_TyDfaCtxt dctxt( dfa );
-	GenDfa( All, dfa, dctxt );
-	GenerateHeader( dfa, dctxt, "triggers" );
+	const bool kfTagged = GenDfa( All, dfa, dctxt, true, true, 0, _etdk );
+	VerifyThrowSz( kfTagged == ( etdkTagged == _etdk ), "The rules of the triggers grammar should not need a tagged DFA." );
+	VerifyThrowSz( !kfTagged || dfa.m_fTagSlots, "A position for each trigger should suffice for the triggers grammar." );
+	GenerateHeader( dfa, dctxt, _pszName, _nMinTagPolicy );
 }
 
 // excludes: a rule which excludes some of what it would otherwise match.
@@ -270,8 +280,9 @@ GenerateLookaheadSplit()
 }
 
 // lookaheadvar: trailing contexts of variable length and a lookahead rule containing triggers.
+// We also generate a lexical analyzer from a tagged DFA for these rules: lookaheadvartagged.
 void
-GenerateLookaheadVar()
+GenerateLookaheadVar( const char * _pszName, ETriggerDfaKind _etdk )
 {
 	_TyFinal Name = ++lr(u8'a',u8'z');
 	_TyFinal Digits = ++lr(u8'0',u8'9');
@@ -301,8 +312,9 @@ GenerateLookaheadVar()
 	All.AddRule( Punct );
 	_TyDfa dfa;
 	_TyDfaCtxt dctxt( dfa );
-	GenDfa( All, dfa, dctxt );
-	GenerateHeader( dfa, dctxt, "lookaheadvar" );
+	const bool kfTagged = GenDfa( All, dfa, dctxt, true, true, 0, _etdk );
+	VerifyThrowSz( kfTagged == ( etdkTagged == _etdk ), "The rules of the lookaheadvar grammar should not need a tagged DFA." );
+	GenerateHeader( dfa, dctxt, _pszName );
 }
 
 // lookaheadrandom: lookahead rules over the alphabet "ab" which the unit test checks against a simple reference
@@ -427,6 +439,75 @@ GenerateMulti()
   gen.generate();
 }
 
+// tagregisters: rules whose triggers require a tagged DFA - see lexangtest_tag.h. A position for each trigger
+//	suffices for the registers of the lexical analyzer.
+void
+GenerateTagRegisters()
+{
+	_TyDfa dfa;
+	_TyDfaCtxt dctxt( dfa );
+	std::string strWhyTagged;
+	const bool kfTagged = _l_create_dfa( GetTagRegistersRules(), dfa, dctxt, true, true, 0, etdkAuto, &strWhyTagged );
+	VerifyThrowSz( kfTagged && !strWhyTagged.empty(), "The rules of the tagregisters grammar should need a tagged DFA." );
+	VerifyThrowSz( dfa.m_fTagSlots, "A position for each trigger should suffice for the tagregisters grammar." );
+	GenerateHeader( dfa, dctxt, "tagregisters" );
+}
+
+// taghistory: rules whose triggers require a tagged DFA and the lexical analyzer to keep the history of the triggers crossed.
+void
+GenerateTagHistory()
+{
+	_TyDfa dfa;
+	_TyDfaCtxt dctxt( dfa );
+	const bool kfTagged = GenDfa( GetTagHistoryRules(), dfa, dctxt );
+	VerifyThrowSz( kfTagged, "The rules of the taghistory grammar should need a tagged DFA." );
+	VerifyThrowSz( !dfa.m_fTagSlots, "The taghistory grammar should need the history of the triggers." );
+	GenerateHeader( dfa, dctxt, "taghistory" );
+}
+
+// xmlish, xmlishtagged: rules in the manner of an XML lexical analyzer - see lexangtest_tag.h - as an untagged DFA,
+//	which is all the rules need, and as a tagged DFA.
+void
+GenerateXmlish( const char * _pszName, ETriggerDfaKind _etdk )
+{
+	_TyDfa dfa;
+	_TyDfaCtxt dctxt( dfa );
+	const bool kfTagged = GenDfa( GetXmlishRules(), dfa, dctxt, true, true, 0, _etdk );
+	VerifyThrowSz( kfTagged == ( etdkTagged == _etdk ), "The rules of the xmlish grammar should not need a tagged DFA." );
+	GenerateHeader( dfa, dctxt, _pszName );
+}
+
+// tagmixed: a lexical analyzer with an untagged DFA whose triggers fire as they are crossed and both kinds of tagged DFA.
+void
+GenerateTagMixed()
+{
+	// The untagged DFA: Token7: a quoted string with the string as its value, Token8: digits.
+	_TyFinal Quoted = l(u8'"') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) * ~( lr(u8'a',u8'z') | l(u8' ') )
+										* t( TyTestTriggerString< s_ktidTriggerAEnd, s_ktidTriggerABegin >() ) * l(u8'"');
+	_TyFinal Digits = ++lr(u8'0',u8'9');
+	Quoted.SetAction( TyTestTokenWithString< s_ktidToken7, s_ktidTriggerAEnd, s_ktidTriggerABegin >() );
+	Digits.SetAction( TyTestToken< s_ktidToken8 >() );
+	_TyFinal AllUntagged( Quoted );
+	AllUntagged.AddRule( Digits );
+	_TyDfa dfaUntagged;
+	_TyDfaCtxt dctxtUntagged( dfaUntagged );
+	VerifyThrowSz( !GenDfa( AllUntagged, dfaUntagged, dctxtUntagged ), "The untagged rules of the tagmixed grammar should not need a tagged DFA." );
+
+	_TyDfa dfaRegisters;
+	_TyDfaCtxt dctxtRegisters( dfaRegisters );
+	VerifyThrowSz( GenDfa( GetTagRegistersRules(), dfaRegisters, dctxtRegisters ), "Expected a tagged DFA." );
+	_TyDfa dfaHistory;
+	_TyDfaCtxt dctxtHistory( dfaHistory );
+	VerifyThrowSz( GenDfa( GetTagHistoryRules(), dfaHistory, dctxtHistory ), "Expected a tagged DFA." );
+
+  _l_generator< _TyDfa, char >
+    gen( egfdStandaloneGenerator, "_lexangtest_tagmixed.h", "LTTAGMIXED", true, "ns_lttagmixed", "statetagmixed", "char8_t", "u8'", "'");
+  gen.add_dfa( dfaUntagged, dctxtUntagged, "startUntagged" );
+  gen.add_dfa( dfaRegisters, dctxtRegisters, "startRegisters" );
+  gen.add_dfa( dfaHistory, dctxtHistory, "startHistory" );
+  gen.generate();
+}
+
 } // namespace ns_lexangtest
 
 int
@@ -438,7 +519,9 @@ main( int argc, char ** argv )
 	{
 		n_SysLog::InitSysLog( argv[0], 0, LOG_USER );
 		ns_lexangtest::GenerateBasic();
-		ns_lexangtest::GenerateTriggers();
+		ns_lexangtest::GenerateTriggers( "triggers", __REGEXP_NAMESPACE etdkAuto, 0 );
+		ns_lexangtest::GenerateTriggers( "triggerstagged", __REGEXP_NAMESPACE etdkTagged, 0 );
+		ns_lexangtest::GenerateTriggers( "triggershistory", __REGEXP_NAMESPACE etdkTagged, 2 );
 		ns_lexangtest::GenerateExcludes();
 		ns_lexangtest::GenerateCompletes();
 		ns_lexangtest::GenerateLookahead();
@@ -446,12 +529,18 @@ main( int argc, char ** argv )
 		ns_lexangtest::GenerateLookaheadTwo();
 		ns_lexangtest::GenerateLookaheadOverlap();
 		ns_lexangtest::GenerateLookaheadSplit();
-		ns_lexangtest::GenerateLookaheadVar();
+		ns_lexangtest::GenerateLookaheadVar( "lookaheadvar", __REGEXP_NAMESPACE etdkAuto );
+		ns_lexangtest::GenerateLookaheadVar( "lookaheadvartagged", __REGEXP_NAMESPACE etdkTagged );
 		ns_lexangtest::GenerateLookaheadRandom();
 		ns_lexangtest::GenerateLookaheadPrecedence( false );
 		ns_lexangtest::GenerateLookaheadPrecedence( true );
 		ns_lexangtest::GenerateReject();
 		ns_lexangtest::GenerateMulti();
+		ns_lexangtest::GenerateTagRegisters();
+		ns_lexangtest::GenerateTagHistory();
+		ns_lexangtest::GenerateTagMixed();
+		ns_lexangtest::GenerateXmlish( "xmlish", __REGEXP_NAMESPACE etdkAuto );
+		ns_lexangtest::GenerateXmlish( "xmlishtagged", __REGEXP_NAMESPACE etdkTagged );
 		return 0;
 	}
 	catch ( const std::exception & rexc )

@@ -85,6 +85,14 @@ const unsigned char kucLookaheadAcceptAndLookahead = 5;
 //  to transition to an accepting state after previously encountering an anti-accepting state.
 const unsigned char kucAntiAccepting = 6;
 
+// Tagged DFAs - see _l_dfatag.h and _l_tag.h.
+// The kinds of tag operation - see _l_tag_op<>:
+const unsigned short kusTagOpCopy = 0;    // Copy a register.
+const unsigned short kusTagOpTrigger = 1; // Record the crossing of a trigger in a register.
+const unsigned short kusTagOpStart = 2;   // Start a token of a tagged DFA.
+// The value of _l_state_proto<>::m_usOffsetAccept for a tag operation state: this marks the state as such.
+const unsigned short kusOffsetTagOps = 0xffff;
+
 // _l_state.h:
 template <class t_TyChar>
 struct _l_state_proto;
@@ -92,7 +100,14 @@ struct _l_state_proto;
 template <class t_TyChar>
 struct _l_an_mostbase;
 
-template <class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace = false>
+// _l_tag.h:
+struct _l_tag_none;
+template <class t_TyChar>
+class _l_tag_registers;
+template <class t_TyChar>
+class _l_tag_history;
+
+template <class t_TyTraits, bool t_fSupportLookahead, bool t_fSupportTriggers, bool t_fTrace = false, class t_TyTagPolicy = _l_tag_none>
 struct _l_analyzer;
 
 template <class t_TyChar, int t_iTransitions,
@@ -103,6 +118,11 @@ struct _l_state;
 
 template <class t_TyChar>
 struct _l_transition;
+
+template <class t_TyChar>
+struct _l_tag_op;
+template <class t_TyChar, int t_iTagOps>
+struct _l_state_tagops;
 
 // _l_data.h:
 class _l_data_range;

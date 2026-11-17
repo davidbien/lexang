@@ -141,6 +141,9 @@ struct _l_generator
 
 	bool m_fLookaheads;
 	bool m_fTriggers;
+	// The kind of registers that the lexical analyzer needs for its tagged DFAs - see _l_tag.h:
+	//	0: none - there are no tagged DFAs, 1: _l_tag_registers<>, 2: _l_tag_history<>.
+	int m_nTagPolicy{0};
 
 	typedef _l_gen_action_info< _TyCharOut, _TyAllocator > _TyGenActionInfo;
 
@@ -235,12 +238,19 @@ enum EGeneratorDFAOptions : uint32_t
 								const t_TyCharOut * _pcStartStateName,
 								uint32_t _grfGeneratorDFAOptions = 0 )
 	{
-		_CheckTriggerAmbiguity( _rDfa, _rDfaCtxt, _pcStartStateName );
+		if ( !_rDfa.m_fTagged )
+			_CheckTriggerAmbiguity( _rDfa, _rDfaCtxt, _pcStartStateName );
+		else
+		{
+			// A tagged DFA - see _l_dfatag.h: the lexical analyzer needs registers of the kind that the DFA requires.
+			VerifyThrowSz( !( ( 1ul << egdoDontTemplatizeStates ) & _grfGeneratorDFAOptions ), "The states of a tagged DFA must be templatized: they refer to the trigger actions." );
+			m_nTagPolicy = (std::max)( m_nTagPolicy, _rDfa.m_fTagSlots ? 1 : 2 );
+		}
 		m_lDfaGen.push_back( _TyGenDfa( _rDfa, _rDfaCtxt,
 																		_pcStartStateName, _grfGeneratorDFAOptions,
                                     m_mapActions.get_allocator() ) );
 		m_fLookaheads = m_fLookaheads || _rDfa.m_fHasLookaheads;
-		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers;
+		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers || _rDfa.m_fTagged;
 		// Also generate the DFA which matches the trailing context in reverse for each lookahead rule of this DFA.
 		// These have no actions so their states needn't be templatized. The lookahead states of _rDfa refer to the start states.
 		for ( typename _TyDfa::_TyMapLookaheadReverse::iterator itRev = _rDfa.m_mapLookaheadReverse.begin();
@@ -250,6 +260,15 @@ enum EGeneratorDFAOptions : uint32_t
 			m_lDfaGen.push_back( _TyGenDfa( itRev->second->m_dfa, itRev->second->m_dctxt, strStartReverse.c_str(), 
 																			_TyGenDfa::GrfDontTemplatizeStates(), m_mapActions.get_allocator() ) );
 		}
+	}
+	// The lexical analyzer generated is given at least this kind of registers for tagged DFAs:
+	//	0: none, 1: _l_tag_registers<>, 2: _l_tag_history<> - see _l_tag.h.
+	// By default it is given the least that the DFAs added require. This is for when that isn't enough: the base
+	//	generator of a family of generators declares the lexical analyzer for the DFAs of all of the family.
+	void set_min_tag_policy( int _nTagPolicy )
+	{
+		VerifyThrowSz( ( _nTagPolicy >= 0 ) && ( _nTagPolicy <= 2 ), "Invalid tag policy [%d].", _nTagPolicy );
+		m_nTagPolicy = (std::max)( m_nTagPolicy, _nTagPolicy );
 	}
 	// Throw if the position of any trigger in the DFA is ambiguous - see _dfa_context<>::GetTriggerAmbiguities().
 	// The generated lexical analyzer would never fire such a trigger on the shared character(s) and so may not recognize
@@ -284,7 +303,8 @@ enum EGeneratorDFAOptions : uint32_t
 		}
 		VerifyThrowSz( false, "DFA [%s]: [%zu] ambiguous trigger position(s): the lexical analyzer consumes a character rather than crossing a trigger, "
 			"so input that the rules only match by crossing the trigger before that character is not recognized ( or is recognized as a different token ). "
-			"Change the rules so that the characters that follow a trigger cannot also continue the input before it. %s%s", _pcStartStateName, rgta.size(), strDetails.c_str(), rgta.size() > knReport ? ", ..." : "" );
+			"Create the DFA using _l_create_dfa() - which creates a tagged DFA for such rules - or change the rules so that the characters that "
+			"follow a trigger cannot also continue the input before it. %s%s", _pcStartStateName, rgta.size(), strDetails.c_str(), rgta.size() > knReport ? ", ..." : "" );
 	}
 	// The name of the start state of the DFA matching the trailing context in reverse for the lookahead rule whose
 	//	lookahead state has the action id _aiLookahead in the DFA whose start state is named _pcStartStateName.
@@ -457,8 +477,11 @@ enum EGeneratorDFAOptions : uint32_t
 		{
 			_ros << "template < class t_TyTraits >\nusing TGetAnalyzerBase = _l_analyzer< t_TyTraits"
 						<< ( m_fLookaheads ? ", true" : ", false" )
-						<< ( m_fTriggers ? ", true" : ", false" )
-						<< " >;\n";
+						<< ( m_fTriggers ? ", true" : ", false" );
+			// The registers for tagged DFAs - the default is none.
+			if ( m_nTagPolicy )
+				_ros << ", false, " << ( ( 1 == m_nTagPolicy ) ? "_l_tag_registers" : "_l_tag_history" ) << "< typename t_TyTraits::_TyChar >";
+			_ros << " >;\n";
 		}
 
 		_ros << "typedef _l_state_proto< " << m_sCharTypeName << " > " << m_sStateProtoTypedef << ";\n";
@@ -560,7 +583,7 @@ enum EGeneratorDFAOptions : uint32_t
 		vtyTokenIdent tidTokenTrigger; // These get recorded if there is a trigger in the transitions.
 		_TyRangeEl rgelTrigger; 
 		_GenStateType( _ros, _pgn, _nOuts, _fAccept, fIsTriggerAction, fIsTriggerGateway, fIsAntiAcceptingState, tidTokenTrigger, rgelTrigger );
-		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
+		if ( _FUseStartName( _pgn ) )
 		{
 			// Use the special start state name:
 			_ros << "\t\t" << m_pvtDfaCur->m_sStartStateName << ";\n";
@@ -597,6 +620,120 @@ enum EGeneratorDFAOptions : uint32_t
 		Assert(m_praiTriggers.first >= 0);
 		Assert(m_praiTriggers.second >= 0);
 		return ( _rre >= (_TyRangeEl)m_praiTriggers.first ) && ( _rre < (_TyRangeEl)m_praiTriggers.second );
+	}
+	// Does the state _pgn of the current DFA have the name of the DFA's start state.
+	// The start state of a tagged DFA is instead a state which we generate - see _GenTagStartState().
+	bool _FUseStartName( const _TyGraphNode * _pgn ) const
+	{
+		return ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart ) && !m_pvtDfaCur->m_rDfa.m_fTagged;
+	}
+	// Is _pgn a tag operation state of the current ( tagged ) DFA: its single transition is on one of the pseudo-triggers.
+	bool _FIsTagOpState( const _TyGraphNode * _pgn ) const
+	{
+		if ( !m_pvtDfaCur->m_rDfa.m_fTagged )
+			return false;
+		typename _TyGraph::_TyLinkPosIterConst	lpi( _pgn->PPGLChildHead() );
+		return !lpi.FIsLast() && ( *lpi >= m_praiTriggers.first ) && ( *lpi < m_praiTriggers.second );
+	}
+	// The triggers crossed at the end of the token of an accepting state of the current ( tagged ) DFA - null if none.
+	const std::vector< int > * _PrgGetTagFinish( const typename _TyPartAcceptStates::value_type * _pvtAction ) const
+	{
+		if ( !m_pvtDfaCur->m_rDfa.m_fTagged || !_pvtAction || ( _pvtAction->second.m_iTagFinish < 0 ) )
+			return nullptr;
+		return &m_pvtDfaCur->m_rDfa.m_rgTagFinishes[ (size_t)_pvtAction->second.m_iTagFinish ];
+	}
+	// Print the trigger action for a tag of the current ( tagged ) DFA.
+	void _PrintTagActionMFnP( ostream & _ros, int _iTag )
+	{
+		typename _TyDfa::_TyMapTriggers::iterator itTrigger = m_pvtDfaCur->m_rDfa.m_pMapTriggers->find( m_pvtDfaCur->m_rDfa.m_rgTags[ (size_t)_iTag ].m_aiTrigger );
+		VerifyThrowSz( m_pvtDfaCur->m_rDfa.m_pMapTriggers->end() != itTrigger, "No trigger action for tag [%d].", _iTag );
+		_PrintActionMFnP( _ros, **( itTrigger->second.m_pSdpAction ) );
+	}
+	void _PrintStateName( ostream & _ros, const _TyGraphNode * _pgn )
+	{
+		if ( _FUseStartName( _pgn ) )
+			_ros << m_pvtDfaCur->m_sStartStateName;
+		else
+			_ros << m_sBaseStateName << "_" << ( _pgn->RElConst() + m_stStart );
+	}
+	void _PrintTagOpStateType( ostream & _ros, size_t _nOps )
+	{
+		_ros << "_l_state_tagops< " << m_sCharTypeName << ", " << _nOps << " >";
+	}
+	// The list of operations of a tag operation state.
+	typename _TyDfa::_TyTagOpList const & _RGetTagOpList( const _TyGraphNode * _pgn ) const
+	{
+		Assert( _FIsTagOpState( _pgn ) );
+		return m_pvtDfaCur->m_rDfa.m_rgTagOpLists[ (size_t)( (*(_pgn->PPGLChildHead()))->RElConst() - m_praiTriggers.first ) ];
+	}
+	// Declare a tag operation state of a tagged DFA.
+	void _GenHeaderTagOpState( ostream & _ros, _TyGraphNode * _pgn )
+	{
+		_ros	<< "template < class t_TyTraits >\nextern ";
+		_PrintTagOpStateType( _ros, _RGetTagOpList( _pgn ).size() );
+		_ros << "\t\t";
+		_PrintStateName( _ros, _pgn );
+		_ros << ";\n";
+	}
+	// Define a tag operation state of a tagged DFA: the operations and the state to which it leads.
+	void _GenImpTagOpState( ostream & _ros, _TyGraphNode * _pgn )
+	{
+		typename _TyDfa::_TyTagOpList const & rol = _RGetTagOpList( _pgn );
+		typename _TyDfa::_TyState stState = _pgn->RElConst() + m_stStart;
+		_ros << "typedef ";
+		_PrintTagOpStateType( _ros, rol.size() );
+		_ros << " _Ty" << m_sBaseStateName << stState << ";\n";
+		_ros << "template < class t_TyTraits > inline\n";
+		_ros << "_Ty" << m_sBaseStateName << stState << " ";
+		_PrintStateName( _ros, _pgn );
+		_ros << " = {\n#ifdef LXOBJ_STATENUMBERS\n\t" << stState << ",\n#endif //LXOBJ_STATENUMBERS\n\t";
+		_ros << "0, " << rol.size() << ", 0, (" << m_sStateProtoTypedef << "*)( & ";
+		_PrintStateName( _ros, (*(_pgn->PPGLChildHead()))->PGNChild() );
+		_ros << "<t_TyTraits> ), kusOffsetTagOps, offsetof( _Ty" << m_sBaseStateName << stState << ", m_rgops ), vktidInvalidIdToken,\n\t{\n";
+		// The temporary register is the last of the registers.
+		const size_t knRegisterTemp = m_pvtDfaCur->m_rDfa.m_nTagRegisters - 1;
+		for ( size_t nOp = 0; nOp < rol.size(); ++nOp )
+		{
+			typename _TyDfa::_TyTagOp const & rop = rol[ nOp ];
+			_ros << "\t\t{ " << ( ( _TyDfa::s_knTagRegisterTemp == rop.m_nDst ) ? knRegisterTemp : (size_t)rop.m_nDst ) << ", "
+				<< ( ( _TyDfa::s_knTagRegisterTemp == rop.m_nSrc ) ? knRegisterTemp : (size_t)rop.m_nSrc ) << ", ";
+			if ( rop.m_iTag < 0 )
+				_ros << "-1, kusTagOpCopy, nullptr";
+			else
+			{
+				_ros << m_pvtDfaCur->m_rDfa.m_rgTags[ (size_t)rop.m_iTag ].m_nSlot << ", kusTagOpTrigger,";
+				_PrintTagActionMFnP( _ros, rop.m_iTag );
+			}
+			_ros << " }" << ( ( nOp + 1 < rol.size() ) ? "," : "" ) << "\n";
+		}
+		_ros << "\t} };\n";
+	}
+	// The start state of a tagged DFA is a tag operation state that we generate: it has the single operation which
+	//	starts a token of a tagged DFA - giving the number of registers and slots the DFA needs - and leads to the
+	//	start state of the DFA proper. It refers to a method of the lexical analyzer that is present only when the
+	//	lexical analyzer has registers of the kind that this DFA requires.
+	void _GenHeaderTagStartState( ostream & _ros )
+	{
+		_ros	<< "template < class t_TyTraits >\nextern ";
+		_PrintTagOpStateType( _ros, 1 );
+		_ros << "\t\t" << m_pvtDfaCur->m_sStartStateName << ";\n";
+	}
+	void _GenImpTagStartState( ostream & _ros )
+	{
+		_TyDfa & rDfa = m_pvtDfaCur->m_rDfa;
+		_ros << "typedef ";
+		_PrintTagOpStateType( _ros, 1 );
+		_ros << " _Ty" << m_pvtDfaCur->m_sStartStateName << ";\n";
+		_ros << "template < class t_TyTraits > inline\n";
+		_ros << "_Ty" << m_pvtDfaCur->m_sStartStateName << " " << m_pvtDfaCur->m_sStartStateName;
+		_ros << " = {\n#ifdef LXOBJ_STATENUMBERS\n\t" << ( m_pvtDfaCur->m_rDfaCtxt.m_pgnStart->RElConst() + m_stStart ) << ",\n#endif //LXOBJ_STATENUMBERS\n\t";
+		_ros << "0, 1, 0, (" << m_sStateProtoTypedef << "*)( & ";
+		_PrintStateName( _ros, m_pvtDfaCur->m_rDfaCtxt.m_pgnStart );
+		_ros << "<t_TyTraits> ), kusOffsetTagOps, offsetof( _Ty" << m_pvtDfaCur->m_sStartStateName << ", m_rgops ), vktidInvalidIdToken,\n\t{\n";
+		_ros << "\t\t{ " << rDfa.m_nTagRegisters << ", " << ( rDfa.m_fTagSlots ? rDfa.m_rgTags.size() : size_t(0) ) << ", -1, kusTagOpStart,\n"
+			<< "\tstatic_cast< typename TGetAnalyzerBase<t_TyTraits>::_TyPMFnAccept >( &TGetAnalyzerBase<t_TyTraits>::"
+			<< ( rDfa.m_fTagSlots ? "TagRequireRegisters" : "TagRequireHistory" ) << " ) }\n";
+		_ros << "\t} };\n";
 	}
 	void	_GenStateType(	ostream & _ros, _TyGraphNode * _pgn, 
 												int _nOuts, bool _fAccept, bool & _rfIsTriggerAction, bool & _rfIsTriggerGateway, bool & _rIsAntiAcceptingState,
@@ -723,7 +860,9 @@ enum EGeneratorDFAOptions : uint32_t
 			}
 			else
 			{
-				_ros << ", 0 >";
+				// The triggers of an accepting state of a tagged DFA are those crossed at the end of its token.
+				const std::vector< int > * prgTagFinish = _PrgGetTagFinish( pvtAction );
+				_ros << ", " << ( prgTagFinish ? prgTagFinish->size() : size_t(0) ) << " >";
 			}
 		}
 		else
@@ -746,7 +885,7 @@ enum EGeneratorDFAOptions : uint32_t
 		_ros << "inline\n";
 		_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart ) << " ";
 		const typename _TyPartAcceptStates::value_type *	pvtAction = 0;
-		if ( _pgn == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
+		if ( _FUseStartName( _pgn ) )
 		{
 			_ros	<< m_pvtDfaCur->m_sStartStateName;
 		}
@@ -785,7 +924,9 @@ enum EGeneratorDFAOptions : uint32_t
 		}
 		else
 		{
-			_ros << "0, ";
+			// The triggers of an accepting state of a tagged DFA are those crossed at the end of its token.
+			const std::vector< int > * prgTagFinish = _PrgGetTagFinish( pvtAction );
+			_ros << ( prgTagFinish ? prgTagFinish->size() : size_t(0) ) << ", ";
 		}
 
 		if ( _fAccept )
@@ -837,7 +978,7 @@ enum EGeneratorDFAOptions : uint32_t
 		{
 			// Then the first transition is the trigger:
 			_ros << "(" << m_sStateProtoTypedef << "*)( & ";
-			if ( (*(_pgn->PPGLChildHead()))->PGNChild() == m_pvtDfaCur->m_rDfaCtxt.m_pgnStart )
+			if ( _FUseStartName( (*(_pgn->PPGLChildHead()))->PGNChild() ) )
 			{
 				_ros	<< m_pvtDfaCur->m_sStartStateName << "<t_TyTraits>";
 			}
@@ -869,7 +1010,7 @@ enum EGeneratorDFAOptions : uint32_t
 			{
 				_ros << "\n\t0, "; 
 			}
-			if ( pvtAction->second.m_eaatType & e_aatTrigger )
+			if ( ( pvtAction->second.m_eaatType & e_aatTrigger ) || !!_PrgGetTagFinish( pvtAction ) )
 			{
 				_ros << "\n\toffsetof( ";
 				_ros << "_Ty" << m_sBaseStateName << ( _pgn->RElConst() + m_stStart );
@@ -912,7 +1053,7 @@ enum EGeneratorDFAOptions : uint32_t
 				_CharOut( _ros, r.second );
 
 				_ros << ", (" << m_sStateProtoTypedef << "*)( & ";
-				if ( m_pvtDfaCur->m_rDfaCtxt.m_pgnStart == lpi.PGNChild() )
+				if ( _FUseStartName( lpi.PGNChild() ) )
 				{
 					_ros << m_pvtDfaCur->m_sStartStateName;
 					if ( !m_pvtDfaCur->FDontTemplatizeStates() )
@@ -1086,6 +1227,19 @@ enum EGeneratorDFAOptions : uint32_t
 			}
 			_ros << "\n\t}";
 		}
+		else
+		if ( const std::vector< int > * prgTagFinish = _PrgGetTagFinish( pvtAction ) )
+		{
+			// An accepting state of a tagged DFA: the triggers crossed at the end of its token, in the order crossed.
+			_ros << ",\n\t{";
+			for ( size_t nTag = 0; nTag < prgTagFinish->size(); ++nTag )
+			{
+				_PrintTagActionMFnP( _ros, (*prgTagFinish)[ nTag ] );
+				if ( nTag + 1 < prgTagFinish->size() )
+					_ros << ",";
+			}
+			_ros << "\n\t}";
+		}
 		_ros << " };\n";
 		
 	}
@@ -1099,8 +1253,13 @@ enum EGeneratorDFAOptions : uint32_t
 			_TyGraphNode *	pgn = static_cast< _TyGraphNode * >( *nit );
 			int	nOuts = pgn->UChildren();	// We could record this earlier - like during both creation and optimization.
 			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( (size_t)pgn->RElConst() );// truncation ok here - we can't have a bitvector with > 4GB bits.
-			_GenHeaderState( _rosHeader, pgn, nOuts, fAccept );
+			if ( _FIsTagOpState( pgn ) )
+				_GenHeaderTagOpState( _rosHeader, pgn );
+			else
+				_GenHeaderState( _rosHeader, pgn, nOuts, fAccept );
 		}
+		if ( m_pvtDfaCur->m_rDfa.m_fTagged )
+			_GenHeaderTagStartState( _rosHeader );
 		_rosHeader << "\n";
 	}
 	void	_GenStateDefinitions( ostream & _rosHeader )
@@ -1112,8 +1271,13 @@ enum EGeneratorDFAOptions : uint32_t
 			_TyGraphNode *	pgn = static_cast< _TyGraphNode * >( *nit );
 			int	nOuts = pgn->UChildren();	// We could record this earlier - like during both creation and optimization.
 			bool	fAccept = m_pvtDfaCur->m_rDfaCtxt.m_pssAccept->isbitset( (size_t)pgn->RElConst() ); // truncation ok here - we can't have a bitvector with > 4GB bits.
-			_GenImpState( _rosHeader, pgn, nOuts, fAccept );
+			if ( _FIsTagOpState( pgn ) )
+				_GenImpTagOpState( _rosHeader, pgn );
+			else
+				_GenImpState( _rosHeader, pgn, nOuts, fAccept );
 		}
+		if ( m_pvtDfaCur->m_rDfa.m_fTagged )
+			_GenImpTagStartState( _rosHeader );
 		_rosHeader << "\n";
 	}
 };
