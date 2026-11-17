@@ -281,8 +281,7 @@ public:
     _TyUserContext ucxt( _ruoUserObj, m_frrFileDesBuffer.PosBase(), _TyBuffer( nLenToken ) );
     // This method ends the current token at _kdpEndToken - this causes some housekeeping within this object.
     m_frrFileDesBuffer.ConsumeData( ucxt.GetTokenBuffer().begin(), ucxt.GetTokenBuffer().length() );
-    unique_ptr< t_TyToken > upToken = make_unique< t_TyToken >( std::move( ucxt ), std::move( _rvalue ), _paobCurToken );
-    upToken.swap( _rupToken );
+    _l_token_set( _rupToken, std::move( ucxt ), std::move( _rvalue ), _paobCurToken );
   }
   _TyTransportCtxt CtxtEatCurrentToken( const vtyDataPosition _kdpEndToken )
   {
@@ -619,8 +618,7 @@ public:
       SwitchEndian( ucxt.GetTokenBuffer().begin(), ucxt.GetTokenBuffer().end() );
     m_bufCurrentToken.RCharP() += nLenToken;
     m_bufCurrentToken.RLength() = 0;
-    unique_ptr< t_TyToken > upToken = make_unique< t_TyToken >( std::move( ucxt ), std::move( _rvalue ), _paobCurToken );
-    upToken.swap( _rupToken );
+    _l_token_set( _rupToken, std::move( ucxt ), std::move( _rvalue ), _paobCurToken );
   }
   _TyTransportCtxt CtxtEatCurrentToken( const vtyDataPosition _kdpEndToken )
   {
@@ -1164,8 +1162,7 @@ public:
         typedef typename _TyUserContext::_TyUserObj _TyUserObj;
         static_assert( is_same_v< t_TyUserObj, _TyUserObj > );
         _TyUserContext ucxt( _ruoUserObj, _transport.CtxtEatCurrentToken( _kdpEndToken ) ); // move it right on in - this negates the need for a default constructor.
-        unique_ptr< t_TyToken > upToken = make_unique< t_TyToken >( std::move( ucxt ), std::move( _rvalue ), _paobCurToken );
-        upToken.swap( _rupToken );
+        _l_token_set( _rupToken, std::move( ucxt ), std::move( _rvalue ), _paobCurToken );
       }
     }, m_var );
   }

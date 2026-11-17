@@ -375,4 +375,49 @@ TEST( LexangDfaOperators, LookaheadTokenMustNotBeEmpty )
 	EXPECT_NO_THROW( TestDfa( _TyFinal( ++l(u8'x') / ~l(u8'y') ), true ) );
 }
 
+
+// LogArray<> with the per-thread free list ( as used by _l_value<> and _l_data<> ): the first block of an array is reused
+//	after the array is destroyed and growing to multiple blocks and shrinking back works as usual.
+TEST( LogArrayFreeList, FirstBlockIsReusedAndArraysWork )
+{
+	typedef LogArray< std::string, 2, 4, true > TyLogArray;
+	const void * pvFirstBlock = nullptr;
+	{
+		TyLogArray la;
+		la.emplaceAtEnd( "a" );
+		pvFirstBlock = &la[0];
+	}
+	{
+		TyLogArray la;
+		la.emplaceAtEnd( "b" );
+		EXPECT_EQ( (const void *)&la[0], pvFirstBlock ); // The freed first block was reused.
+	}
+	// Grow well beyond a single block, shrink back to a single block, then clear - repeatedly.
+	for ( size_t nRep = 0; nRep < 50; ++nRep )
+	{
+		TyLogArray la;
+		const size_t knEls = 1 + nRep * 7;
+		for ( size_t n = 0; n < knEls; ++n )
+			la.emplaceAtEnd( std::to_string( n ) );
+		ASSERT_EQ( la.NElements(), knEls );
+		for ( size_t n = 0; n < knEls; ++n )
+			ASSERT_EQ( la[n], std::to_string( n ) );
+		if ( knEls > 3 )
+		{
+			la.SetSize( 3 );
+			ASSERT_EQ( la.NElements(), size_t(3) );
+			EXPECT_EQ( la[2], "2" );
+			la.emplaceAtEnd( "x" );
+			EXPECT_EQ( la[3], "x" );
+		}
+		TyLogArray laCopy( la );
+		EXPECT_EQ( laCopy.NElements(), la.NElements() );
+		// A copy to an array without the free list.
+		LogArray< std::string, 2, 4 > laNoFreeList( la );
+		EXPECT_EQ( laNoFreeList.NElements(), la.NElements() );
+		if ( nRep % 2 )
+			la.Clear();
+	}
+}
+
 } // namespace ns_lexangtest

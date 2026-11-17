@@ -317,6 +317,18 @@ protected:
   vtyTokenIdent m_tidAccept{vktidInvalidIdToken}; // token id.
 };
 
+// Set the token in _rupToken to a token constructed from the passed arguments.
+// If _rupToken already contains a token then we reuse it, otherwise we allocate one. Reusing a token saves allocating
+//  ( and freeing ) a token object for each token found by the lexical analyzer - see _l_analyzer<>::FGetToken().
+template < class t_TyToken, class t_TyUserContext, class t_TyValue, class t_TyAxnObjBase >
+void _l_token_set( unique_ptr< t_TyToken > & _rupToken, t_TyUserContext && _rrucxt, t_TyValue && _rrvalue, const t_TyAxnObjBase * _paobCurToken )
+{
+  if ( !!_rupToken )
+    *_rupToken = t_TyToken( std::move( _rrucxt ), std::move( _rrvalue ), _paobCurToken ); // move assignment: no allocation.
+  else
+    _rupToken = make_unique< t_TyToken >( std::move( _rrucxt ), std::move( _rrvalue ), _paobCurToken );
+}
+
 __LEXOBJ_END_NAMESPACE
 
 namespace std

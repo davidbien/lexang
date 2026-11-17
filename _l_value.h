@@ -88,7 +88,8 @@ public:
   typedef typename _TySegArrayValues::_tySizeType size_type;
 #else // !_L_VALUE_USE_SEGARRAY
   // Use the LogArray<> instead as it is more stingy on memory.
-  typedef LogArray< _TyThis, 2, 4 > _TySegArrayValues;
+  // Values are created and destroyed for every token so the small arrays come from a per-thread free list.
+  typedef LogArray< _TyThis, 2, 4, true > _TySegArrayValues;
   typedef size_t size_type;
 #endif // !_L_VALUE_USE_SEGARRAY
   // These are the possible values of a action object.

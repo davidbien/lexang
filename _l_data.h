@@ -152,7 +152,8 @@ public:
   typedef _TySegArray::_tySizeType size_type;
   static constexpr size_t s_knSegArrayInit = s_knbySegSize;
 #else //!_L_DATA_USE_SEGARRAY
-  typedef LogArray< _l_data_typed_range, 2, 3 > _TySegArray;
+  // Data is created and destroyed for every token so the small arrays come from a per-thread free list.
+  typedef LogArray< _l_data_typed_range, 2, 3, true > _TySegArray;
   typedef size_t size_type;
 #endif //!_L_DATA_USE_SEGARRAY
 

@@ -46,6 +46,49 @@ template < vtyTokenIdent t_ktid, vtyTokenIdent t_ktidTriggerEnd0, vtyTokenIdent 
 using TyTestTokenWithTwoStrings = _l_action_token< _l_action_save_data_single< t_ktid,
 	TyTestTriggerString< t_ktidTriggerEnd0, t_ktidTriggerBegin0, t_fInLexGen >, TyTestTriggerString< t_ktidTriggerEnd1, t_ktidTriggerBegin1, t_fInLexGen > > >;
 
+// A token whose action rejects every token it matches - the matched input is then skipped.
+template < class t_TyTraits, vtyTokenIdent t_ktid, bool t_fInLexGen >
+struct TestRejectNoop : public _l_trigger_noop< t_TyTraits, t_ktid, t_fInLexGen >
+{
+	typedef _l_trigger_noop< t_TyTraits, t_ktid, t_fInLexGen > _TyBase;
+	using typename _TyBase::_TyActionObjectBase;
+	TestRejectNoop() = default;
+	TestRejectNoop( _TyActionObjectBase * _paobNext )
+		: _TyBase( _paobNext )
+	{
+	}
+	void RenderActionType( ostream & _ros, const char * _pcTraitsName ) const
+	{
+		return StaticRenderActionType( _ros, _pcTraitsName );
+	}
+	void RenderActionType( stringstream & _ros, const char * _pcTraitsName ) const
+	{
+		return StaticRenderActionType( _ros, _pcTraitsName );
+	}
+	template < class t_TyOStream >
+	static void StaticRenderActionType( t_TyOStream & _ros, const char * _pcTraitsName )
+	{
+		_ros << "ns_lexangtest::TestRejectNoop< " << _pcTraitsName << ", " << t_ktid << ", false >";
+	}
+	string VStrTypeName( const char * _pcTraitsName ) const
+	{
+		return StaticStrTypeName( _pcTraitsName );
+	}
+	static string StaticStrTypeName( const char * _pcTraitsName )
+	{
+		std::stringstream ss;
+		StaticRenderActionType( ss, _pcTraitsName );
+		return ss.str();
+	}
+	template < class t_TyAnalyzer >
+	bool action( t_TyAnalyzer & _rA )
+	{
+		return false;
+	}
+};
+template < vtyTokenIdent t_ktid, bool t_fInLexGen = true >
+using TyTestTokenReject = _l_action_token< TestRejectNoop< TyTestLexTraits, t_ktid, t_fInLexGen > >;
+
 // Trigger identifiers: these are shared by all of the grammars.
 static const vtyTokenIdent s_ktidTriggerABegin = 1;
 static const vtyTokenIdent s_ktidTriggerAEnd = 2;

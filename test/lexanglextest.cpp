@@ -44,6 +44,7 @@ typedef std::allocator< char >	_TyDefaultAllocator;
 #include "_lexangtest_lookaheadrandom.h"
 #include "_lexangtest_lookaheadprecfwd.h"
 #include "_lexangtest_lookaheadprecrev.h"
+#include "_lexangtest_reject.h"
 #include "_lexangtest_multi.h"
 #include "gtest/gtest.h"
 
@@ -165,7 +166,9 @@ TokenizeResult Tokenize( const char * _psz, const typename t_TyAnalyzer::_TyStat
 		}
 	}
 	analyzer.ClearTokenData();
-	tr.m_strRemaining = strInput.substr( stPosEndLast );
+	// The remaining input starts where the lexical analyzer failed to find a token - after any skipped input.
+	(void)stPosEndLast;
+	tr.m_strRemaining = strInput.substr( (size_t)analyzer.GetStream().PosTokenStart() );
 	return tr;
 }
 
@@ -622,6 +625,58 @@ TEST( LexangBasic, IgnoreTokens )
 		ASSERT_LE( rgtidFound.size(), strInput.length() );
 	}
 	EXPECT_EQ( rgtidFound, ( std::vector< vtyTokenIdent >{ s_ktidToken0, s_ktidToken1, s_ktidToken2 } ) );
+}
+
+typedef ns_ltreject::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerReject;
+
+// reject: Token0: "skip" whose action always rejects the token, Token1: word, Token2: spaces.
+// A rejected token's input is skipped and we go on to the next token - with FGetToken() as with FGetTokens().
+TEST( LexangReject, RejectedTokenIsSkipped )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerReject >( "a skip b" ),
+		Expect( { { s_ktidToken1, "a" }, { s_ktidToken2, " " }, { s_ktidToken2, " " }, { s_ktidToken1, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerReject >( "skip" ), Expect( {} ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerReject >( "skipskip ab" ), Expect( { { s_ktidToken1, "skipskip" }, { s_ktidToken2, " " }, { s_ktidToken1, "ab" } } ) );
+	{//B FGetTokens() gives the same.
+		const std::basic_string< TyTestChar > strInput( u8"a skip b" );
+		TyAnalyzerReject analyzer;
+		analyzer.emplaceTransport( strInput.c_str(), strInput.length() );
+		std::vector< vtyTokenIdent > rgtid;
+		EXPECT_TRUE( analyzer.FGetTokens( [&rgtid]( std::unique_ptr< TyAnalyzerReject::_TyToken > & _rupToken ) { rgtid.push_back( _rupToken->GetTokenId() ); return true; } ) );
+		EXPECT_EQ( rgtid, ( std::vector< vtyTokenIdent >{ s_ktidToken1, s_ktidToken2, s_ktidToken2, s_ktidToken1 } ) );
+	}//EB
+	{//B With _fThrowOnNoToken we don't throw for a rejected token.
+		const std::basic_string< TyTestChar > strInput( u8"skip a" );
+		TyAnalyzerReject analyzer;
+		analyzer.emplaceTransport( strInput.c_str(), strInput.length() );
+		std::unique_ptr< TyAnalyzerReject::_TyToken > upToken;
+		EXPECT_NO_THROW( EXPECT_TRUE( analyzer.FGetToken( upToken, nullptr, nullptr, nullptr, true ) ) );
+		EXPECT_EQ( upToken->GetTokenId(), s_ktidToken2 );
+	}//EB
+}
+
+// A token passed into FGetToken() is reused for the token found - and is left as it was when no token is found.
+TEST( LexangBasic, TokenObjectIsReused )
+{
+	const std::basic_string< TyTestChar > strInput( u8"if x1 ?" );
+	TyAnalyzerBasic analyzer;
+	analyzer.emplaceTransport( strInput.c_str(), strInput.length() );
+	std::unique_ptr< TyAnalyzerBasic::_TyToken > upToken;
+	ASSERT_TRUE( analyzer.FGetToken( upToken ) );
+	const TyAnalyzerBasic::_TyToken * ptokFirst = upToken.get();
+	EXPECT_EQ( upToken->GetTokenId(), s_ktidToken0 );
+	std::vector< std::pair< vtyTokenIdent, std::string > > rgFound;
+	while ( analyzer.FGetToken( upToken ) )
+	{
+		EXPECT_EQ( upToken.get(), ptokFirst ); // The same token object.
+		_l_data_range dr;
+		upToken->GetTokenDataRange( dr );
+		rgFound.push_back( { upToken->GetTokenId(), std::string( strInput.begin() + dr.begin(), strInput.begin() + dr.end() ) } );
+	}
+	EXPECT_EQ( rgFound, ( std::vector< std::pair< vtyTokenIdent, std::string > >{ { s_ktidToken3, " " }, { s_ktidToken1, "x1" }, { s_ktidToken3, " " } } ) );
+	// No token at "?": the last token remains.
+	ASSERT_TRUE( !!upToken );
+	EXPECT_EQ( upToken->GetTokenId(), s_ktidToken3 );
 }
 
 // _l_match<> matches a string against a DFA of a generated lexical analyzer without an analyzer object.

@@ -377,6 +377,25 @@ GenerateLookaheadPrecedence( bool _fReverse )
 	GenerateHeader( dfa, dctxt, _fReverse ? "lookaheadprecrev" : "lookaheadprecfwd" );
 }
 
+// reject: a rule whose action rejects the token - Token0: "skip" ( always rejected ), Token1: word, Token2: spaces.
+void
+GenerateReject()
+{
+	_TyFinal Skip = ls(u8"skip");
+	_TyFinal Word = ++lr(u8'a',u8'z');
+	_TyFinal Spaces = ++l(u8' ');
+	Skip.SetAction( TyTestTokenReject< s_ktidToken0 >() );
+	Word.SetAction( TyTestToken< s_ktidToken1 >() );
+	Spaces.SetAction( TyTestToken< s_ktidToken2 >() );
+	_TyFinal All( Skip );
+	All.AddRule( Word );
+	All.AddRule( Spaces );
+	_TyDfa dfa;
+	_TyDfaCtxt dctxt( dfa );
+	GenDfa( All, dfa, dctxt );
+	GenerateHeader( dfa, dctxt, "reject" );
+}
+
 // multi: more than one DFA in a single generated lexical analyzer - each has its own start state.
 void
 GenerateMulti()
@@ -431,6 +450,7 @@ main( int argc, char ** argv )
 		ns_lexangtest::GenerateLookaheadRandom();
 		ns_lexangtest::GenerateLookaheadPrecedence( false );
 		ns_lexangtest::GenerateLookaheadPrecedence( true );
+		ns_lexangtest::GenerateReject();
 		ns_lexangtest::GenerateMulti();
 		return 0;
 	}

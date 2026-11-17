@@ -445,6 +445,9 @@ public:
   }
 
   // Just return a single token. Return false if one isn't found.
+  // If _rpuToken already contains a token then that token object is reused for the token found - its contents are replaced.
+  //  This saves allocating a token object for each token: a caller that is done with the token can just pass it back in.
+  //  If no token is found then _rpuToken is left as it was.
   // Caller can append a set of token ids to ignore while parsing. This will short-circuit things - not creating a token from the trigger data - just clearing the trigger data.
   // For instance an XML parser may be in "ignore comments and processing instructions" mode and then we would just skip those after recognizing them and move on to the next token if any.
   bool FGetToken( unique_ptr< _TyToken > & _rpuToken, vtyTokenIdent * _ptidIgnoreBegin = nullptr, vtyTokenIdent * _ptidIgnoreEnd = nullptr, const _TyStateProto *_pspStart = nullptr, bool _fThrowOnNoToken = false )
@@ -491,9 +494,9 @@ public:
             if ( ( !_ptidIgnoreBegin || ( _ptidIgnoreEnd == find( _ptidIgnoreBegin, _ptidIgnoreEnd, paobCurToken->VGetTokenId() ) ) ) &&
                  !GetStream().GetUserObj().FProcessAndFilterToken( paobCurToken, GetStream(), m_posLastAccept ) )
             {
-              unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
               // Delegate to the stream to obtain the token as it needs to get the context from the transport.
-              GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
+              // This reuses any token object that the caller passed in.
+              GetStream().GetPToken( paobCurToken, m_posLastAccept, _rpuToken );
               // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
   #ifdef LEXOBJ_STRICT
               vtyTokenIdent tidNonNull;
@@ -501,7 +504,6 @@ public:
                 "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
                 "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
   #endif //LEXOBJ_STRICT
-              _rpuToken.swap( upToken );
               return true;
             }
             else
@@ -529,8 +531,12 @@ public:
             vtyTokenIdent tidNonNull;
             VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
   #endif //LEXOBJ_STRICT
-            GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh...also very poorly defined.
+            // As with FGetTokens() we skip everything that we found and go on to the next token: returning false here would
+            //  be indistinguishable from reaching the end of the input.
             // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
+            const bool kfMatchedInput = ( m_posLastAccept > GetStream().PosTokenStart() );
+            GetStream().DiscardData( m_posLastAccept );
+            fIgnoredToken = kfMatchedInput; // Continue with the next token - unless we matched nothing: we would never move forward.
           }
         }
       }
@@ -547,12 +553,15 @@ public:
   }
 
   // Keep getting tokens until we hit eof or the callback method returns false.
+  // The callback receives a unique_ptr<> to the token: it may take ownership of the token by moving it out. If it doesn't
+  //  then the token object is reused for the next token.
   // If we process things as much as possible - i.e. get tokens until we are supposed to, then we return true and _pspStateFailing is set to nullptr.
   // If we encounter a state where we cannot move forward on input then we return false. The current state is then still set to the state from which we were unable to continue.
   template < class t_tyCallback >
   bool FGetTokens( t_tyCallback _callback, const _TyStateProto *_pspStart = nullptr )
   {
     Assert( GetStream().FAtTokenStart() ); // We shouldn't be mid-token.
+    unique_ptr< _TyToken > upToken; // Reused for each token unless the callback takes ownership of it.
     do
     {
       _InitGetToken( _pspStart );
@@ -579,7 +588,6 @@ public:
           if ( (this->*pmfnAccept)() )
           {
             VerifyThrowSz( PGetToken(), "No token after calling the accept action. The token accept action method must set an action object pointer to a member action object as the token." );
-            unique_ptr< _TyToken > upToken; // We could use a shared_ptr but this seems sufficient at least for now.
             _TyAxnObjValueBase * paobCurToken = static_cast< _TyAxnObjValueBase * >( PGetToken() );
             SetToken(nullptr);
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
