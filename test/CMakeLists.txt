@@ -3,6 +3,7 @@
 # lexangdfatest: Google test based unit tests of the creation of DFAs from regular expressions - see lexangdfatest.cpp.
 # lexangtestgen: Generates a lexical analyzer for each of a set of test grammars - see lexangtestgen.cpp.
 # lexanglextest: Google test based unit tests which use the generated lexical analyzers - see lexanglextest.cpp.
+# lexangtagexclusion: worked examples of pattern exclusion with triggers - see lexangtagexclusion.cpp.
 
 include(GoogleTest)
 
@@ -55,3 +56,13 @@ target_compile_definitions( lexanglextest
   PUBLIC TRACESENABLED=0
 )
 gtest_discover_tests(lexanglextest)
+
+# Worked examples of pattern exclusion combined with triggers in a tagged DFA, with the semantics chosen and why.
+#  It checks the results it documents - see lexangtagexclusion.cpp.
+add_executable (lexangtagexclusion lexangtagexclusion.cpp lexangtest_gen.h lexangtest_types.h lexangtest_tag.h )
+target_link_libraries(lexangtagexclusion lexang)
+target_compile_definitions( lexangtagexclusion
+  PUBLIC __NDEBUG_THROW
+  PUBLIC TRACESENABLED=0
+)
+add_test(NAME LexangTagExclusion COMMAND lexangtagexclusion)
