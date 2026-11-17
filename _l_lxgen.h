@@ -235,7 +235,8 @@ enum EGeneratorDFAOptions : uint32_t
 								const t_TyCharOut * _pcStartStateName,
 								uint32_t _grfGeneratorDFAOptions = 0 )
 	{
-		m_lDfaGen.push_back( _TyGenDfa( _rDfa, _rDfaCtxt, 
+		_CheckTriggerAmbiguity( _rDfa, _rDfaCtxt, _pcStartStateName );
+		m_lDfaGen.push_back( _TyGenDfa( _rDfa, _rDfaCtxt,
 																		_pcStartStateName, _grfGeneratorDFAOptions,
                                     m_mapActions.get_allocator() ) );
 		m_fLookaheads = m_fLookaheads || _rDfa.m_fHasLookaheads;
@@ -249,6 +250,41 @@ enum EGeneratorDFAOptions : uint32_t
 			m_lDfaGen.push_back( _TyGenDfa( itRev->second->m_dfa, itRev->second->m_dctxt, strStartReverse.c_str(), 
 																			_TyGenDfa::GrfDontTemplatizeStates(), m_mapActions.get_allocator() ) );
 		}
+	}
+	// Throw if the position of any trigger in the DFA is ambiguous - see _dfa_context<>::GetTriggerAmbiguities().
+	// The generated lexical analyzer would never fire such a trigger on the shared character(s) and so may not recognize
+	//	input that the rules match.
+	void _CheckTriggerAmbiguity( _TyDfa & _rDfa, _TyDfaCtxt & _rDfaCtxt, const t_TyCharOut * _pcStartStateName )
+	{
+		if ( !_rDfa.m_nTriggers )
+			return;
+		std::vector< typename _TyDfaCtxt::_TyTriggerAmbiguity > rgta;
+		_rDfaCtxt.GetTriggerAmbiguities( rgta );
+		if ( rgta.empty() )
+			return;
+		std::string strDetails;
+		const size_t knReport = (std::min)( rgta.size(), size_t( 5 ) );
+		for ( size_t n = 0; n < knReport; ++n )
+		{
+			std::string str;
+			std::string strExample;
+			for ( auto c : rgta[n].m_rgExample )
+			{
+				std::string strC;
+				if ( ( c > 32 ) && ( c < 127 ) )
+					PrintfStdStr( strC, "%c", (char)c );
+				else
+					PrintfStdStr( strC, "\\x%llx", (unsigned long long)c );
+				strExample += strC;
+			}
+			PrintfStdStr( str, "%s[state %lld, trigger token id %d, state beyond trigger %lld, characters 0x%llx-0x%llx, then e.g. \"%s\"]", n ? ", " : "",
+				(long long)rgta[n].m_stState, (int)rgta[n].m_tidTrigger, (long long)rgta[n].m_stStateTrigger,
+				(unsigned long long)rgta[n].m_rngChar.first, (unsigned long long)rgta[n].m_rngChar.second, strExample.c_str() );
+			strDetails += str;
+		}
+		VerifyThrowSz( false, "DFA [%s]: [%zu] ambiguous trigger position(s): the lexical analyzer consumes a character rather than crossing a trigger, "
+			"so input that the rules only match by crossing the trigger before that character is not recognized ( or is recognized as a different token ). "
+			"Change the rules so that the characters that follow a trigger cannot also continue the input before it. %s%s", _pcStartStateName, rgta.size(), strDetails.c_str(), rgta.size() > knReport ? ", ..." : "" );
 	}
 	// The name of the start state of the DFA matching the trailing context in reverse for the lookahead rule whose
 	//	lookahead state has the action id _aiLookahead in the DFA whose start state is named _pcStartStateName.

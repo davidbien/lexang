@@ -420,4 +420,67 @@ TEST( LogArrayFreeList, FirstBlockIsReusedAndArraysWork )
 	}
 }
 
+
+// Trigger ambiguity: the lexical analyzer consumes a character rather than crossing a trigger.
+static std::vector< _TyDfaCtxt::_TyTriggerAmbiguity > GetTriggerAmbiguities( _TyFinal const & _rFinal )
+{
+	_TyDfa dfa;
+	_TyDfaCtxt dctxt( dfa );
+	GenDfa( _rFinal, dfa, dctxt );
+	std::vector< _TyDfaCtxt::_TyTriggerAmbiguity > rgta;
+	dctxt.GetTriggerAmbiguities( rgta );
+	return rgta;
+}
+static std::string StrExample( _TyDfaCtxt::_TyTriggerAmbiguity const & _rta )
+{
+	return std::string( _rta.m_rgExample.begin(), _rta.m_rgExample.end() );
+}
+
+TEST( LexangTriggerAmbiguity, MatchIsLost )
+{
+	// <a*<trigger>ab - for "<aab" the trigger must be crossed after the first 'a' but the analyzer consumes both 'a's.
+	std::vector< _TyDfaCtxt::_TyTriggerAmbiguity > rgta = GetTriggerAmbiguities( _TyFinal( l(u8'<') * ~l(u8'a') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) * l(u8'a') * l(u8'b') ) );
+	ASSERT_FALSE( rgta.empty() );
+	EXPECT_EQ( rgta[0].m_tidTrigger, s_ktidTriggerABegin );
+	EXPECT_EQ( rgta[0].m_rngChar.first, (_TyDfaCtxt::_TyRangeEl)u8'a' );
+	EXPECT_EQ( StrExample( rgta[0] ), "b" );
+}
+
+TEST( LexangTriggerAmbiguity, MatchIsChangedToAnotherToken )
+{
+	// Token0: <a+<trigger>ab, Token1: <a+b. For "<aab" the rules intend Token0 but the analyzer finds Token1.
+	_TyFinal Rule0 = l(u8'<') * ++l(u8'a') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) * l(u8'a') * l(u8'b');
+	_TyFinal Rule1 = l(u8'<') * ++l(u8'a') * l(u8'b');
+	Rule0.SetAction( TyTestToken< s_ktidToken0 >() );
+	Rule1.SetAction( TyTestToken< s_ktidToken1 >() );
+	_TyFinal All( Rule0 );
+	All.AddRule( Rule1 );
+	std::vector< _TyDfaCtxt::_TyTriggerAmbiguity > rgta = GetTriggerAmbiguities( All );
+	ASSERT_FALSE( rgta.empty() );
+	EXPECT_EQ( StrExample( rgta[0] ), "b" );
+}
+
+TEST( LexangTriggerAmbiguity, NothingLostIsNotReported )
+{
+	// As the XML CharData: the trigger could be crossed after any letter, but not crossing it loses nothing.
+	EXPECT_TRUE( GetTriggerAmbiguities( _TyFinal( l(u8'<') * ++( ++lr(u8'a',u8'z') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) ) * l(u8'>') ) ).empty() );
+	// The characters after the trigger can't continue the input before it.
+	EXPECT_TRUE( GetTriggerAmbiguities( _TyFinal( l(u8'<') * ++lr(u8'a',u8'z') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) * l(u8'=') * ++lr(u8'0',u8'9') ) ).empty() );
+	// Triggers on both sides of a token's content, as used by the trigger tests.
+	EXPECT_TRUE( GetTriggerAmbiguities( _TyFinal( l(u8'"') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) * ~lr(u8'a',u8'z') 
+		* t( TyTestTriggerString< s_ktidTriggerAEnd, s_ktidTriggerABegin >() ) * l(u8'"') ) ).empty() );
+}
+
+// The generator refuses to generate a lexical analyzer with an ambiguous trigger.
+TEST( LexangTriggerAmbiguity, GeneratorThrows )
+{
+	_TyFinal Rule = l(u8'<') * ~l(u8'a') * t( TyTestTriggerPosition< s_ktidTriggerABegin >() ) * l(u8'a') * l(u8'b');
+	Rule.SetAction( TyTestToken< s_ktidToken0 >() );
+	_TyDfa dfa;
+	_TyDfaCtxt dctxt( dfa );
+	GenDfa( Rule, dfa, dctxt );
+	_l_generator< _TyDfa, char > gen( egfdStandaloneGenerator, "_lexangtest_ambiguous_notgenerated.h", "LTAMBIG", true, "ns_ltambig", "stateambig", "char8_t", "u8'", "'" );
+	EXPECT_THROW( gen.add_dfa( dfa, dctxt, "start" ), std::exception );
+}
+
 } // namespace ns_lexangtest

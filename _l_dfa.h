@@ -10,6 +10,8 @@
 
 // This module declares DFA types.
 
+#include <unordered_map>
+#include <algorithm>
 #include "_l_ns.h"
 
 __REGEXP_BEGIN_NAMESPACE
@@ -1093,6 +1095,185 @@ public:
 		RDfa()._ClearSSCache();	// Clear any SS cache's - they are at the old size.
 
 		Assert( RDfa().m_nodeLookup.size() == m_pssAccept->size() );
+	}
+
+	// Trigger ambiguity:
+	// At runtime a trigger transition is taken only when no character transition from the current state matches the
+	//	current character - the lexical analyzer always prefers consuming a character to crossing a trigger. When the
+	//	character transitions of a state and those of the state(s) reached by crossing its trigger(s) share a character
+	//	the trigger is never crossed on that character. Often that loses nothing: for instance for ++( [a-z] <trigger> )
+	//	every input matched by crossing the trigger early is matched just as well by not crossing it - the trigger just
+	//	fires fewer times. But it can lose a match: for instance a* <trigger> a b against "aab" - the trigger must be
+	//	crossed after the first 'a' but the analyzer consumes both 'a's and then can't match the 'b'.
+	// This finds the latter: a state X, a character c that X consumes and that a state Y beyond X's trigger(s) also
+	//	consumes, such that there is some input following c which, starting from Y, the analyzer accepts as a token but
+	//	which, starting from X ( as the analyzer actually proceeds ), it doesn't accept or accepts as a different token.
+	// We explore pairs of states ( alternative, actual ) moving forward in lock step on the elements of the alphabet,
+	//	moving each as the analyzer does: by the state's character transition if it has one, else by following its trigger(s).
+	// The alphabet must not have been compressed further than CompressTransitions() does - we use the alphabet's ranges.
+	typedef typename _TyDfa::_TyRange _TyRange;
+	typedef typename _TyDfa::_TyRangeEl _TyRangeEl;
+	struct _TyTriggerAmbiguity
+	{
+		_TyState m_stState; // The state X: the analyzer consumes m_rngChar here.
+		_TyState m_stStateTrigger; // The state Y beyond X's trigger(s) which also consumes m_rngChar.
+		vtyTokenIdent m_tidTrigger; // The token id of the first trigger crossed from X - vktidInvalidIdToken if unknown.
+		_TyRange m_rngChar; // The character(s) consumed by both.
+		std::vector< _TyRangeEl > m_rgExample; // An example of the input following m_rngChar which is lost or changed.
+	};
+	void GetTriggerAmbiguities( std::vector< _TyTriggerAmbiguity > & _rrgta )
+	{
+		_rrgta.clear();
+		_TyDfa & rDfa = RDfa();
+		rDfa._CreateRangeLookup();
+		const size_t knStates = (size_t)rDfa.NStates();
+		auto fIsTrigger = []( _TyRange const & _rr ) { return ( _rr.first >= _TyDfa::ms_kreTriggerStart ) && ( _rr.first < _TyDfa::ms_kreUnsatisfiableStart ); };
+		auto fIsChar = []( _TyRange const & _rr ) { return _rr.first < _TyDfa::ms_kreTriggerStart; };
+		// The atoms of the alphabet: the character ranges in the alphabet. Each transition is on a range which is a union of atoms.
+		std::vector< _TyRange > rgAtoms;
+		for ( size_t n = 0; n < rDfa.AlphabetSize(); ++n )
+		{
+			_TyRange const & rr = rDfa.m_rgrngLookup[ n ];
+			if ( fIsChar( rr ) && !( !rr.first && !rr.second ) )
+				rgAtoms.push_back( rr );
+		}
+		const size_t knAtoms = rgAtoms.size();
+		const int64_t kiNone = -1;
+		// For each state: its character transition on each atom, its trigger transition and the token of the accepting state.
+		std::vector< int64_t > rgCharNext( knStates * knAtoms, kiNone );
+		std::vector< int64_t > rgTriggerNext( knStates, kiNone );
+		std::vector< vtyTokenIdent > rgTriggerTid( knStates, vktidInvalidIdToken );
+		std::vector< const void * > rgAccept( knStates, nullptr ); // The accept partition element - null if not accepting or anti-accepting.
+		for ( auto itPart = m_partAccept.begin(); itPart != m_partAccept.end(); ++itPart )
+		{
+			const bool kfAnti = ( e_aatAntiAccepting == ( itPart->second.m_eaatType & ~e_aatTrigger ) );
+			_TySetStates const & rss = itPart->first.RObject();
+			for ( size_t st = rss.getfirstset(); rss.size() != st; st = rss.getnextset( st ) )
+				if ( st < knStates )
+					rgAccept[ st ] = kfAnti ? nullptr : &*itPart;
+		}
+		for ( size_t st = 0; st < knStates; ++st )
+		{
+			_TyGraphNode * pgn = rDfa.PGNGetNode( (_TyState)st );
+			if ( !pgn )
+				continue;
+			typename _TyGraph::_TyLinkPosIterNonConst lpi( pgn->PPGLChildHead() );
+			for ( ; !lpi.FIsLast(); lpi.NextChild() )
+			{
+				_TyRange r = rDfa.LookupRange( *lpi );
+				const int64_t kiChild = (int64_t)lpi.PGNChild()->RElConst();
+				if ( fIsTrigger( r ) )
+				{
+					rgTriggerNext[ st ] = kiChild;
+					auto cit = rDfa.m_mapTriggerTransitionToTokenId.find( r.first );
+					if ( rDfa.m_mapTriggerTransitionToTokenId.end() != cit )
+						rgTriggerTid[ st ] = cit->second;
+				}
+				else
+				if ( fIsChar( r ) )
+				{
+					for ( size_t a = 0; a < knAtoms; ++a )
+						if ( ( rgAtoms[ a ].first >= r.first ) && ( rgAtoms[ a ].second <= r.second ) )
+							rgCharNext[ st * knAtoms + a ] = kiChild;
+				}
+			}
+		}
+		// The state the analyzer moves to from _st on atom _a: the character transition of the first state along the
+		//	chain of trigger transitions from _st that has one.
+		auto iEffNext = [&]( int64_t _st, size_t _a ) -> int64_t
+		{
+			for ( size_t nSteps = 0; ( kiNone != _st ) && ( nSteps <= knStates ); ++nSteps, _st = rgTriggerNext[ (size_t)_st ] )
+			{
+				const int64_t kiNext = rgCharNext[ (size_t)_st * knAtoms + _a ];
+				if ( kiNone != kiNext )
+					return kiNext;
+			}
+			return kiNone;
+		};
+		// The token the analyzer finds when the input ends at _st: that of the last accepting state along the chain of
+		//	trigger transitions - which the analyzer follows when no character transition matches.
+		auto pvAcceptAt = [&]( int64_t _st ) -> const void *
+		{
+			const void * pv = nullptr;
+			for ( size_t nSteps = 0; ( kiNone != _st ) && ( nSteps <= knStates ); ++nSteps, _st = rgTriggerNext[ (size_t)_st ] )
+			{
+				if ( m_pssAccept->isbitset( (size_t)_st ) )
+					pv = rgAccept[ (size_t)_st ]; // null for an anti-accepting state: no token.
+			}
+			return pv;
+		};
+		// Explore from ( _stAlt, _stActual ): return true and the example if some input is lost or changed.
+		std::unordered_map< uint64_t, std::pair< uint64_t, size_t > > mapVisited; // pair -> ( predecessor pair, atom ).
+		std::vector< uint64_t > rgQueue;
+		auto fFindLoss = [&]( int64_t _stAlt, int64_t _stActual, std::vector< _TyRangeEl > & _rrgExample ) -> bool
+		{
+			auto key = []( int64_t _p, int64_t _q ) { return ( uint64_t( _p ) << 32 ) | uint64_t( uint32_t( _q ) ); };
+			mapVisited.clear();
+			rgQueue.clear();
+			const uint64_t kuStart = key( _stAlt, _stActual );
+			mapVisited[ kuStart ] = { kuStart, 0 };
+			rgQueue.push_back( kuStart );
+			for ( size_t nQueue = 0; nQueue < rgQueue.size(); ++nQueue )
+			{
+				const uint64_t ku = rgQueue[ nQueue ];
+				const int64_t kp = int64_t( ku >> 32 );
+				const int64_t kq = ( uint32_t( ku ) == 0xffffffff ) ? kiNone : int64_t( uint32_t( ku ) );
+				if ( kp == kq )
+					continue; // Identical from here on.
+				const void * pvAlt = pvAcceptAt( kp );
+				if ( !!pvAlt && ( pvAlt != pvAcceptAt( kq ) ) )
+				{
+					// Lost or changed: reconstruct the example input.
+					_rrgExample.clear();
+					for ( uint64_t kuCur = ku; kuCur != kuStart; )
+					{
+						auto & rpr = mapVisited[ kuCur ];
+						_rrgExample.push_back( rgAtoms[ rpr.second ].first );
+						kuCur = rpr.first;
+					}
+					std::reverse( _rrgExample.begin(), _rrgExample.end() );
+					return true;
+				}
+				for ( size_t a = 0; a < knAtoms; ++a )
+				{
+					const int64_t kpNext = iEffNext( kp, a );
+					if ( kiNone == kpNext )
+						continue; // The alternative can't continue - nothing to lose.
+					const int64_t kqNext = ( kiNone == kq ) ? kiNone : iEffNext( kq, a );
+					const uint64_t kuNext = key( kpNext, kqNext );
+					if ( mapVisited.insert( { kuNext, { ku, a } } ).second )
+						rgQueue.push_back( kuNext );
+				}
+			}
+			return false;
+		};
+		for ( size_t stX = 0; stX < knStates; ++stX )
+		{
+			if ( kiNone == rgTriggerNext[ stX ] )
+				continue;
+			std::vector< bool > rgfVisited( knStates, false );
+			rgfVisited[ stX ] = true;
+			for ( int64_t stY = rgTriggerNext[ stX ]; ( kiNone != stY ) && !rgfVisited[ (size_t)stY ]; stY = rgTriggerNext[ (size_t)stY ] )
+			{
+				rgfVisited[ (size_t)stY ] = true;
+				for ( size_t a = 0; a < knAtoms; ++a )
+				{
+					const int64_t kiActual = rgCharNext[ stX * knAtoms + a ];
+					const int64_t kiAlt = rgCharNext[ (size_t)stY * knAtoms + a ];
+					if ( ( kiNone == kiActual ) || ( kiNone == kiAlt ) )
+						continue;
+					_TyTriggerAmbiguity ta;
+					if ( fFindLoss( kiAlt, kiActual, ta.m_rgExample ) )
+					{
+						ta.m_stState = (_TyState)stX;
+						ta.m_stStateTrigger = (_TyState)stY;
+						ta.m_tidTrigger = rgTriggerTid[ stX ];
+						ta.m_rngChar = rgAtoms[ a ];
+						_rrgta.push_back( std::move( ta ) );
+					}
+				}
+			}
+		}
 	}
 
 	// Compress accept paritions that correspond to the same trigger actions.
