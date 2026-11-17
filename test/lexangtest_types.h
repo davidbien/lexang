@@ -61,5 +61,6 @@ static const vtyTokenIdent s_ktidToken4 = 1004;
 static const vtyTokenIdent s_ktidToken5 = 1005;
 static const vtyTokenIdent s_ktidToken6 = 1006;
 static const vtyTokenIdent s_ktidToken7 = 1007;
+static const vtyTokenIdent s_ktidToken8 = 1008;
 
 } // namespace ns_lexangtest

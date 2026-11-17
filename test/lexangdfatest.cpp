@@ -71,8 +71,12 @@ struct TestDfa
 		{
 			if ( it->first.RObject().isbitset( stState ) )
 			{
-				if ( e_aatAntiAccepting == it->second.m_eaatType )
+				const int eaatType = (int)it->second.m_eaatType & ~(int)e_aatTrigger;
+				if ( e_aatAntiAccepting == eaatType )
 					return s_knAntiAccept;
+				// A lookahead accept state is where the token of a lookahead rule ends - the rule itself has yet to match.
+				if ( e_aatLookaheadAccept == eaatType )
+					return s_knNoMatch;
 				return !it->second.m_pSdpAction ? s_knMatchNoToken : (int)(*it->second.m_pSdpAction)->VGetTokenId();
 			}
 		}
@@ -349,6 +353,26 @@ TEST( LexangDfaOptions, IgnoreTriggers )
 	dfas.ExpectNoMatches( { "", "<>", "<abc", "abc>", "<a>>" } );
 	// Without triggers the DFA is: start, after '<', in the name, accept.
 	EXPECT_EQ( dfas.m_dfaOptimized.NStates(), size_t(4) );
+}
+
+
+// Lookahead: the DFA matches the token followed by the trailing context - finding where the token ends is the job of
+//	the lexical analyzer and is tested in lexanglextest.cpp.
+TEST( LexangDfaOperators, Lookahead )
+{
+	TestDfaPair dfas( _TyFinal( ++lr(u8'a',u8'z') / ls(u8"::") ) );
+	dfas.ExpectMatches( { "a::", "abc::" } );
+	dfas.ExpectNoMatches( { "", "a", "a:", "::", "a:::", "a::b" } );
+}
+
+// The token portion of a lookahead rule must not match the empty string.
+TEST( LexangDfaOperators, LookaheadTokenMustNotBeEmpty )
+{
+	EXPECT_THROW( TestDfa( _TyFinal( ~l(u8'x') / ls(u8"xy") ), true ), regexp_lookahead_empty_token_exception );
+	EXPECT_THROW( TestDfa( _TyFinal( --l(u8'x') / l(u8'y') ), true ), regexp_lookahead_empty_token_exception );
+	EXPECT_NO_THROW( TestDfa( _TyFinal( ++l(u8'x') / ls(u8"xy") ), true ) );
+	// The trailing context may match the empty string.
+	EXPECT_NO_THROW( TestDfa( _TyFinal( ++l(u8'x') / ~l(u8'y') ), true ) );
 }
 
 } // namespace ns_lexangtest

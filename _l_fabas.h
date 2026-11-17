@@ -24,6 +24,10 @@ struct _create_dfa;
 template < class t_TyDfa, bool f_tPartDeadImmed = true >
 struct _optimize_dfa;
 
+// The DFA which matches the trailing context of a lookahead rule in reverse - see _l_lkahd.h.
+template < class t_TyChar, class t_TyAllocator >
+struct _dfa_lookahead_reverse;
+
 enum	EActionActionType
 {
 	e_aatNone = 0,

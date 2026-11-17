@@ -25,6 +25,7 @@ typedef std::allocator< char >	_TyDefaultAllocator;
 
 #include <string>
 #include <vector>
+#include <random>
 #include <iostream>
 #include "syslogmgr.inl"
 #include "_compat.inl"
@@ -38,6 +39,11 @@ typedef std::allocator< char >	_TyDefaultAllocator;
 #include "_lexangtest_lookaheadambig.h"
 #include "_lexangtest_lookaheadtwo.h"
 #include "_lexangtest_lookaheadoverlap.h"
+#include "_lexangtest_lookaheadsplit.h"
+#include "_lexangtest_lookaheadvar.h"
+#include "_lexangtest_lookaheadrandom.h"
+#include "_lexangtest_lookaheadprecfwd.h"
+#include "_lexangtest_lookaheadprecrev.h"
 #include "_lexangtest_multi.h"
 #include "gtest/gtest.h"
 
@@ -334,10 +340,8 @@ TEST( LexangLookaheadAmbig, LookaheadRuleMatchesLongest )
 typedef ns_ltlookaheadtwo::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadTwo;
 
 // lookaheadtwo: Token0: "a" when followed by "bc", Token1: "ab" when followed by "c", Token2: "b", Token3: "c", Token4: "a".
-// Both lookahead rules match "abc" - the earlier rule wins.
-// KNOWN FAILURE - disabled: the analyzer records only a single end-of-token position for all lookahead rules, so the
-//	position of the second rule replaces that of the first and the first rule is then not recognized.
-TEST( LexangLookaheadTwo, DISABLED_TwoLookaheadRulesInProgress )
+// Both lookahead rules match "abc" - the earlier rule wins. The analyzer must keep track of where the token of each ends.
+TEST( LexangLookaheadTwo, TwoLookaheadRulesInProgress )
 {
 	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadTwo >( "abc" ), Expect( { { s_ktidToken0, "a" }, { s_ktidToken2, "b" }, { s_ktidToken3, "c" } } ) );
 	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadTwo >( "ab" ), Expect( { { s_ktidToken4, "a" }, { s_ktidToken2, "b" } } ) );
@@ -346,15 +350,233 @@ TEST( LexangLookaheadTwo, DISABLED_TwoLookaheadRulesInProgress )
 
 typedef ns_ltlookaheadoverlap::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadOverlap;
 
-// lookaheadoverlap: Token0: any number of 'x's when followed by "xy", Token1: "x", Token2: "y".
-// The end of the token can also match the beginning of the trailing context.
-// KNOWN FAILURE - disabled: the analyzer uses the last position at which the token could have ended, which is too long
-//	when the end of the token can also be the beginning of the trailing context - as with the unix lex.
-TEST( LexangLookaheadOverlap, DISABLED_TokenEndOverlapsTrailingContext )
+// lookaheadoverlap: Token0: one or more 'x's when followed by "xy", Token1: "x", Token2: "y".
+// The end of the token can also match the beginning of the trailing context: the last point at which the token could
+//	have ended is then not where it ends - the remainder must be matched by the trailing context.
+TEST( LexangLookaheadOverlap, TokenEndOverlapsTrailingContext )
 {
 	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadOverlap >( "xxxy" ), Expect( { { s_ktidToken0, "xx" }, { s_ktidToken1, "x" }, { s_ktidToken2, "y" } } ) );
 	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadOverlap >( "xxy" ), Expect( { { s_ktidToken0, "x" }, { s_ktidToken1, "x" }, { s_ktidToken2, "y" } } ) );
 	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadOverlap >( "xx" ), Expect( { { s_ktidToken1, "x" }, { s_ktidToken1, "x" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadOverlap >( "xxxxxxy" ), Expect( { { s_ktidToken0, "xxxxx" }, { s_ktidToken1, "x" }, { s_ktidToken2, "y" } } ) );
+}
+
+// The token of a lookahead rule is never empty: "xy" is not matched by the lookahead rule.
+TEST( LexangLookaheadOverlap, TokenIsNeverEmpty )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadOverlap >( "xy" ), Expect( { { s_ktidToken1, "x" }, { s_ktidToken2, "y" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadOverlap >( "y" ), Expect( { { s_ktidToken2, "y" } } ) );
+}
+
+typedef ns_ltlookaheadsplit::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadSplit;
+
+// lookaheadsplit: Token0: "a" or "ab" when followed by "bc" or "c", Token1: one or more 'a's when followed by any
+//	number of 'a's and then a 'b', Token2: "a", Token3: "b", Token4: "c".
+// When the token could end in more than one place it is the longest token for which the rest is the trailing context.
+TEST( LexangLookaheadSplit, LongestTokenWithMatchingTrailingContext )
+{
+	// "abc" is "a" then "bc" or "ab" then "c": the token is "ab".
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "abc" ), Expect( { { s_ktidToken0, "ab" }, { s_ktidToken4, "c" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "ac" ), Expect( { { s_ktidToken0, "a" }, { s_ktidToken4, "c" } } ) );
+	// All of the 'a's may be the token since the trailing context needs only the 'b'.
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "aaab" ), Expect( { { s_ktidToken1, "aaa" }, { s_ktidToken3, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "ab" ), Expect( { { s_ktidToken1, "a" }, { s_ktidToken3, "b" } } ) );
+	// The second rule needs at least one 'a' for its token.
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "b" ), Expect( { { s_ktidToken3, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "aaa" ), Expect( { { s_ktidToken2, "a" }, { s_ktidToken2, "a" }, { s_ktidToken2, "a" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadSplit >( "aabc" ),
+		Expect( { { s_ktidToken1, "aa" }, { s_ktidToken3, "b" }, { s_ktidToken4, "c" } } ) );
+}
+
+typedef ns_ltlookaheadvar::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadVar;
+
+// lookaheadvar: Token0: a name when followed by any number of spaces and '=', Token1: "<name" when followed by '>' with
+//	the name as its value, Token2: digits when followed by "em" or '%', Token3: name, Token4: digits, Token5: spaces,
+//	Token6: one of "=>%".
+TEST( LexangLookaheadVar, VariableLengthTrailingContext )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "key=" ), Expect( { { s_ktidToken0, "key" }, { s_ktidToken6, "=" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "key   =" ), Expect( { { s_ktidToken0, "key" }, { s_ktidToken5, "   " }, { s_ktidToken6, "=" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "key   x" ), Expect( { { s_ktidToken3, "key" }, { s_ktidToken5, "   " }, { s_ktidToken3, "x" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "a = b" ),
+		Expect( { { s_ktidToken0, "a" }, { s_ktidToken5, " " }, { s_ktidToken6, "=" }, { s_ktidToken5, " " }, { s_ktidToken3, "b" } } ) );
+}
+
+TEST( LexangLookaheadVar, AlternativesInTrailingContext )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12em" ), Expect( { { s_ktidToken2, "12" }, { s_ktidToken3, "em" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12%" ), Expect( { { s_ktidToken2, "12" }, { s_ktidToken6, "%" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12px" ), Expect( { { s_ktidToken4, "12" }, { s_ktidToken3, "px" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12e" ), Expect( { { s_ktidToken4, "12" }, { s_ktidToken3, "e" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "12" ), Expect( { { s_ktidToken4, "12" } } ) );
+}
+
+// Triggers within the token of a lookahead rule record their data as usual.
+TEST( LexangLookaheadVar, TriggersInLookaheadRule )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "<abc>" ), Expect( { { s_ktidToken1, "<abc", { "abc" } }, { s_ktidToken6, ">" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadVar >( "<a><bc>" ),
+		Expect( { { s_ktidToken1, "<a", { "a" } }, { s_ktidToken6, ">" }, { s_ktidToken1, "<bc", { "bc" } }, { s_ktidToken6, ">" } } ) );
+}
+
+typedef ns_ltlookaheadprecfwd::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadPrecFwd;
+typedef ns_ltlookaheadprecrev::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadPrecRev;
+
+// lookaheadprecfwd, lookaheadprecrev: lookahead rules which are ambiguous with each other and with rules without lookahead.
+// The two grammars have the same rules in different orders - see lexangtestgen.cpp:
+//	Token0: "a" when followed by "bc".	Token1: "ab" when followed by "c".	Token2: "abc".	Token3: "ab" when followed by "cd".
+//	Token4: "cd".	Token5: "c" when followed by "d".
+//	Token6: one or more 'd's when followed by 'e'.	Token8: one or more 'd's when followed by 'e' or 'b'.
+//	Token7: any single character of "abcde".
+// fwd order: Token0, Token1, Token2, Token3, Token4, Token5, Token6, Token8, Token7.
+// rev order: Token1, Token0, Token2, Token3, Token5, Token4, Token8, Token6, Token7.
+
+// Two lookahead rules match the same input with different tokens - and a rule without lookahead matches it too.
+// The earliest of the rules wins and its token is used.
+TEST( LexangLookaheadPrecedence, LookaheadRulesWithDifferentTokens )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "abc" ), Expect( { { s_ktidToken0, "a" }, { s_ktidToken7, "b" }, { s_ktidToken7, "c" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "abc" ), Expect( { { s_ktidToken1, "ab" }, { s_ktidToken7, "c" } } ) );
+}
+
+// A lookahead rule and a rule without lookahead match the same input: the earlier wins.
+TEST( LexangLookaheadPrecedence, LookaheadRuleAndRuleWithoutLookahead )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "cd" ), Expect( { { s_ktidToken4, "cd" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "cd" ), Expect( { { s_ktidToken5, "c" }, { s_ktidToken7, "d" } } ) );
+}
+
+// Two lookahead rules with the same token whose trailing contexts both match: the earlier wins.
+TEST( LexangLookaheadPrecedence, LookaheadRulesWithTheSameToken )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "dde" ), Expect( { { s_ktidToken6, "dd" }, { s_ktidToken7, "e" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "dde" ), Expect( { { s_ktidToken8, "dd" }, { s_ktidToken7, "e" } } ) );
+	// Only one of the trailing contexts matches: the order doesn't matter.
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "ddb" ), Expect( { { s_ktidToken8, "dd" }, { s_ktidToken7, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "ddb" ), Expect( { { s_ktidToken8, "dd" }, { s_ktidToken7, "b" } } ) );
+}
+
+// The rule matching the most input, including its trailing context, wins regardless of the order of the rules.
+TEST( LexangLookaheadPrecedence, LongestMatchWinsOverOrder )
+{
+	// Token3 matches all of "abcd" - the others match "abc".
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "abcd" ), Expect( { { s_ktidToken3, "ab" }, { s_ktidToken4, "cd" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "abcd" ), Expect( { { s_ktidToken3, "ab" }, { s_ktidToken5, "c" }, { s_ktidToken7, "d" } } ) );
+	// Without any trailing context matching we have the single characters.
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "ab" ), Expect( { { s_ktidToken7, "a" }, { s_ktidToken7, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "ab" ), Expect( { { s_ktidToken7, "a" }, { s_ktidToken7, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "dd" ), Expect( { { s_ktidToken7, "d" }, { s_ktidToken7, "d" } } ) );
+}
+
+// A sequence exercising all of the above in each grammar.
+TEST( LexangLookaheadPrecedence, Sequences )
+{
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecFwd >( "abcabcdddeddb" ),
+		Expect( { { s_ktidToken0, "a" }, { s_ktidToken7, "b" }, { s_ktidToken7, "c" }, { s_ktidToken3, "ab" }, { s_ktidToken4, "cd" },
+							{ s_ktidToken6, "dd" }, { s_ktidToken7, "e" }, { s_ktidToken8, "dd" }, { s_ktidToken7, "b" } } ) );
+	EXPECT_EQ( Tokenize< TyAnalyzerLookaheadPrecRev >( "abcabcdddeddb" ),
+		Expect( { { s_ktidToken1, "ab" }, { s_ktidToken7, "c" }, { s_ktidToken3, "ab" }, { s_ktidToken5, "c" }, { s_ktidToken8, "ddd" },
+							{ s_ktidToken7, "e" }, { s_ktidToken8, "dd" }, { s_ktidToken7, "b" } } ) );
+}
+
+typedef ns_ltlookaheadrandom::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerLookaheadRandom;
+
+// A simple reference implementation of the rules of the lookaheadrandom grammar:
+//	Token0: one or more of 'a' or 'b' when followed by one or more 'b's and then an 'a',
+//	Token1: one or more 'a's when followed by a 'b', Token2: "a", Token3: "b".
+// The rule matching the most input - including any trailing context - wins, the earliest rule when equal.
+static TokenizeResult ReferenceTokenizeLookaheadRandom( std::string const & _rstr )
+{
+	TokenizeResult tr;
+	size_t stPos = 0;
+	const size_t stLen = _rstr.length();
+	while ( stPos < stLen )
+	{
+		// Token0: the entire match ends in "ba" and is at least 3 long. The token is longest when the trailing context is just "ba".
+		size_t stEndMatch0 = 0;
+		for ( size_t stEnd = stLen; stEnd >= stPos + 3; --stEnd )
+		{
+			if ( ( 'a' == _rstr[ stEnd-1 ] ) && ( 'b' == _rstr[ stEnd-2 ] ) )
+			{
+				stEndMatch0 = stEnd;
+				break;
+			}
+		}
+		// Token1: 'a's then a 'b'.
+		size_t stEndMatch1 = 0;
+		{
+			size_t stCur = stPos;
+			for ( ; ( stCur < stLen ) && ( 'a' == _rstr[ stCur ] ); ++stCur )
+				;
+			if ( ( stCur > stPos ) && ( stCur < stLen ) )
+				stEndMatch1 = stCur + 1;
+		}
+		const size_t stEndMatchSingle = stPos + 1;
+		TestToken tt;
+		size_t stEndToken;
+		if ( ( stEndMatch0 >= stEndMatch1 ) && ( stEndMatch0 >= stEndMatchSingle ) )
+		{
+			tt.m_tid = s_ktidToken0;
+			stEndToken = stEndMatch0 - 2;
+		}
+		else
+		if ( stEndMatch1 >= stEndMatchSingle )
+		{
+			tt.m_tid = s_ktidToken1;
+			stEndToken = stEndMatch1 - 1;
+		}
+		else
+		{
+			tt.m_tid = ( 'a' == _rstr[ stPos ] ) ? s_ktidToken2 : s_ktidToken3;
+			stEndToken = stEndMatchSingle;
+		}
+		tt.m_strText = _rstr.substr( stPos, stEndToken - stPos );
+		tr.m_rgTokens.push_back( tt );
+		stPos = stEndToken;
+	}
+	return tr;
+}
+
+// Check the lexical analyzer against the reference implementation for every string of 'a's and 'b's up to a length
+//	and then for longer random strings.
+TEST( LexangLookaheadRandom, MatchesReferenceImplementation )
+{
+	size_t nLookaheadTokens = 0;
+	auto check = [&nLookaheadTokens]( std::string const & _rstr ) -> bool
+	{
+		const TokenizeResult trExpect = ReferenceTokenizeLookaheadRandom( _rstr );
+		const TokenizeResult trFound = Tokenize< TyAnalyzerLookaheadRandom >( _rstr.c_str() );
+		for ( TestToken const & rtt : trFound.m_rgTokens )
+			nLookaheadTokens += ( rtt.m_tid == s_ktidToken0 ) || ( rtt.m_tid == s_ktidToken1 );
+		if ( trFound == trExpect )
+			return true;
+		ADD_FAILURE() << "Input [" << _rstr << "]\n  found:    " << trFound << "\n  expected: " << trExpect;
+		return false;
+	};
+	// Every string up to length 12.
+	for ( size_t nLen = 1; nLen <= 12; ++nLen )
+	{
+		for ( size_t nBits = 0; nBits < ( size_t(1) << nLen ); ++nBits )
+		{
+			std::string str( nLen, 'a' );
+			for ( size_t n = 0; n < nLen; ++n )
+				if ( nBits & ( size_t(1) << n ) )
+					str[ n ] = 'b';
+			if ( !check( str ) )
+				return;
+		}
+	}
+	// Longer random strings.
+	std::mt19937 rng( 20241 );
+	for ( size_t nString = 0; nString < 2000; ++nString )
+	{
+		std::string str( 13 + rng() % 60, 'a' );
+		for ( char & rc : str )
+			rc = ( rng() % 3 ) ? 'a' : 'b';
+		if ( !check( str ) )
+			return;
+	}
+	EXPECT_GT( nLookaheadTokens, size_t(1000) ); // We should have exercised the lookahead rules plenty.
 }
 
 typedef ns_ltmulti::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerMulti;
@@ -373,9 +595,7 @@ TEST( LexangMulti, EachStartStateHasItsOwnRules )
 }
 
 // Lookahead must work in a DFA which is not the first in the lexical analyzer.
-// KNOWN FAILURE - disabled: the generator offsets the lookahead action ids of the second and later DFAs but not the bit
-//	vectors of related lookahead actions, so the lookahead rule is never recognized.
-TEST( LexangMulti, DISABLED_LookaheadInSecondDfa )
+TEST( LexangMulti, LookaheadInSecondDfa )
 {
 	const TyStateProtoMulti * pspSecond = (const TyStateProtoMulti *)&ns_ltmulti::startSecond< TyTestLexTraits >;
 	EXPECT_EQ( Tokenize< TyAnalyzerMulti >( "ab", pspSecond ), Expect( { { s_ktidToken1, "ab" } } ) );

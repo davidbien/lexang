@@ -41,6 +41,26 @@ public:
 	}
 };
 
+// class regexp_lookahead_empty_token_exception:
+// We throw this when the token portion of a lookahead rule ( that before the trailing context ) can match the empty string.
+class regexp_lookahead_empty_token_exception : public _t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR >
+{
+  typedef _t__Named_exception< __LEXANG_DEFAULT_ALLOCATOR > _TyBase;
+public:
+  regexp_lookahead_empty_token_exception()
+		: _TyBase("regexp_lookahead_empty_token_exception: the token portion of a lookahead rule must not match the empty string.")
+	{
+	}
+  regexp_lookahead_empty_token_exception( const char * _pc )
+		: _TyBase(_pc)
+	{
+	}
+  regexp_lookahead_empty_token_exception(const string_type & __s)
+		: _TyBase(__s)
+	{
+	}
+};
+
 // ENFACreationOptions: Options for creation of the NFA from regular expression.
 // Used as bitmasks, as in ( 1 << encoIgnoreTriggers ).
 enum ENFACreationOptions : uint32_t
@@ -49,6 +69,11 @@ enum ENFACreationOptions : uint32_t
 		// Ignore any declared triggers.
 	encoNFACreationOptionsCount // This at the end always.
 };
+
+// Create the DFA which matches the trailing context of a lookahead rule in reverse - defined in _l_lkahd.h.
+template < class t_TyChar, class t_TyAllocator >
+std::shared_ptr< _dfa_lookahead_reverse< t_TyChar, t_TyAllocator > >
+_l_create_lookahead_reverse( _regexp_base< t_TyChar > const & _rreTrailing, t_TyAllocator const & _rAlloc );
 
 
 template < class t_TyChar, class t_TyAllocator = allocator< char > >
@@ -136,6 +161,14 @@ public:
 	//	throughout the NFA will combine appropriately with one another when forming the DFA and then optimizing it.
 	typedef typename _Alloc_traits< typename map< vtyTokenIdent, _TyRangeEl >::value_type, t_TyAllocator >::allocator_type _TyMapTokenIdToTriggerTransitionAllocator;
 	typedef map< vtyTokenIdent, _TyRangeEl, less< vtyTokenIdent >, _TyMapTokenIdToTriggerTransitionAllocator > _TyMapTokenIdToTriggerTransition;
+
+	// For each lookahead rule we have a DFA which matches the trailing context of the rule in reverse.
+	// The lexical analyzer uses it to find where the token ends once the rule, including its trailing context, has matched.
+	// This maps the action id of the rule's lookahead state ( the end of the trailing context ) to that DFA.
+	typedef _dfa_lookahead_reverse< t_TyChar, t_TyAllocator > _TyLookaheadReverse;
+	typedef std::shared_ptr< _TyLookaheadReverse > _TySpLookaheadReverse;
+	typedef std::map< vtyActionIdent, _TySpLookaheadReverse > _TyMapLookaheadReverse;
+	_TyMapLookaheadReverse m_mapLookaheadReverse;
 
 	_sdpd< _TySetAcceptStates, t_TyAllocator > m_pSetAcceptStates;
 	_sdpd< _TySetASByActionID, t_TyAllocator > m_pLookupActionID;
@@ -673,11 +706,48 @@ protected:	// accessed by _nfa_context:
 		_NewTransition( _rctxt.m_pgnAccept, _TyRange( 0, 0 ), pgnStart );
 		_rctxt.m_pgnAccept = pgnAccept;
 	}
-	void	CreateLookaheadNFA( _TyNfaCtxt & _rctxt1_Result, 
+	void	CreateLookaheadNFA( _TyNfaCtxt & _rctxt1_Result,
 														_TyNfaCtxt & _rctxt2 )
 	{
+		// The token of a lookahead rule must not be empty: an empty token would leave the lexical analyzer where it is.
+		// Were the token portion of the rule able to match without consuming any input then the rule could win over
+		//	other rules matching the same input and then have no token to return. So we don't allow it: use "one or more"
+		//	rather than "zero or more", etc.
+		if ( _FCanReachWithoutInput( _rctxt1_Result.m_pgnStart, _rctxt1_Result.m_pgnAccept ) )
+			throw regexp_lookahead_empty_token_exception();
 		_rctxt1_Result.m_pgnAltAccept = _rctxt1_Result.m_pgnAccept;
 		CreateFollowsNFA( _rctxt1_Result, _rctxt2 );
+	}
+
+	// Return whether _pgnTo can be reached from _pgnFrom without consuming any input: that is by moving
+	//	over only empty and trigger transitions.
+	bool _FCanReachWithoutInput( const _TyGraphNode * _pgnFrom, const _TyGraphNode * _pgnTo )
+	{
+		_TySetStates ssVisited( (size_t)NStates(), get_allocator() );
+		ssVisited.clear();
+		std::vector< const _TyGraphNode * > rgpgnToProcess;
+		rgpgnToProcess.push_back( _pgnFrom );
+		ssVisited.setbit( (size_t)_pgnFrom->RElConst() );
+		while ( !rgpgnToProcess.empty() )
+		{
+			const _TyGraphNode * pgnCur = rgpgnToProcess.back();
+			rgpgnToProcess.pop_back();
+			if ( pgnCur == _pgnTo )
+				return true;
+			typename _TyGraph::_TyLinkPosIterConst	lpi( pgnCur->PPGLChildHead() );
+			for ( ; !lpi.FIsLast(); lpi.NextChild() )
+			{
+				const _TyRange & rrng = *lpi;
+				const bool kfEmpty = !rrng.first && !rrng.second;
+				const bool kfTrigger = ( rrng.first >= ms_kreTriggerStart ) && ( rrng.first < ms_kreUnsatisfiableStart );
+				if ( ( kfEmpty || kfTrigger ) && !ssVisited.isbitset( (size_t)lpi.PGNChild()->RElConst() ) )
+				{
+					ssVisited.setbit( (size_t)lpi.PGNChild()->RElConst() );
+					rgpgnToProcess.push_back( lpi.PGNChild() );
+				}
+			}
+		}
+		return false;
 	}
 
 	bool FCreateTriggerNFA( _TyNfaCtxt & _rctxt, _TyActionObjectBase const & _raob )
@@ -827,6 +897,12 @@ protected:	// accessed by _nfa_context:
 			pib = m_pSetAcceptStates->insert( vtAcceptState );
 			Assert( pib.second );
 		}
+		if ( e_aatLookahead == vtAcceptState.second.m_eaatType )
+		{
+			// Record the DFA which matches the trailing context in reverse under the action id of the lookahead state.
+			VerifyThrowSz( !!_rCtxt.m_spLookaheadReverse, "No reverse trailing context DFA for the lookahead rule with action id [%d].", int( vtAcceptState.second.m_aiAction ) );
+			m_mapLookaheadReverse[ vtAcceptState.second.m_aiAction ] = std::move( _rCtxt.m_spLookaheadReverse );
+		}
 		_rCtxt.m_pgnAccept = 0;
 		_rCtxt.m_pSdpAction.Release();
 	}
@@ -835,6 +911,65 @@ protected:	// accessed by _nfa_context:
 	{
 		_AddAccept( _rctxtAdd );
 	}
+
+public:
+	// Create in this (empty) NFA the NFA which matches the reverse of the strings that the passed DFA matches.
+	// The DFA must be complete - i.e. optimized and with unsatisfiable transitions processed - and its transitions
+	//	not compressed. Anti-accepting states ( pattern exclusion ) are not accepting.
+	// There is a node for each state of the DFA from which an accepting state can be reached, a transition for each
+	//	of the DFA's transitions in the opposite direction, and a new start state with an empty transition to the node
+	//	for each accepting state of the DFA. The node for the DFA's start state is the accepting state.
+	template < class t_TyDfa, class t_TyDfaCtxt >
+	void CreateReverseOfDfa( _TyNfaCtxt & _rctxt, t_TyDfa & _rDfa, t_TyDfaCtxt & _rDfaCtxt )
+	{
+		Assert( !_rctxt.m_pgnStart );
+		Assert( !NStates() );
+		typedef typename t_TyDfa::_TyGraph _TyGraphDfa;
+		typedef typename t_TyDfa::_TyGraphNode _TyGraphNodeDfa;
+		_rDfa._CreateRangeLookup();
+		const size_t knStatesDfa = (size_t)_rDfa.NStates();
+		std::vector< _TyGraphNode * > rgpgnNfa( knStatesDfa, nullptr ); // The NFA node for each DFA state.
+		std::vector< size_t > rgstToProcess; // The DFA states whose in-transitions we have yet to add.
+		rgstToProcess.reserve( knStatesDfa );
+
+		_NewStartState( &_rctxt.m_pgnStart );
+		for ( auto itPart = _rDfaCtxt.m_partAccept.begin(); itPart != _rDfaCtxt.m_partAccept.end(); ++itPart )
+		{
+			if ( e_aatAntiAccepting == ( itPart->second.m_eaatType & ~e_aatTrigger ) )
+				continue;
+			typename t_TyDfa::_TySetStates const & rss = itPart->first.RObject();
+			for ( size_t stAccept = rss.getfirstset(); rss.size() != stAccept; stAccept = rss.getnextset( stAccept ) )
+			{
+				Assert( !rgpgnNfa[ stAccept ] ); // An accepting state is in a single set of the partition.
+				_NewAcceptingState( _rctxt.m_pgnStart, _TyRange( 0, 0 ), &rgpgnNfa[ stAccept ] );
+				rgstToProcess.push_back( stAccept );
+			}
+		}
+		while ( !rgstToProcess.empty() )
+		{
+			const size_t stCur = rgstToProcess.back();
+			rgstToProcess.pop_back();
+			const _TyGraphNodeDfa * pgnDfa = _rDfa.PGNGetNode( (typename t_TyDfa::_TyState)stCur );
+			typename _TyGraphDfa::_TyLinkPosIterConst	lpi( pgnDfa->PPGLParentHead() );
+			for ( ; !lpi.FIsLast(); lpi.NextParent() )
+			{
+				Assert( *lpi >= 0 ); // The transitions of the DFA must not be compressed.
+				const size_t stParent = (size_t)lpi.PGNParent()->RElConst();
+				const _TyRange rngLink = _rDfa.LookupRange( *lpi );
+				if ( !rgpgnNfa[ stParent ] )
+				{
+					_NewAcceptingState( rgpgnNfa[ stCur ], rngLink, &rgpgnNfa[ stParent ] );
+					rgstToProcess.push_back( stParent );
+				}
+				else
+					_NewTransition( rgpgnNfa[ stCur ], rngLink, rgpgnNfa[ stParent ] );
+			}
+		}
+		_TyGraphNode * pgnAccept = rgpgnNfa[ (size_t)_rDfaCtxt.m_pgnStart->RElConst() ];
+		VerifyThrowSz( !!pgnAccept, "Cannot reverse the DFA as it doesn't match any string." );
+		_rctxt.m_pgnAccept = pgnAccept;
+	}
+protected:
 
 	void	CreateActionIDLookup()
 	{
@@ -1227,6 +1362,8 @@ public:
 	_TyGraphNode * m_pgnAccept;
 	_dtorp< _TySdpActionBase > m_pSdpAction;	// The action associated with this _nfa_context.
 	_TyGraphNode * m_pgnAltAccept;
+	// If this context is that of a lookahead rule then this is the DFA matching its trailing context in reverse.
+	typename _TyNfa::_TySpLookaheadReverse m_spLookaheadReverse;
 
 	_nfa_context( _TyNfa & _rNfa )
 		:	_TyBase( _rNfa ),
@@ -1360,8 +1497,11 @@ public:
 	{
 		RNfa().CreateFollowsNFA( *this, static_cast< _TyThis & >( _rcb ) );
 	}
-	void CreateLookaheadNFA( _TyBase & _rcb )
+	void CreateLookaheadNFA( _TyBase & _rcb, _regexp_base< t_TyChar > const & _rreTrailing )
 	{
+		// Create the DFA which matches the trailing context in reverse. It remains with this context until the
+		//	accepting state for the rule is added to the NFA - at which point we know the action id of the rule.
+		m_spLookaheadReverse = _l_create_lookahead_reverse< t_TyChar, t_TyAllocator >( _rreTrailing, RNfa().get_allocator() );
 		// We need to save the intermediate accept state ( otherwise we won't know
 		//	where it is ).
 		RNfa().CreateLookaheadNFA( *this, static_cast< _TyThis & >( _rcb ) );

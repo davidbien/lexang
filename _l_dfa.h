@@ -103,6 +103,12 @@ public:
 	_sdpd< _TyDequeCCRIndex, t_TyAllocator > m_pCCRIndex;
 
 	bool m_fHasLookaheads;	// any lookaheads in the rules ?
+	// For each lookahead rule the DFA which matches its trailing context in reverse, by the action id of the rule's
+	//	lookahead state - see _l_lkahd.h.
+	typedef _dfa_lookahead_reverse< t_TyChar, t_TyAllocator > _TyLookaheadReverse;
+	typedef std::shared_ptr< _TyLookaheadReverse > _TySpLookaheadReverse;
+	typedef std::map< vtyActionIdent, _TySpLookaheadReverse > _TyMapLookaheadReverse;
+	_TyMapLookaheadReverse m_mapLookaheadReverse;
 	size_type m_nTriggers;		// # of triggers
 	size_type m_nUnsatisfiableTransitions; // # of unsatisfiable.
 	vtyActionIdent m_iMaxActions;

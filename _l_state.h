@@ -68,6 +68,7 @@ struct _l_state_proto
 private: // Variable length structure - use accessors.
   _TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;             // The associated lookahead action id.
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   vtyLookaheadVector m_rgValidLookahead[2]; // bit vector for valid associated lookahead actions.
   _TyPMFnAccept m_rgpmfnTriggers[7];        // Array of pointers to trigger functions - there can be more or less than 7 - random number.
 public:
@@ -81,6 +82,39 @@ public:
     typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
     return *(vtyActionIdent *)((char *)this + m_usOffsetAccept +
                                (offsetof(_TyStateAccept1Trans, m_aiLookahead) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
+  }
+  // Return the start state of the DFA which matches the trailing context of this lookahead state's rule in reverse.
+  const _l_state_proto * PspGetLookaheadReverse() const
+  {
+    Assert(m_flAccept == kucLookahead || m_flAccept == kucLookaheadAcceptAndLookahead);
+    typedef _l_state<t_TyChar, 1, true, true, 3, 3> _TyStateAccept1Trans;
+    return *(const _l_state_proto **)((char *)this + m_usOffsetAccept +
+                               (offsetof(_TyStateAccept1Trans, m_pspLookaheadReverse) - offsetof(_TyStateAccept1Trans, m_pmfnAccept)));
+  }
+  // Return whether this is a state in which the token of at least one lookahead rule has been matched.
+  bool FIsLookaheadAcceptState() const
+  {
+    return m_flAccept == kucLookaheadAccept || m_flAccept == kucLookaheadAcceptAndAccept || m_flAccept == kucLookaheadAcceptAndLookahead;
+  }
+  // Return whether this is a state in which a lookahead rule has matched in its entirety.
+  bool FIsLookaheadState() const
+  {
+    return m_flAccept == kucLookahead || m_flAccept == kucLookaheadAcceptAndLookahead;
+  }
+  // This is a lookahead accept state: return whether the lookahead rule whose lookahead state has the action id
+  //  _aiLookahead is among the rules whose token has been matched in this state.
+  bool FIsLookaheadAcceptFor( vtyActionIdent _aiLookahead ) const
+  {
+    Assert( FIsLookaheadAcceptState() );
+    const vtyActionIdent aiThis = AIGetLookahead();
+    // A lookahead accept state for a single rule merely stores the action id of that rule's lookahead state.
+    // Otherwise we have a bit vector of the related lookahead action ids - and for a state which is also a lookahead
+    //  state the action id is that of this state's own lookahead rule.
+    if ( ( m_flAccept == kucLookaheadAccept ) && ( aiThis >= 0 ) )
+      return aiThis == _aiLookahead;
+    Assert( _aiLookahead >= 0 );
+    const size_t knBitsEl = CHAR_BIT * sizeof(vtyLookaheadVector);
+    return !!( PBeginValidLookahead()[ size_t(_aiLookahead) / knBitsEl ] & ( vtyLookaheadVector(1) << ( size_t(_aiLookahead) % knBitsEl ) ) );
   }
   bool FIsAntiAcceptingState() const
   {
@@ -227,6 +261,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, t_iTriggers>
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -248,6 +283,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, 0, 0>
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -269,6 +305,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, t_i
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
@@ -291,6 +328,7 @@ struct _l_state<t_TyChar, t_iTransitions, true, true, t_iLookaheadVectorEls, 0>
   _l_transition<t_TyChar> m_rgt[t_iTransitions];
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
@@ -386,6 +424,7 @@ struct _l_state<t_TyChar, 0, true, true, 0, t_iTriggers>
   vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
 #ifndef _STLP_ZERO_SIZE_ARRAYS
@@ -406,6 +445,7 @@ struct _l_state<t_TyChar, 0, true, true, 0, 0>
   vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS
 
@@ -426,6 +466,7 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, t_iTriggers>
   vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
   typename _TyAnalyzer::_TyPMFnAccept m_rgpmfnTriggers[t_iTriggers];
 };
@@ -447,6 +488,7 @@ struct _l_state<t_TyChar, 0, true, true, t_iLookaheadVectorEls, 0>
   vtyTokenIdent m_tidAccept; // This is the token id of any accept action associated with this state or vktidInvalidIdToken.
   typename _TyAnalyzer::_TyPMFnAccept m_pmfnAccept;
   vtyActionIdent m_aiLookahead;
+  _l_state_proto<t_TyChar> *m_pspLookaheadReverse; // For a lookahead state: the start state of the DFA matching the trailing context in reverse.
   vtyLookaheadVector m_rgValidLookahead[t_iLookaheadVectorEls];
 };
 #endif //!_STLP_ZERO_SIZE_ARRAYS

@@ -934,7 +934,7 @@ public:
 
 		if ( _stLevel < 2 )
 		{
-			_rcbNfa1.CreateLookaheadNFA( *pcbNfa2 );
+			_rcbNfa1.CreateLookaheadNFA( *pcbNfa2, m_re2 );
 		}
 		else
 		{

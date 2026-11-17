@@ -80,6 +80,12 @@ struct _l_gen_dfa
 	{
 		return !!( ( 1ul << egdoDontTemplatizeStates ) & m_grfGeneratorDFAOptions );
 	}
+	// The option bit for not templatizing the states.
+	// Note that _l_generator<> declares its own (unused) enumeration with this same enumerator name but a different value.
+	static uint32_t GrfDontTemplatizeStates()
+	{
+		return ( 1ul << egdoDontTemplatizeStates );
+	}
 	_TyDfa & m_rDfa;
 	_TyDfaCtxt & m_rDfaCtxt;
 	_TyString m_sStartStateName;	// Special name for start state.
@@ -234,6 +240,30 @@ enum EGeneratorDFAOptions : uint32_t
                                     m_mapActions.get_allocator() ) );
 		m_fLookaheads = m_fLookaheads || _rDfa.m_fHasLookaheads;
 		m_fTriggers = m_fTriggers || !!_rDfa.m_nTriggers;
+		// Also generate the DFA which matches the trailing context in reverse for each lookahead rule of this DFA.
+		// These have no actions so their states needn't be templatized. The lookahead states of _rDfa refer to the start states.
+		for ( typename _TyDfa::_TyMapLookaheadReverse::iterator itRev = _rDfa.m_mapLookaheadReverse.begin();
+					itRev != _rDfa.m_mapLookaheadReverse.end(); ++itRev )
+		{
+			_TyString strStartReverse = _StrLookaheadReverseStartStateName( _pcStartStateName, itRev->first );
+			m_lDfaGen.push_back( _TyGenDfa( itRev->second->m_dfa, itRev->second->m_dctxt, strStartReverse.c_str(), 
+																			_TyGenDfa::GrfDontTemplatizeStates(), m_mapActions.get_allocator() ) );
+		}
+	}
+	// The name of the start state of the DFA matching the trailing context in reverse for the lookahead rule whose
+	//	lookahead state has the action id _aiLookahead in the DFA whose start state is named _pcStartStateName.
+	_TyString _StrLookaheadReverseStartStateName( const t_TyCharOut * _pcStartStateName, vtyActionIdent _aiLookahead )
+	{
+		basic_ostringstream< t_TyCharOut > oss;
+		oss << _pcStartStateName << "LookaheadReverse" << _aiLookahead;
+		return _TyString( oss.str().c_str(), m_mapActions.get_allocator() );
+	}
+	// Print the pointer to the start state of the DFA matching the trailing context in reverse for a lookahead state of the current DFA.
+	void _PrintLookaheadReverse( ostream & _ros, vtyActionIdent _aiLookahead )
+	{
+		VerifyThrowSz( m_pvtDfaCur->m_rDfa.m_mapLookaheadReverse.end() != m_pvtDfaCur->m_rDfa.m_mapLookaheadReverse.find( _aiLookahead ),
+			"No reverse trailing context DFA for the lookahead action id [%d].", int(_aiLookahead) );
+		_ros << ", (" << m_sStateProtoTypedef << "*)( & " << _StrLookaheadReverseStartStateName( m_pvtDfaCur->m_sStartStateName.c_str(), _aiLookahead ) << " )";
 	}
 
 	void add_action_info( vtyTokenIdent _tid, _TyGenActionInfo const & _rgai )
@@ -940,7 +970,10 @@ enum EGeneratorDFAOptions : uint32_t
 				// We store the action identifier for the lookahead state -
 				//	after disambiguation the mapping from lookahead suffixes to lookahead
 				//	accepting states may be many to one.
-				_ros << ", " << pvtAction->second.GetOriginalActionId() + m_aiStart;
+				// The lookahead action ids are those of the current DFA - as are the bits of the vectors of related
+				//	lookahead actions below - they are only ever compared with others of the same DFA.
+				_ros << ", " << pvtAction->second.GetOriginalActionId();
+				_PrintLookaheadReverse( _ros, pvtAction->second.GetOriginalActionId() );
 			}
 			break;
 			case e_aatLookaheadAcceptAndAccept:
@@ -954,12 +987,13 @@ enum EGeneratorDFAOptions : uint32_t
 					if (	e_aatLookaheadAcceptAndLookahead == ( pvtAction->second.m_eaatType & ~e_aatTrigger ) )
 					{
 						// Then we need to store the action identifier:
-						_ros << ", " << ( pvtAction->second.GetOriginalActionId() + m_aiStart );
+						_ros << ", " << pvtAction->second.GetOriginalActionId();
+						_PrintLookaheadReverse( _ros, pvtAction->second.GetOriginalActionId() );
 					}
 					else
 					{
-						// Action identifier is unused.
-						_ros << ", -1";
+						// Action identifier is unused - and this is not a lookahead state.
+						_ros << ", -1, nullptr";
 					}
 					_ros << ",\n\t{0x0" << hex;
 
@@ -978,7 +1012,7 @@ enum EGeneratorDFAOptions : uint32_t
 					// Store the action id for the one and only related lookahead state.
 					Assert( e_aatLookaheadAccept == 
                   ( pvtAction->second.m_eaatType & ~e_aatTrigger ) );
-					_ros << ", " << ( pvtAction->second.m_aiRelated + m_aiStart );
+					_ros << ", " << pvtAction->second.m_aiRelated << ", nullptr";
 				}
 			}
 			break;

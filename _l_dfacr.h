@@ -329,6 +329,7 @@ public:
     }
 
     m_rDfa.m_fHasLookaheads = m_rNfa.m_fHasLookaheads;
+    m_rDfa.m_mapLookaheadReverse = m_rNfa.m_mapLookaheadReverse;
     m_rDfa.m_nTriggers = m_rNfa.m_nTriggers;
     m_rDfa.m_nUnsatisfiableTransitions = m_rNfa.m_nUnsatisfiableTransitions;
     m_rDfa.ConsumeMapTokenIdToTriggerTransition( m_rNfa.m_mapTokenIdToTriggerTransition );

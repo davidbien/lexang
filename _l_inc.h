@@ -36,6 +36,7 @@
 #include "_l_dfa.h"
 #include "_l_dfacr.h"
 #include "_l_dfopt.h"
+#include "_l_lkahd.h"
 #include "_l_lxgen.h"
 #include "_l_data.h"
 

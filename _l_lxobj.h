@@ -9,6 +9,7 @@
 // _l_lxobj.h
 
 #include <memory>
+#include <vector>
 #include <string>
 #include <stddef.h>
 #include "bien_assert.h"
@@ -88,6 +89,7 @@ protected:
 template <class t_TyTraits, bool t_fSupportLookahead>
 struct _l_an_lookaheadbase;
 
+// When lookahead is not supported we need no state at all.
 template <class t_TyTraits>
 struct _l_an_lookaheadbase<t_TyTraits, false>
     : public _l_an_mostbase<typename t_TyTraits::_TyChar>
@@ -100,23 +102,17 @@ public:
   using _TyChar = typename _TyTraits::_TyChar;
   typedef _l_state_proto<_TyChar> _TyStateProto;
   typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
-protected:
-  // Declare these so the code will compile - they may be optimized out.
-  static const _TyStateProto *m_pspLookaheadAccept;  // The lookahead accept state.
-  static vtyDataPosition m_posLookaheadAccept; // The position in the buffer when lookahead accept encountered.
-  static const _TyStateProto *m_pspLookahead;        // The lookahead state.
 };
 
-template <class t_TyTraits>
-const typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
-    _l_an_lookaheadbase<t_TyTraits, false>::m_pspLookaheadAccept;
-template <class t_TyTraits>
-vtyDataPosition _l_an_lookaheadbase<t_TyTraits, false>::m_posLookaheadAccept{vkdpNullDataPosition};
-template <class t_TyTraits>
-const typename _l_an_lookaheadbase<t_TyTraits, false>::_TyStateProto *
-    _l_an_lookaheadbase<t_TyTraits, false>::m_pspLookahead;
-
-// The lookahead base has never been used - or perhaps it has 21 years ago? I don't remember.
+// The state required to support lookahead rules ( trailing context ): "token / trailing" - see _l_lkahd.h for an overview.
+// As we move through the input for a token we record:
+// 1) Each position at which we are in a lookahead accept state: one in which the "token" portion of at least one
+//    lookahead rule has matched.
+// 2) The characters of the input - so that we can move backward through them without requiring that of the transport.
+// When a lookahead rule is the rule which matches we move backward from the end of the match through the DFA which
+//  matches the trailing context of the rule in reverse. The first accepting state of that DFA we find at a position
+//  recorded in (1) for that rule is the end of the token: this gives the longest token for which the remainder of the
+//  match is matched by the trailing context.
 template <class t_TyTraits>
 struct _l_an_lookaheadbase<t_TyTraits, true>
     : public _l_an_mostbase<typename t_TyTraits::_TyChar>
@@ -128,14 +124,77 @@ public:
   typedef t_TyTraits _TyTraits;
   using _TyChar = typename _TyTraits::_TyChar;
   typedef _l_state_proto<_TyChar> _TyStateProto;
+  typedef _l_transition<_TyChar> _TyTransition;
   typedef typename _l_char_type_map<_TyChar>::_TyUnsigned _TyUnsignedChar;
 
-  const _TyStateProto *m_pspLookaheadAccept{nullptr}; // The lookahead accept state.
-  vtyDataPosition m_posLookaheadAccept{vkdpNullDataPosition}; // The position in the buffer when lookahead accept encountered.
-  const _TyStateProto *m_pspLookahead{nullptr}; // The lookahead state.
-
-  _l_an_lookaheadbase()
+  // A position at which we were in a lookahead accept state.
+  struct _TyLookaheadAccept
   {
+    vtyDataPosition m_pos;
+    const _TyStateProto * m_psp;
+  };
+  std::vector< _TyLookaheadAccept > m_rgLookaheadAccepts; // In order of position. There may be more than one at a position due to triggers.
+  std::vector< _TyUnsignedChar > m_rgucLookaheadToken; // The characters read for the current token.
+  vtyDataPosition m_posLookaheadTokenStart{vkdpNullDataPosition}; // The position of the first character of m_rgucLookaheadToken.
+  bool m_fLastAcceptIsLookahead{false}; // Is the last accept state a lookahead state: then the end of the token is yet to be found.
+  // The last accepting state that was not a lookahead state: should we not find a (non-empty) token for a lookahead rule we use this.
+  const _TyStateProto * m_pspLastNonLookaheadAccept{nullptr};
+  vtyDataPosition m_posLastNonLookaheadAccept{vkdpNullDataPosition};
+
+  _l_an_lookaheadbase() = default;
+
+  void _InitLookahead( vtyDataPosition _posTokenStart )
+  {
+    m_rgLookaheadAccepts.clear();
+    m_rgucLookaheadToken.clear();
+    m_posLookaheadTokenStart = _posTokenStart;
+    m_fLastAcceptIsLookahead = false;
+    m_pspLastNonLookaheadAccept = nullptr;
+    m_posLastNonLookaheadAccept = vkdpNullDataPosition;
+  }
+  // Is there a lookahead accept state recorded at _pos for the lookahead rule with the action id _aiLookahead?
+  // _rnLookaheadAccepts is the count of those recorded that are yet to be considered: we move backward through them
+  //  as _pos moves backward.
+  bool _FIsLookaheadAcceptAt( vtyDataPosition _pos, vtyActionIdent _aiLookahead, size_t & _rnLookaheadAccepts ) const
+  {
+    while ( _rnLookaheadAccepts && ( m_rgLookaheadAccepts[ _rnLookaheadAccepts-1 ].m_pos > _pos ) )
+      --_rnLookaheadAccepts;
+    for ( size_t n = _rnLookaheadAccepts; n && ( m_rgLookaheadAccepts[ n-1 ].m_pos == _pos ); --n )
+    {
+      if ( m_rgLookaheadAccepts[ n-1 ].m_psp->FIsLookaheadAcceptFor( _aiLookahead ) )
+        return true;
+    }
+    return false;
+  }
+  // A lookahead rule has matched in its entirety: the state _pspLookahead at position _posEndMatch.
+  // Return the position of the end of the token or vkdpNullDataPosition if there is no non-empty token.
+  vtyDataPosition _PosFindLookaheadTokenEnd( const _TyStateProto * _pspLookahead, vtyDataPosition _posEndMatch ) const
+  {
+    Assert( _pspLookahead->FIsLookaheadState() );
+    Assert( _posEndMatch >= m_posLookaheadTokenStart );
+    Assert( size_t( _posEndMatch - m_posLookaheadTokenStart ) <= m_rgucLookaheadToken.size() );
+    const vtyActionIdent aiLookahead = _pspLookahead->AIGetLookahead();
+    size_t nLookaheadAccepts = m_rgLookaheadAccepts.size();
+    const _TyStateProto * pspReverse = _pspLookahead->PspGetLookaheadReverse();
+    Assert( !!pspReverse );
+    if ( !pspReverse )
+      return vkdpNullDataPosition;
+    // Move backward from the end of the match. An empty token is not a token: we would never move forward.
+    for ( vtyDataPosition posCur = _posEndMatch; posCur > m_posLookaheadTokenStart; --posCur )
+    {
+      // If the reverse DFA accepts here then the trailing context matches from posCur to the end of the match.
+      if ( !!pspReverse->m_flAccept && _FIsLookaheadAcceptAt( posCur, aiLookahead, nLookaheadAccepts ) )
+        return posCur;
+      const _TyUnsignedChar ucCur = m_rgucLookaheadToken[ size_t( posCur - 1 - m_posLookaheadTokenStart ) ];
+      const _TyTransition * ptrCur = pspReverse->m_rgt;
+      const _TyTransition * const ptrEnd = ptrCur + pspReverse->m_nt;
+      for ( ; ( ptrEnd != ptrCur ) && !( ( ucCur <= ptrCur->m_last ) && ( ucCur >= ptrCur->m_first ) ); ++ptrCur )
+        ;
+      if ( ptrEnd == ptrCur )
+        break; // The trailing context cannot begin any earlier than this.
+      pspReverse = ptrCur->m_psp;
+    }
+    return vkdpNullDataPosition;
   }
 };
 
@@ -145,10 +204,6 @@ struct _l_analyzer : public _l_an_lookaheadbase< t_TyTraits, t_fSupportLookahead
 private:
   typedef _l_analyzer _TyThis;
   typedef _l_an_lookaheadbase< t_TyTraits, t_fSupportLookahead > _TyBase;
-protected:
-  using _TyBase::m_posLookaheadAccept;
-  using _TyBase::m_pspLookahead;
-  using _TyBase::m_pspLookaheadAccept;
 public:
   using typename _TyBase::_TyTraits;
   using typename _TyBase::_TyChar;
@@ -307,107 +362,35 @@ public:
   {
     if (m_pspCur->m_flAccept)
     {
-      if (t_fSupportLookahead)
+      if constexpr (t_fSupportLookahead)
       {
-        // Then need to check the type of accept state:
+        const vtyDataPosition posCur = GetCurrentPosition();
+        // Record that the token of some lookahead rule(s) may end here.
+        if ( m_pspCur->FIsLookaheadAcceptState() )
+          this->m_rgLookaheadAccepts.push_back( { posCur, m_pspCur } );
         switch (m_pspCur->m_flAccept)
         {
-        case kucAccept:
-        {
-          m_pspLastAccept = m_pspCur;
-          m_posLastAccept = GetCurrentPosition();
-        }
-        break;
         case kucLookahead:
-        {
-          // The lookahead state ( the last state in the lookahead NFA ).
-          // There are a couple of possibilities:
-          // 1) We haven't seen the associated kucLookaheadAccept state - in which case
-          //		ignore this state.
-          // 2) We have seen the associated kucLookaheadAccept state:
-          //		a) and we have already seen this lookahead state <or>
-          //		b) we haven't yet seen this lookahead state.
-          if (m_pspLookaheadAccept)
-          {
-            // Then might not be the associated accept state:
-            vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
-            vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
-            if (((aiLA < 0) &&
-                  (*(m_pspLookaheadAccept->PBeginValidLookahead() +
-                    aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
-                  (1ull << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
-                (aiLA == aiCur))
-            {
-              // REVIEW: May be no need for {m_pspLookahead}.
-              m_pspLastAccept = m_pspLookahead = m_pspCur;
-              m_posLastAccept = m_posLookaheadAccept;
-            }
-            else
-            {
-              // Dangerous set of lookahead patterns.
-              Assert(0); // When does this happen ?
-                          // If and when this does happen then likely due to optimization.
-                          // Then the lookahead state for another lookahead accept state - ignore
-                          //	 it completely.
-            }
-          }
-          // We haven't seen the lookahead accept - ignore.
-        }
-        break;
-        case kucAntiAccepting:
-        {
-          // An explicitly excluded match - see _FFoundAcceptState().
-          m_pspLastAccept = m_pspCur;
-          m_posLastAccept = GetCurrentPosition();
-        }
-        break;
-        case kucLookaheadAccept:
-        {
-          m_pspLookaheadAccept = m_pspCur;
-          m_posLookaheadAccept = GetCurrentPosition();
-        }
-        break;
-        case kucLookaheadAcceptAndAccept:
-        {
-          // We have an ambiguous state that is both an accepting state and a
-          //	lookahead accepting state.
-          m_pspLastAccept = m_pspLookaheadAccept = m_pspCur;
-          m_posLastAccept = m_posLookaheadAccept = GetCurrentPosition();
-        }
-        break;
         case kucLookaheadAcceptAndLookahead:
         {
-          // We have an ambiguous state that is both a lookahead state and a
-          //	lookahead accepting state.
-          if (m_pspLookaheadAccept)
-          {
-            // Then might not be the associated accept state:
-            vtyActionIdent aiLA = m_pspLookaheadAccept->AIGetLookahead();
-            vtyActionIdent aiCur = m_pspCur->AIGetLookahead();
-            if (((aiLA < 0) &&
-                  (*(m_pspLookaheadAccept->PBeginValidLookahead() +
-                    aiCur / (CHAR_BIT * sizeof(vtyLookaheadVector))) &
-                  (1ull << aiCur % (CHAR_BIT * sizeof(vtyLookaheadVector))))) ||
-                (aiLA == aiCur))
-            {
-              // REVIEW: May be no need for {m_pspLookahead}.
-              m_pspLastAccept = m_pspLookahead = m_pspCur;
-              m_posLastAccept = m_posLookaheadAccept;
-            }
-            else
-            {
-              Assert(0); // When does this happen ?
-                          // If and when this does happen then likely due to optimization.
-                          // Then the lookahead state for another lookahead accept state - ignore
-                          //	 it completely.
-            }
-          }
-          // We haven't seen the lookahead accept - ignore the lookahead.
-
-          // Record the lookahead accept:
-          m_pspLookaheadAccept = m_pspCur;
-          m_posLookaheadAccept = GetCurrentPosition();
+          // A lookahead rule has matched in its entirety. As with any accepting state this is now the longest match.
+          // We find where the token ends - it is before the trailing context - only if this remains the longest
+          //  match: see _FFoundAcceptState().
+          m_pspLastAccept = m_pspCur;
+          m_posLastAccept = posCur;
+          this->m_fLastAcceptIsLookahead = true;
         }
+        break;
+        case kucAccept:
+        case kucLookaheadAcceptAndAccept:
+        case kucAntiAccepting: // An explicitly excluded match - see _FFoundAcceptState().
+        {
+          m_pspLastAccept = this->m_pspLastNonLookaheadAccept = m_pspCur;
+          m_posLastAccept = this->m_posLastNonLookaheadAccept = posCur;
+          this->m_fLastAcceptIsLookahead = false;
+        }
+        break;
+        default: // kucLookaheadAccept: recorded above.
         break;
         }
       }
@@ -426,8 +409,25 @@ public:
   //  input was explicitly excluded and there is no token - we do not fall back to an earlier, shorter, match. If we passed
   //  through an anti-accepting state to a later accepting state then we have a token as usual.
   // An anti-accepting state has no action - we must not attempt to obtain one from it.
+  // If the last accepting state was a lookahead state then the rule has matched including its trailing context: we find
+  //  where the token ends. If there is no non-empty token then we use the last accepting state that was not a lookahead state.
   bool _FFoundAcceptState()
   {
+    if constexpr ( t_fSupportLookahead )
+    {
+      if ( !!m_pspLastAccept && this->m_fLastAcceptIsLookahead )
+      {
+        const vtyDataPosition posEndToken = this->_PosFindLookaheadTokenEnd( m_pspLastAccept, m_posLastAccept );
+        if ( vkdpNullDataPosition != posEndToken )
+          m_posLastAccept = posEndToken;
+        else
+        {
+          m_pspLastAccept = this->m_pspLastNonLookaheadAccept;
+          m_posLastAccept = this->m_posLastNonLookaheadAccept;
+        }
+        this->m_fLastAcceptIsLookahead = false;
+      }
+    }
     if ( !!m_pspLastAccept && m_pspLastAccept->FIsAntiAcceptingState() )
       m_pspLastAccept = 0;
     return !!m_pspLastAccept;
@@ -439,8 +439,8 @@ public:
     // A generated analyzer containing multiple DFAs has no default start state - the caller must then pass one.
     VerifyThrowSz( !!m_pspCur, "No start state: this analyzer has no default start state so one must be passed in." );
     m_pspLastAccept = 0; // Regardless.
-    if (t_fSupportLookahead)
-      m_pspLookaheadAccept = 0;
+    if constexpr (t_fSupportLookahead)
+      this->_InitLookahead( GetStream().PosTokenStart() );
     m_posLastAccept = vkdpNullDataPosition;
   }
 
@@ -626,7 +626,14 @@ protected:
   void _NextChar()
   {
     m_ucCur = 0;
-    (void)m_stream.FGetChar( m_ucCur );
+    if constexpr (t_fSupportLookahead)
+    {
+      // Record the characters of the token: we may need to move backward through them - see _l_an_lookaheadbase<>.
+      if ( m_stream.FGetChar( m_ucCur ) )
+        this->m_rgucLookaheadToken.push_back( m_ucCur );
+    }
+    else
+      (void)m_stream.FGetChar( m_ucCur );
   }
   void _execute_triggers()
   {

@@ -109,6 +109,9 @@ public:
 };
 
 template < class t_TyChar >
+class _regexp_base;
+
+template < class t_TyChar >
 class _nfa_context_base : public _context_base< t_TyChar >
 {
 private:
@@ -146,7 +149,9 @@ public:
 	virtual void CreateLiteralNotInSetNFANoSurrogates( t_TyChar const * _pc ) = 0;
 	virtual void CreateLiteralAnyInSetNFA( t_TyChar const * _pc ) = 0;
 	virtual void CreateFollowsNFA( _TyThis & _rcb ) = 0;
-	virtual void CreateLookaheadNFA( _TyThis & _rcb ) = 0;
+	// _rreTrailing is the regular expression of the trailing context whose NFA is in _rcb: from it we create the
+	//	DFA that matches the trailing context in reverse which is used to find the end of the token - see _l_lkahd.h.
+	virtual void CreateLookaheadNFA( _TyThis & _rcb, _regexp_base< t_TyChar > const & _rreTrailing ) = 0;
 	virtual bool FCreateTriggerNFA( _TyActionObjectBase const & _raob ) = 0;
 	virtual void CreateOrNFA( _TyThis & _rcb ) = 0;
 	virtual void CreateZeroOrMoreNFA() = 0;
