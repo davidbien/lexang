@@ -637,6 +637,12 @@ public:
           }
         }
       }
+      else
+      {
+        // No accepting state found: triggers may have fired along the way - e.g. the caller may try an optional token from one
+        //  start state and on failure scan the same input again from another. Clear them so that the next scan starts clean.
+        ClearTokenData();
+      }
       // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
       if ( !fIgnoredToken && ( !!m_ucCur || !GetStream().FAtTokenStart() ) && _fThrowOnNoToken )
       {
@@ -715,7 +721,9 @@ public:
       }
       else
       {
-        // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
+        // No accepting state found: triggers may have fired along the way - clear them so the analyzer can be used again.
+        ClearTokenData();
+        // If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
         if ( !!m_ucCur || !GetStream().FAtTokenStart() )
         {
           _TyStdStr strCurToken;
