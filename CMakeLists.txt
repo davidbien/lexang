@@ -29,6 +29,7 @@ if(LEXANG_STANDALONE)
   # When part of another project we expect it to have set things up - bienutil.cmake modifies global compiler flags.
   include ( "${LEXANG_BIENUTIL_DIR}/bienutil.cmake" )
   enable_testing()
+  bienutil_ctest_log_dir( "${CMAKE_BINARY_DIR}/testlogs" ) # The test programs' logs go here - cleared each ctest run.
 endif()
 
 add_library(lexang INTERFACE)
