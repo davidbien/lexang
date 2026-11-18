@@ -348,8 +348,7 @@ public:
     {
       if ( !paxnCur->VFIsNull() )
       {
-        DEBUG_BREAK;
-        bool fIsNull = paxnCur->VFIsNull();
+        // The callers check this with VerifyThrowOrBreakSz(): that breaks into the debugger when one is attached.
         if ( !!_ptidNonNull )
           *_ptidNonNull = paxnCur->VGetTokenId();
         return false;
@@ -552,7 +551,7 @@ public:
 #ifdef LEXOBJ_STRICT
     {//B: We should be clear at the beginning of GetToken.
       vtyTokenIdent tidNonNull;
-      VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "At beginning: Token id[%u] still has data in it - this will result in bogus translations."
+      VerifyThrowOrBreakSz( FIsClearOfTokenData( &tidNonNull ), "At beginning: Token id[%u] still has data in it - this will result in bogus translations."
         "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
         "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
     }//EB
@@ -598,7 +597,7 @@ public:
               // Getting the token should result in a completely clear set of action objects for the entire lexical analyzer (invariant of the algorithm/system).
   #ifdef LEXOBJ_STRICT
               vtyTokenIdent tidNonNull;
-              VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+              VerifyThrowOrBreakSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
                 "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
                 "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
   #endif //LEXOBJ_STRICT
@@ -613,7 +612,7 @@ public:
               paobCurToken->Clear();
   #ifdef LEXOBJ_STRICT
               vtyTokenIdent tidNonNull;
-              VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+              VerifyThrowOrBreakSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
                 "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
                 "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
   #endif //LEXOBJ_STRICT
@@ -627,7 +626,7 @@ public:
             // If the token action didn't accept then it should have cleared all token data:
   #ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
-            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+            VerifyThrowOrBreakSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
   #endif //LEXOBJ_STRICT
             // As with FGetTokens() we skip everything that we found and go on to the next token: returning false here would
             //  be indistinguishable from reaching the end of the input.
@@ -692,7 +691,7 @@ public:
             GetStream().GetPToken( paobCurToken, m_posLastAccept, upToken );
 #ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
-            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
+            VerifyThrowOrBreakSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations."
               "This can happen when a trigger has fired that is not contained in a token and hence never gets cleared."
               "That's a bogus trigger anyway and you should just include it in the eventual token(s) where it fires.", tidNonNull  );
 #endif //LEXOBJ_STRICT
@@ -707,7 +706,7 @@ public:
             // If the token action didn't accept then it should have cleared all token data:
 #ifdef LEXOBJ_STRICT
             vtyTokenIdent tidNonNull;
-            VerifyThrowSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
+            VerifyThrowOrBreakSz( FIsClearOfTokenData( &tidNonNull ), "Token id[%u] still has data in it - this will result in bogus translations.", tidNonNull  ); 
 #endif //LEXOBJ_STRICT
             GetStream().DiscardData( m_posLastAccept ); // Skip everything that we found... kinda harsh..
             // We could keep a stack of previously found accepting states and move to them but that's kinda ill defined and costs allocation space. Something to think about.
