@@ -175,23 +175,40 @@ public:
   {
     return m_value[_nEl];
   }
+// The strings of values:
+  // _rval is the value of this token or one of its constituent values - the methods without it are for the token's own value.
+  // As a string a value is in one of these states:
+  //  1) Positions in the data of the token ( _TyData ): what the lexical analyzer produces. The user context translates
+  //     them - only it knows what the types of the ranges mean.
+  //  2) A string or a string view: what GetStringView() leaves in the value in place of the positions, or what the
+  //     value was set to - there is nothing left for the user context to translate.
+  //  3) A type by which _l_value is extended, which knows its own string.
+  // So each of these may be called for a value in any of the states - any number of times and in any order - and
+  //  _rval.GetStringView( tok, sv ) ( etc. ) is the same call as tok.GetStringView( sv, _rval ).
+  // Positions are tested for first and go straight to the user context; the value sorts out everything else. The value
+  //  sends positions straight to the user context as well - it doesn't come back through here.
   template < class t_tyStringView >
   void GetStringView( t_tyStringView & _rsvDest, _TyValue & _rval )
   {
-    m_scx.GetStringView( _rsvDest, *this, _rval );
+    if ( _rval.FHasTypedData() )
+      m_scx.GetStringView( _rsvDest, *this, _rval );
+    else
+      _rval.GetStringView( *this, _rsvDest );
   }
   template < class t_tyStringView >
   void GetStringView( t_tyStringView & _rsvDest )
   {
-    // Go through the value: it may already hold a string or string view from a previous call, in which case
-    //  there is no longer any _TyData for the user context to translate. The value delegates back to us if it still holds _TyData.
-    GetValue().GetStringView( *this, _rsvDest );
+    GetStringView( _rsvDest, GetValue() );
   }
   template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest, _TyValue const & _rval ) const
   {
-    m_scx.KGetStringView( _rsvDest, *this, _rval );
+    if ( _rval.FHasTypedData() )
+      m_scx.KGetStringView( _rsvDest, *this, _rval );
+    else
+      _rval.KGetStringView( *this, _rsvDest );
   }
+  // A view of a range of the token's data - there is no value involved.
   template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest, _l_data_range const & _rdr ) const
   {
@@ -200,27 +217,33 @@ public:
   template < class t_tyStringView >
   void KGetStringView( t_tyStringView & _rsvDest ) const
   {
-    GetValue().KGetStringView( *this, _rsvDest ); // See GetStringView() above.
+    KGetStringView( _rsvDest, GetValue() );
   }
   template < class t_tyStringView, class t_tyString >
   bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest, _TyValue const & _rval ) const
   {
-    return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, _rval );
+    if ( _rval.FHasTypedData() )
+      return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, _rval );
+    else
+      return _rval.FGetStringViewOrString( *this, _rsvDest, _rstrDest );
   }
   template < class t_tyStringView, class t_tyString >
   bool FGetStringViewOrString( t_tyStringView & _rsvDest, t_tyString & _rstrDest ) const
   {
-    return m_scx.FGetStringViewOrString( _rsvDest, _rstrDest, *this, GetValue() );
+    return FGetStringViewOrString( _rsvDest, _rstrDest, GetValue() );
   }
   template < class t_tyString >
   void GetString( t_tyString & _rstrDest, _TyValue const & _rval ) const
   {
-    m_scx.GetString( _rstrDest, *this, _rval );
+    if ( _rval.FHasTypedData() )
+      m_scx.GetString( _rstrDest, *this, _rval );
+    else
+      _rval.GetString( *this, _rstrDest );
   }
   template < class t_tyString >
   void GetString( t_tyString & _rstrDest ) const
   {
-    GetValue().GetString( *this, _rstrDest ); // See GetStringView() above.
+    GetString( _rstrDest, GetValue() );
   }
   // Return the beginning and ending positions of the token in the stream.
   void GetTokenDataRange( _l_data_range & _rdr ) const

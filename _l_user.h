@@ -185,6 +185,15 @@ public:
     _rsvDest = t_TyStringView( ( const typename t_TyStringView::value_type *)&_rstrDest[0], _rstrDest.length() );
     return false;
   }
+  // A view in another character type without changing the value: there is nowhere to keep the converted string.
+  // This is here so that KGetStringView() compiles for every type of view - the value may hold a string of that
+  //  character type instead of positions, and then there is a view of it. It throws if it is reached.
+  template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
+  static void KGetStringView( t_TyStringView & /* _rsvDest */, t_TyTransportCtxt & /* _rcxt */, t_TyToken & /* _rtok */, typename t_TyToken::_TyValue const & /* _rval */ )
+    requires ( ( sizeof( typename t_TyStringView::value_type ) != sizeof( _TyChar ) ) && !TFIsTransportVarCtxt_v< t_TyTransportCtxt > )
+  {
+    THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a constant string view of a character type not matching the character type of the lex - use GetStringView() or FGetStringViewOrString().");
+  }
 // var transport:
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
   static void GetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, typename t_TyToken::_TyValue & _rval )
@@ -193,7 +202,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rsvDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        _rcxtTransport.GetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
+        GetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -204,7 +213,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rsvDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        _rcxtTransport.KGetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
+        KGetStringView( _rsvDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -215,7 +224,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rsvDest,&_rtok,&_rdr]( auto & _rcxtTransport )
       {
-        _rcxtTransport.KGetStringView( _rsvDest, _rcxtTransport, _rtok, _rdr );
+        KGetStringView( _rsvDest, _rcxtTransport, _rtok, _rdr );
       }
     }, _rcxt.GetVariant() );
   }
@@ -226,7 +235,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rsvDest,&_rstrDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        _rcxtTransport.FGetStringViewOrString( _rsvDest, _rstrDest, _rcxtTransport, _rtok, _rval );
+        return FGetStringViewOrString( _rsvDest, _rstrDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -237,7 +246,7 @@ public:
     return visit(_VisitHelpOverloadFCall {
       [&_rstrDest,&_rtok,&_rval]( auto & _rcxtTransport )
       {
-        _rcxtTransport.GetString( _rstrDest, _rcxtTransport, _rtok, _rval );
+        GetString( _rstrDest, _rcxtTransport, _rtok, _rval );
       }
     }, _rcxt.GetVariant() );
   }
@@ -261,8 +270,8 @@ public:
     else
     {
       // We could set the stringview into the object since it doesn't really hurt:
-      _rcxt.GetStringView( _rsvDest, kdtr );
-      _rval.SetVal( _rsvDest );
+      _rcxt.GetStringView( _rsvDest, kdtr.DataRangeGetSingle() );
+      _rval.SetVal( std::as_const( _rsvDest ) ); // const so that the same-size converting SetVal() overloads are chosen (e.g. char->char8_t).
     }
   }
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
@@ -274,7 +283,7 @@ public:
     const _TyData kdtr = _rval.template GetVal< _TyData >();
     _rcxt.AssertValidDataRange( kdtr );
     VerifyThrowSz( kdtr.FContainsSingleDataRange(), "KGetStringView() is only valid for single data ranges." );
-    _rcxt.GetStringView( _rsvDest, kdtr );
+    _rcxt.GetStringView( _rsvDest, kdtr.DataRangeGetSingle() );
   }
   template < class t_TyStringView, class t_TyToken, class t_TyTransportCtxt >
   static void KGetStringView( t_TyStringView & _rsvDest, t_TyTransportCtxt & _rcxt, t_TyToken & _rtok, _l_data_range const & _rdr )
@@ -302,7 +311,7 @@ public:
     }
     else
     {
-      _rcxt.GetStringView( _rsvDest, kdtr );
+      _rcxt.GetStringView( _rsvDest, kdtr.DataRangeGetSingle() );
       return true;
     }
   }

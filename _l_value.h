@@ -505,8 +505,9 @@ public:
       },
       [this,&_rtok,&_rsv](_TyData const &)
       {
-        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
-        _rtok.KGetStringView( _rsv, *this );
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range: the token's user context translates it.
+        // ( Straight to the user context: the token's own method would only find again that we hold _TyData. )
+        _rtok.GetUserContext().KGetStringView( _rsv, _rtok, *this );
       },
       [this,&_rsv](_TyStrChar8 const & _rstr)
       {
@@ -590,8 +591,8 @@ public:
       },
       [this,&_rtok,&_rsv](_TyData &)
       {
-        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate:
-        _rtok.GetStringView( _rsv, *this );
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range: the token's user context translates it.
+        _rtok.GetUserContext().GetStringView( _rsv, _rtok, *this );
       },
       [this,&_rsv](_TyStrChar8 & _rstr)
       {
@@ -674,8 +675,8 @@ public:
       },
       [this,&_rtok,&_rstr](_TyData const &)
       {
-        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
-        _rtok.GetString( _rstr, *this );
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range: the token's user context translates it.
+        _rtok.GetUserContext().GetString( _rstr, _rtok, *this );
       },
       [&_rstr](_TyStrChar8 const & _rstr8)
       {
@@ -738,27 +739,32 @@ public:
   bool FGetStringViewOrString( t_TyToken & _rtok, t_TyStringView & _rsv, t_TyString & _rstr ) const
   {
     Assert( _rstr.empty() );
-    std::visit(_VisitHelpOverloadFCall {
-      [](monostate) 
+    // Every alternative must return the same type - those which only throw as well.
+    return std::visit(_VisitHelpOverloadFCall {
+      [](monostate) -> bool
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("empty contains no data.");
+        return false;
       },
-      [](bool)
+      [](bool) -> bool
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("bool is not a string.");
+        return false;
       },
-      [](vtyDataPosition)
+      [](vtyDataPosition) -> bool
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtyDataPosition is not a string.");
+        return false;
       },
-      [](vtySignedLvalueInt)
+      [](vtySignedLvalueInt) -> bool
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("vtySignedLvalueInt is not a string.");
+        return false;
       },
-      [this,&_rtok,&_rsv,&_rstr](_TyData const & _rdt)
+      [this,&_rtok,&_rsv,&_rstr](_TyData const &) -> bool
       {
-        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
-        return _rtok.FGetStringViewOrString( _rsv, _rstr, *this );
+        // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range: the token's user context translates it.
+        return _rtok.GetUserContext().FGetStringViewOrString( _rsv, _rstr, _rtok, *this );
       },
       [&_rsv,&_rstr](_TyStrChar8 const & _rstr8)
       {
@@ -784,11 +790,12 @@ public:
       {
         return _FGetStringViewOrString( _rsv, _rstr, _rsv32 );
       },
-      [](_TySegArrayValues const &)
+      [](_TySegArrayValues const &) -> bool
       {
         THROWNAMEDBADVARIANTACCESSEXCEPTION("Can't get a string view of an array of _l_values.");
+        return false;
       },
-      [&_rtok,&_rsv,&_rstr]( const auto & _userDefinedType )
+      [&_rtok,&_rsv,&_rstr]( const auto & _userDefinedType ) -> bool
       {
         return _userDefinedType.FGetStringViewOrString( _rsv, _rstr, _rtok );
       }
@@ -803,7 +810,7 @@ protected:
     static_assert( sizeof( typename t_TyStringViewDest::value_type ) == sizeof( typename t_TyStringDest::value_type ) );
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
-    _rsvDest = t_TyStrViewDest( (const typename t_TyStringViewDest::value_type*)&_rsrc[0], _rsrc.length() );
+    _rsvDest = t_TyStringViewDest( (const typename t_TyStringViewDest::value_type*)_rsrc.data(), _rsrc.length() );
     return true;
   }
   // Converting version for string or view source - we must convert the existing value into the passed string.
@@ -815,7 +822,7 @@ protected:
     Assert( _rsvDest.empty() );
     Assert( _rstrDest.empty() );
     ConvertString( _rstrDest, _rsrc ); // that was easy.
-    _rsvDest = t_TyStrViewDest( (const typename t_TyStringViewDest::value_type*)&_rstrDest[0], _rstrDest.length() );
+    _rsvDest = t_TyStringViewDest( (const typename t_TyStringViewDest::value_type*)_rstrDest.data(), _rstrDest.length() );
     return false;
   }
 public:
@@ -1024,7 +1031,7 @@ public:
         // Delegate to the token in this case:
         // _rdt might hold a single _l_data_typed_range or an array of _l_data_typed_range, delegate.
         basic_string_view< t_TyCharOut > sv;
-        _rtok.GetStringView( sv, *this );
+        _rtok.GetUserContext().GetStringView( sv, _rtok, *this );
       },
       [this](_TyStrChar8 & _rstr)
       {

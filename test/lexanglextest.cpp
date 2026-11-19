@@ -298,6 +298,169 @@ TYPED_TEST( LexangTriggers, IncompleteTokenLeavesNoTriggerData )
 	EXPECT_TRUE( analyzer.FIsClearOfTokenData() );
 }
 
+// The strings of a token's values - see _l_token<>::GetStringView().
+// A value may be asked for its string through the token ( tok.GetStringView( sv, val ) ) or itself ( val.GetStringView( tok, sv ) ),
+//	any number of times and in any order - whatever it holds at the time: the positions which the lexical analyzer recorded,
+//	the string or the string view which GetStringView() leaves in their place, or a string which it was set to.
+typedef std::basic_string< TyTestChar > TyTestStr;
+typedef std::basic_string_view< TyTestChar > TyTestStrView;
+
+// Every way of getting the string of the value which doesn't change the value: each must give _rsvExpect.
+// _fViewOfOtherChar: a view of char16_t can be had without changing the value - only when it holds a string of char16_t.
+template < class t_TyToken, class t_TyValue >
+void ExpectStringsOfValue( t_TyToken const & _rtok, t_TyValue const & _rval, TyTestStrView _svExpect, bool _fViewOfOtherChar = false )
+{
+	std::u16string strExpect16;
+	ConvertString( strExpect16, _svExpect );
+	for ( int nRepeat = 0; nRepeat < 2; ++nRepeat )
+	{
+		{ // The string in the character type of the lexical analyzer and in another.
+			TyTestStr strTok, strVal;
+			_rtok.GetString( strTok, _rval );
+			_rval.GetString( _rtok, strVal );
+			EXPECT_EQ( strTok, _svExpect );
+			EXPECT_EQ( strVal, _svExpect );
+			std::u16string strTok16, strVal16;
+			_rtok.GetString( strTok16, _rval );
+			_rval.GetString( _rtok, strVal16 );
+			EXPECT_EQ( strTok16, strExpect16 );
+			EXPECT_EQ( strVal16, strExpect16 );
+		}
+		{ // A view if there is one to be had and otherwise a string.
+			TyTestStrView svTok, svVal;
+			TyTestStr strTok, strVal;
+			const bool kfViewTok = _rtok.FGetStringViewOrString( svTok, strTok, _rval );
+			const bool kfViewVal = _rval.FGetStringViewOrString( _rtok, svVal, strVal );
+			EXPECT_EQ( kfViewTok, kfViewVal );
+			EXPECT_EQ( kfViewTok, !_fViewOfOtherChar ); // A view unless the value holds a string of another character type.
+			EXPECT_TRUE( !kfViewTok || ( strTok.empty() && strVal.empty() ) ); // A view is of what the token or the value has: the string isn't used.
+			EXPECT_EQ( svTok, _svExpect );
+			EXPECT_EQ( svVal, _svExpect );
+			std::u16string_view svTok16, svVal16;
+			std::u16string strTok16, strVal16;
+			EXPECT_EQ( _rtok.FGetStringViewOrString( svTok16, strTok16, _rval ), _rval.FGetStringViewOrString( _rtok, svVal16, strVal16 ) );
+			EXPECT_EQ( svTok16, strExpect16 );
+			EXPECT_EQ( svVal16, strExpect16 );
+		}
+		if ( !_fViewOfOtherChar )
+		{ // A view without changing the value: there is one in the character type of the lexical analyzer.
+			TyTestStrView svTok, svVal;
+			_rtok.KGetStringView( svTok, _rval );
+			_rval.KGetStringView( _rtok, svVal );
+			EXPECT_EQ( svTok, _svExpect );
+			EXPECT_EQ( svVal, _svExpect );
+		}
+		else
+		{ // The value holds a string of char16_t: there is that view and no other.
+			std::u16string_view svTok16, svVal16;
+			_rtok.KGetStringView( svTok16, _rval );
+			_rval.KGetStringView( _rtok, svVal16 );
+			EXPECT_EQ( svTok16, strExpect16 );
+			EXPECT_EQ( svVal16, strExpect16 );
+			TyTestStrView svTok, svVal;
+			EXPECT_ANY_THROW( _rtok.KGetStringView( svTok, _rval ) );
+			EXPECT_ANY_THROW( _rval.KGetStringView( _rtok, svVal ) );
+		}
+	}
+}
+
+TYPED_TEST( LexangTriggers, StringsOfValuesAnyNumberOfTimes )
+{
+	typedef typename TypeParam::_TyToken _TyToken;
+	typedef typename _TyToken::_TyValue _TyValue;
+	const TyTestStr strInput( u8"<abc=123>\"quoted\"" );
+	TypeParam analyzer;
+	analyzer.emplaceTransport( strInput.c_str(), strInput.length() );
+	std::unique_ptr< _TyToken > upToken;
+	ASSERT_TRUE( analyzer.FGetToken( upToken ) );
+	ASSERT_EQ( upToken->GetTokenId(), s_ktidToken1 );
+	_TyToken & rtok = *upToken;
+	_TyValue & rvalName = rtok.GetValue()[0];
+	_TyValue & rvalDigits = rtok.GetValue()[1];
+	// As the lexical analyzer left them: positions in the token's data.
+	ASSERT_TRUE( rvalName.FHasTypedData() );
+	ASSERT_TRUE( rvalDigits.FHasTypedData() );
+	ExpectStringsOfValue( rtok, rvalName, u8"abc" );
+	ExpectStringsOfValue( rtok, rvalDigits, u8"123" );
+	EXPECT_TRUE( rvalName.FHasTypedData() ); // None of those changed the value.
+
+	// GetStringView() leaves the view in the value in place of the positions: through the token and then through the
+	//	token again - and through the value, and every other way.
+	for ( int nRepeat = 0; nRepeat < 2; ++nRepeat )
+	{
+		TyTestStrView svTok, svVal;
+		rtok.GetStringView( svTok, rvalName );
+		rvalName.GetStringView( rtok, svVal );
+		EXPECT_EQ( svTok, u8"abc" );
+		EXPECT_EQ( svVal, u8"abc" );
+		EXPECT_FALSE( rvalName.FHasTypedData() );
+		EXPECT_TRUE( rvalName.FIsString() );
+		ExpectStringsOfValue( rtok, rvalName, u8"abc" );
+	}
+	// The same starting with the value.
+	for ( int nRepeat = 0; nRepeat < 2; ++nRepeat )
+	{
+		TyTestStrView svTok, svVal;
+		rvalDigits.GetStringView( rtok, svVal );
+		rtok.GetStringView( svTok, rvalDigits );
+		EXPECT_EQ( svTok, u8"123" );
+		EXPECT_EQ( svVal, u8"123" );
+		EXPECT_FALSE( rvalDigits.FHasTypedData() );
+		ExpectStringsOfValue( rtok, rvalDigits, u8"123" );
+	}
+	// A view in another character type: the value then holds the converted string. And back again.
+	for ( int nRepeat = 0; nRepeat < 2; ++nRepeat )
+	{
+		std::u16string_view svTok16, svVal16;
+		rtok.GetStringView( svTok16, rvalName );
+		rvalName.GetStringView( rtok, svVal16 );
+		EXPECT_EQ( svTok16, u"abc" );
+		EXPECT_EQ( svVal16, u"abc" );
+		ExpectStringsOfValue( rtok, rvalName, u8"abc", true );
+	}
+	{
+		TyTestStrView svTok;
+		rtok.GetStringView( svTok, rvalName );
+		EXPECT_EQ( svTok, u8"abc" );
+		ExpectStringsOfValue( rtok, rvalName, u8"abc" );
+	}
+	// A value which is set to a string - it never had positions.
+	rvalDigits.emplaceVal( TyTestStr( u8"set" ) );
+	ExpectStringsOfValue( rtok, rvalDigits, u8"set" );
+	{
+		TyTestStrView svTok;
+		rtok.GetStringView( svTok, rvalDigits );
+		EXPECT_EQ( svTok, u8"set" );
+	}
+
+	// The token's own value - the methods which aren't passed one: the quoted string has its string as its value.
+	ASSERT_TRUE( analyzer.FGetToken( upToken ) );
+	ASSERT_EQ( upToken->GetTokenId(), s_ktidToken0 );
+	_TyToken & rtokQuoted = *upToken;
+	ASSERT_TRUE( rtokQuoted.GetValue().FHasTypedData() );
+	// From positions directly to a view in another character type, then every way.
+	{
+		std::u16string_view sv16;
+		rtokQuoted.GetStringView( sv16 );
+		EXPECT_EQ( sv16, u"quoted" );
+		ExpectStringsOfValue( rtokQuoted, rtokQuoted.GetValue(), u8"quoted", true );
+	}
+	for ( int nRepeat = 0; nRepeat < 2; ++nRepeat )
+	{
+		TyTestStrView sv, svK, svOr;
+		TyTestStr str, strOr;
+		rtokQuoted.GetStringView( sv );
+		std::as_const( rtokQuoted ).KGetStringView( svK );
+		std::as_const( rtokQuoted ).GetString( str );
+		EXPECT_TRUE( std::as_const( rtokQuoted ).FGetStringViewOrString( svOr, strOr ) );
+		EXPECT_EQ( sv, u8"quoted" );
+		EXPECT_EQ( svK, u8"quoted" );
+		EXPECT_EQ( str, u8"quoted" );
+		EXPECT_EQ( svOr, u8"quoted" );
+	}
+	analyzer.ClearTokenData();
+}
+
 typedef ns_ltexcludes::TGetLexicalAnalyzer< TyTestLexTraits > TyAnalyzerExcludes;
 
 // excludes: Token0: a name which is not "xml", Token1: spaces.
