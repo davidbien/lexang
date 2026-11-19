@@ -87,6 +87,15 @@ public:
   {
     return *this;
   }
+  // The user object - that of the lexical analyzer which the token came from.
+  _TyUserObj & GetUserObj()
+  {
+    return m_ruoUserObj;
+  }
+  const _TyUserObj & GetUserObj() const
+  {
+    return m_ruoUserObj;
+  }
   // Generic initialization of transport context.
   template < class ... t_TysArgs >
   void InitTransportCtxt( t_TysArgs && ... _args )
