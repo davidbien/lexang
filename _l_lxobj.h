@@ -246,7 +246,13 @@ public:
   vtyDataPosition m_posLastAccept{vkdpNullDataPosition};
   // The start of the current token is stored in the transport.
   _TyUnsignedChar m_ucCur{0}; // The current character obtained from the transport.
+  // Whether there is a current character: the transport gave one. Not whether m_ucCur is zero - a character of the
+  //  input may be: zero where there is none was "the end of the input", so a zero in the input was taken for that,
+  //  and it was counted into the token before it since "no character was read ahead".
+  bool m_fHaveCur{false};
   _TyCompSearch m_compSearch;        // search object.
+  // The ranges of a state are searched in order when there are this many or fewer, with a binary search when more - see _getnext().
+  static constexpr vTyNTransitions s_knTransitionsSearchedInOrder = 32;
 
   _l_analyzer() = delete;
   _l_analyzer(const _l_analyzer &) = delete;
@@ -316,7 +322,7 @@ public:
   // The position of the current character - that at which the lexical analyzer is: for use while moving through the input.
   vtyDataPosition _PosCurrent() const
   {
-    return GetStream().PosCurrent() - !!m_ucCur;
+    return GetStream().PosCurrent() - m_fHaveCur;
   }
   _TyTagPolicy & GetTagPolicy()
   {
@@ -364,7 +370,7 @@ public:
   void _DoTrace(const char *_szFile, unsigned int _nLine, const char *_szFunction, const char *_szMesg, ...)
   {
     std::string strCur;
-    if ( !!m_ucCur )
+    if ( m_fHaveCur )
     {
       if ((m_ucCur > 32) && (m_ucCur < 127))
         (void)FPrintfStdStrNoThrow(strCur, "%c (%llu)", (char)m_ucCur, uint64_t(m_ucCur) );
@@ -644,7 +650,7 @@ public:
         ClearTokenData();
       }
       // No accepting state found. If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
-      if ( !fIgnoredToken && ( !!m_ucCur || !GetStream().FAtTokenStart() ) && _fThrowOnNoToken )
+      if ( !fIgnoredToken && ( m_fHaveCur || !GetStream().FAtTokenStart() ) && _fThrowOnNoToken )
       {
         _TyStdStr strCurToken;
         GetStream().GetCurTokenString( strCurToken );
@@ -724,7 +730,7 @@ public:
         // No accepting state found: triggers may have fired along the way - clear them so the analyzer can be used again.
         ClearTokenData();
         // If we aren't at EOF then we should throw - or if we are at EOF and not at the start of a token.
-        if ( !!m_ucCur || !GetStream().FAtTokenStart() )
+        if ( m_fHaveCur || !GetStream().FAtTokenStart() )
         {
           _TyStdStr strCurToken;
           GetStream().GetCurTokenString( strCurToken );
@@ -732,7 +738,7 @@ public:
         }
         return false;
       }
-    } while (m_ucCur);
+    } while (m_fHaveCur);
     return true; // Hit EOF having processed everything.
   }
 
@@ -740,14 +746,13 @@ protected:
   void _NextChar()
   {
     m_ucCur = 0;
+    m_fHaveCur = m_stream.FGetChar( m_ucCur );
     if constexpr (t_fSupportLookahead)
     {
       // Record the characters of the token: we may need to move backward through them - see _l_an_lookaheadbase<>.
-      if ( m_stream.FGetChar( m_ucCur ) )
+      if ( m_fHaveCur )
         this->m_rgucLookaheadToken.push_back( m_ucCur );
     }
-    else
-      (void)m_stream.FGetChar( m_ucCur );
   }
   void _execute_triggers()
   {
@@ -960,6 +965,25 @@ protected:
 
       default:
       {
+        // The ranges are in order: the first whose last is not below the character is the one - or there is none.
+        // The characters of most input are among the first of the ranges, so this finds them sooner than a binary
+        //  search does - and with branches which are predicted. As measured, reading XML: the states in which most
+        //  of a document is read have from 9 ( UTF-16, UTF-32 ) to 18 ( UTF-8 ) ranges, and it is faster for them all.
+        if ( m_pspCur->m_nt <= s_knTransitionsSearchedInOrder )
+        {
+          const _TyTransition * ptCur = m_pspCur->m_rgt;
+          const _TyTransition * const ptEnd = ptCur + m_pspCur->m_nt;
+          for ( ; ( ptEnd != ptCur ) && ( ptCur->m_last < m_ucCur ); ++ptCur )
+            ;
+          if ( ( ptEnd != ptCur ) && ( m_ucCur >= ptCur->m_first ) )
+          {
+            m_pspCur = ptCur->m_psp;
+            _NextChar();
+            LXOBJ_DOTRACE( "Moved to state." );
+            return true;
+          }
+          break;
+        }
         // Enough elements to warrant a binary search:
         const _TyTransition *ptLwr =
             lower_bound(m_pspCur->m_rgt,
