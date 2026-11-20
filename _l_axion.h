@@ -892,9 +892,11 @@ public:
       _TyTriggerBegin & rtBegin = static_cast< _TyTriggerBegin & >( _rA.template GetActionObj< s_kiTriggerBegin >() );
       vtyDataPosition posBegin = rtBegin.GetClearPosition();
       vtyDataPosition posEnd = GetClearPosition();
+      // An empty string - both triggers at the same position - is not recorded: there is then no string, as when the
+      //  triggers were not reached. ( A production may have nothing between its two triggers: "~x" between them. )
       Assert(	( vkdpNullDataPosition != posBegin ) &&
             ( vkdpNullDataPosition != posEnd ) &&
-            ( posEnd > posBegin ) );
+            ( posEnd >= posBegin ) );
       if (	( vkdpNullDataPosition != posBegin ) &&
             ( vkdpNullDataPosition != posEnd ) &&
             ( posEnd > posBegin ) )
